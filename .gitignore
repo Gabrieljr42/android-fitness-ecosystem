@@ -1,0 +1,24 @@
+# Toolchain e SDKs portáteis baixados pelos scripts
+_toolchain/
+**/_toolchain/
+
+# Pastas e arquivos de build/compilação
+build/
+**/build/
+*.apk
+*.idsig
+*.zip
+*.dex
+*.class
+
+# Pastas temporárias e backups monolíticos
+_temp_kernel/
+_temp_views/
+**/_backup_monolito/
+
+# Logs e arquivos de sistema
+*.log
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/

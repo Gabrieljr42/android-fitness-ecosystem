@@ -1,0 +1,38 @@
+EVOLUCAO — build do APK por linha de comando
+============================================
+
+O QUE E
+  Um app Android (WebView) que roda o seu app de treino localmente,
+  COM notificacao e vibracao nativas no fim de cada descanso.
+
+REQUISITOS
+  - Windows 10/11 com internet (o script baixa ~1 GB na 1a vez:
+    JDK 17 + Android SDK). Tudo fica na subpasta _toolchain,
+    sem instalar nada no sistema.
+
+COMO GERAR O APK
+  1. Extraia esta pasta em algum lugar (ex: Documentos).
+  2. Abra o PowerShell nesta pasta:
+       - Abra a pasta no Explorer
+       - Clique na barra de endereco, digite: powershell  <Enter>
+  3. Rode:
+       powershell -ExecutionPolicy Bypass -File build.ps1
+  4. Aguarde (varios minutos na 1a vez). No fim aparece:
+       Evolucao.apk   (nesta mesma pasta)
+
+INSTALAR NO ANDROID
+  1. Copie o Evolucao.apk pro celular (cabo, Google Drive, etc).
+  2. Abra o arquivo no celular.
+  3. Permita "instalar de fontes desconhecidas" quando pedir.
+  4. Instale. O icone "Evolução" aparece na tela.
+  5. No 1o uso, aceite a permissao de notificacao.
+
+OBSERVACOES
+  - Seus dados ficam salvos no proprio app. Use "Backup" na aba
+    Ficha de vez em quando (atualizar/reinstalar pode limpar).
+  - Se algum download der 404 (versao mudou), abra o build.ps1
+    e atualize as URLs no topo ($CMDLINE_URL).
+  - Deu erro em algum passo? Copie a mensagem do PowerShell e me mande.
+
+O QUE O SCRIPT FAZ (resumo tecnico)
+  aapt2 (recursos+manifest) -> javac -> d8 (dex) -> zipalign -> apksigner

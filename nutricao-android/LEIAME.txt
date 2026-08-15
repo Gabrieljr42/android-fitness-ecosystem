@@ -1,0 +1,59 @@
+=============================================================
+ NutriTrack - App de Nutricao com IA (analise de foto)
+=============================================================
+
+O QUE E ESTE APP
+----------------
+Tracker de alimentacao: registro de refeicoes, calorias,
+proteina, carboidrato e gordura por dia, diario com grafico
+de 7 dias, metas diarias (personalizadas ou calculadas por
+TDEE/Mifflin-St Jeor) e um banco de alimentos.
+
+A analise de foto usa a API gratuita do Google Gemini: voce
+fotografa o prato, o app envia a foto 3 vezes e retorna a
+media das respostas (descartando outliers), com estimativa
+dos alimentos, porcoes em gramas e macros de cada item.
+
+COMPILAR O APK (Windows)
+------------------------
+1. Abra o PowerShell dentro desta pasta.
+2. Rode:
+     powershell -ExecutionPolicy Bypass -File build.ps1
+3. Na primeira vez, o script baixa JDK + Android SDK (~1 GB)
+   na pasta _toolchain. Depois fica em cache.
+4. O arquivo NutriTrack.apk aparece nesta pasta. Instale no
+   celular (permita "fontes desconhecidas" nas configuracoes).
+
+CONFIGURAR A IA (obrigatorio, 2 minutos)
+-----------------------------------------
+1. Crie uma chave GRATUITA em:
+     https://aistudio.google.com/app/apikey
+   (conta Google comum, tier gratuito cobre uso pessoal:
+    15 req/min, 50 req/dia - suficiente para fotos de refeicao)
+2. Abra o app, aba AJUSTES, cole a chave e salve.
+   - Sem a chave, o app funciona 100% no modo manual.
+   - A chave fica so no SEU celular (localStorage).
+   - Para a analise 3x de uma foto, sao consumidas
+     3 requisicoes do quota.
+
+DADOS E PRIVACIDADE
+--------------------
+Tudo fica no dispositivo (localStorage) - nenhuma conta,
+nenhum servidor. A unica conexao externa e a analise de foto
+(com sua chave). Use AJUSTES > Exportar para fazer backup
+JSON e AJUSTES > Importar para restaurar.
+
+CAMERA
+-------
+O app pede permissao de camera na primeira foto (Android
+mostra o aviso automaticamente). Sem permissao, da para
+escolher foto da galeria.
+
+ESTRUTURA DO PROJETO
+--------------------
+app\build.ps1                  - script de compilacao
+app\src\main\AndroidManifest.xml - permissoes (camera, internet)
+app\src\main\java\...\MainActivity.java - WebView wrapper
+app\src\main\assets\index.html - TODO o app (HTML/CSS/JS)
+app\src\main\assets\icon-192/512.png - icones
+app\src\main\assets\manifest.webmanifest - metadados PWA
