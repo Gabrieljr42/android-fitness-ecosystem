@@ -32,6 +32,15 @@ New-Item -ItemType Directory -Force $build | Out-Null
 
 function Say($m){ Write-Host ""; Write-Host "==> $m" -ForegroundColor Green }
 
+# ---------- 0. Testes Unitários ----------
+if (Get-Command node -ErrorAction SilentlyContinue) {
+  Say "Executando testes unitários..."
+  & node "app\src\test\js\run_all.js"
+  if ($LASTEXITCODE -ne 0) { throw "Testes unitários falharam! Build cancelado." }
+} else {
+  Write-Host "Node.js não encontrado no PATH; pulando testes unitários automatizados." -ForegroundColor Yellow
+}
+
 # ---------- 1. JDK 17 ----------
 $jdkDir = Join-Path $tc "jdk17"
 if(-not (Get-ChildItem -Recurse $jdkDir -Filter javac.exe -ErrorAction SilentlyContinue | Select-Object -First 1)){

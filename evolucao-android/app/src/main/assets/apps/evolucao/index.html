@@ -487,34 +487,35 @@
   body.workout-active .mf-metachip.up{background:var(--mf-orange);color:#fff;}
   body.workout-active .mf-metaauto{color:var(--mf-muted);border-color:transparent;background:transparent;font-weight:700;}
 
-  /* Tabela MF: superfície contínua branca, separadores 1px #EEEEEF, sem card. */
+  /* Tabela MF: superfície contínua branca, separadores 1px #EEEEEF, sem card. Minimalista 5 colunas */
   body.workout-active .mf-table{border-radius:0;border:0;box-shadow:none;border-color:var(--mf-sep);border-top:1px solid var(--mf-sep);border-bottom:1px solid var(--mf-sep);background:#fff;padding-left:4px;padding-right:4px;}
-  body.workout-active .mf-th,body.workout-active .mf-setrow{grid-template-columns:26px minmax(66px,1fr) minmax(56px,56px) minmax(50px,50px) 30px 30px 0;gap:2px;padding-left:6px;padding-right:8px;align-items:center;}
-  body.workout-active .mf-th{padding-top:6px;padding-bottom:7px;font-size:11px;color:#8e8e93;font-weight:600;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--mf-sep);background:#fff;}
-  body.workout-active .mf-th span{padding-bottom:0;}
+  body.workout-active .mf-th,body.workout-active .mf-setrow{grid-template-columns:42px 1fr 1fr 48px 38px;gap:8px;padding-left:8px;padding-right:8px;align-items:center;}
+  body.workout-active .mf-th{padding-top:8px;padding-bottom:8px;font-size:11px;color:#8e8e93;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--mf-sep);background:#fff;}
+  body.workout-active .mf-th span{padding-bottom:0;text-align:center;}
   body.workout-active .mf-setrow{padding-top:9px;padding-bottom:9px;border-bottom:1px solid var(--mf-sep);border-radius:0;background:#fff;}
   body.workout-active .mf-setrow:last-of-type{border-bottom:0;}
-  body.workout-active .mf-auto{font-size:12px;color:#8e8e93;line-height:1.35;white-space:nowrap;overflow:visible;min-width:0;}
-  body.workout-active .mf-auto-arrow{color:#8e8e93;font-size:11px;font-weight:700;}
-  body.workout-active .mf-auto b{color:#1c1c1e;font-size:12px;font-weight:700;}
+  body.workout-active .mf-setrow.mf-side-pending{background:rgba(249,122,83,0.07)!important;border-left:3px solid var(--coral,#f97a53);}
+  body.workout-active .mf-auto{display:none;}
   /* Células MF: chips cinza claro sem borda; valor preto quando preenchido; editando = chip + anel preto 2px. */
-  body.workout-active .mf-cell{border-style:solid;border-color:transparent;background:var(--mf-chip);box-shadow:none;border-radius:10px;font-size:15px;color:#000;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:500;min-height:34px;}
+  body.workout-active .mf-cell{border-style:solid;border-color:transparent;background:var(--mf-chip);box-shadow:none;border-radius:10px;font-size:15px;color:#000;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:500;min-height:38px;display:flex;align-items:center;justify-content:center;}
   body.workout-active .mf-cell.on{background:var(--mf-chip);border:2px solid #000;border-radius:10px;box-shadow:none;}
   body.workout-active .mf-cell:empty,body.workout-active .mf-cell.phc{background:var(--mf-chip);color:#8e8e93;font-weight:500;}
-  body.workout-active .mf-idx{width:24px;height:24px;border-radius:999px;background:#eeeeef;color:#3c3c43;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;}
-  /* RIR no MF: não é coluna — o badge só aparece quando realizado. A coluna do alvo fica no canto da linha, círculo vazado 20px. */
-  body.workout-active .mf-rir{border-radius:999px;min-height:22px;width:22px;flex:0 0 22px;font-size:10px;font-weight:700;color:#fff;padding:0;display:flex;align-items:center;justify-content:center;}
+  body.workout-active .mf-idx{width:28px;height:28px;border-radius:999px;background:#eeeeef;color:#3c3c43;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto;}
+  /* RIR badge */
+  body.workout-active .mf-rir{border-radius:8px;min-height:26px;width:34px;margin:0 auto;font-size:11.5px;font-weight:800;padding:2px 0;display:flex;align-items:center;justify-content:center;}
   body.workout-active .mf-rir.phr{background:transparent !important;border:1.5px solid var(--rir);color:var(--rir);font-weight:800;}
+  body.workout-active .mf-rir.rir-manual{background:var(--rir)!important;color:#fff!important;font-weight:900;}
   /* Checkbox MF: quadrado cantos 6px, borda cinza, ✓ preto quando feito. */
-  body.workout-active .mf-chk{width:26px;height:26px;border-radius:7px;border:2px solid #c7c7cc;background:#fff;color:transparent;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+  body.workout-active .mf-chk{width:32px;height:32px;border-radius:8px;border:2px solid #c7c7cc;background:#fff;color:transparent;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto;}
   body.workout-active .mf-chk.done{background:#000;border-color:#000;color:#fff;}
-  body.workout-active .mf-rm{width:24px;height:24px;background:transparent;color:#aeaeb2;font-size:14px;}
+  body.workout-active .mf-chk.side-pending{background:var(--coral,#f97a53)!important;border-color:var(--coral,#f97a53)!important;color:#fff!important;font-size:13px;font-weight:900;}
+  body.workout-active .mf-rm{display:none;}
   body.workout-active .mf-setrow.ph{opacity:.8;}
   body.workout-active .mf-setrow.ph .mf-chk{background:#fff;}
   /* "+ Adicionar série": linha de texto simples, sem card. */
   body.workout-active .mf-add-row{opacity:1;cursor:pointer;border-bottom:0;padding-top:10px;padding-bottom:14px;border-radius:0;}
   body.workout-active .mf-add-row:active{background:transparent;}
-  body.workout-active .mf-add-row .mf-idx{background:transparent;color:#8e8e93;font-size:14px;width:auto;height:auto;}
+  body.workout-active .mf-add-row .mf-idx{background:transparent;color:#8e8e93;font-size:16px;width:auto;height:auto;}
 
   /* RIR row MF: círculos 30px preenchidos, alinhados à esquerda, sem card. */
   .mf-rirbar{display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:12px 2px;margin:0 0 10px;border:0;border-radius:0;background:transparent;box-shadow:none;}
@@ -537,6 +538,13 @@
   body.workout-active .mf-key{border-radius:12px;background:var(--mf-chip);border:0;color:#000;font-size:20px;font-weight:500;min-height:48px;}
   body.workout-active .mf-key.fn{color:#1c1c1e;background:var(--mf-chip);font-size:13px;font-weight:700;}
   body.workout-active .mf-key.ok{background:#000;border-color:#000;color:#fff;font-weight:700;}
+  /* RIR dentro do teclado: barra externa some quando o teclado está aberto */
+  body.workout-active .mf-rirbar{display:none;}
+  body.workout-active .mf-kbd.open .mf-rirbar{display:flex !important;}
+  /* tecla RIR do teclado: oculta/mostra os círculos coloridos */
+  body.workout-active .mf-rirbar.mf-rirbar-off{display:none !important;}
+  body.workout-active .mf-kbd .mf-rirbar{margin:0 0 6px;padding:6px 12px;background:#fff;border-bottom:0;border-radius:0;box-shadow:none;}
+  body.workout-active .mf-kbd .mf-rcirc{width:34px;height:34px;}
   body.workout-active .mf-finish .cta{background:#000!important;color:#fff!important;border-radius:16px;box-shadow:none;border-color:#000;font-weight:600;}
   .mf-cta-black{background:#000!important;color:#fff!important;border-radius:16px!important;box-shadow:none!important;text-transform:none;letter-spacing:0;border-color:#000;font-weight:600;}
 
@@ -572,13 +580,15 @@
   .mf-preview-rirs i{width:22px;height:22px;border-radius:999px;background:var(--rir);color:#fff;font-size:9px;font-style:normal;font-weight:900;display:flex;align-items:center;justify-content:center;}
   .mf-preview-cta{position:sticky;bottom:12px;padding-top:14px;background:linear-gradient(transparent,#f6f7f9 18%);}
 
-  /* ---------- conclusão ---------- */
+  /* ---------- conclusão & visualizador anatômico ---------- */
   .mf-complete{padding:6px 0 28px;}
   .mf-complete-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:18px;}
   .mf-complete-top .mf-back{padding:8px 11px;font-size:17px;}
   .mf-more{font-size:22px;color:#6f747d;}
   .mf-complete-date{text-align:center;color:#6f747d;font-size:11px;margin:8px 0 0;}
-  .mf-anatomy-svg{height:165px;margin:14px auto 8px;max-width:290px;}
+  .mf-anatomy-svg, .body-anat-svg{display:block;margin:10px auto;max-width:320px;height:auto;transition:all 0.25s ease;}
+  .body-anat-svg .anat-m{transition:fill 0.3s ease, opacity 0.3s ease;}
+  .sess-anat .body-anat-svg{margin:6px auto;max-width:220px;}
   .mf-records{display:flex;gap:8px;overflow-x:auto;padding:5px 0 10px;}
   .mf-rcard{min-width:112px;flex:1;background:#fff;border:1px solid #e0e2e6;border-radius:14px;padding:12px;text-align:left;}
   .mf-record-icon{display:block;font-size:19px;margin-bottom:8px;}
@@ -597,7 +607,7 @@
   .mf-keep-row strong{font-size:13px;}
   .mf-keep-row small{color:#6f747d;font-size:10.5px;margin-top:3px;}
   .mf-complete .cta{margin-top:4px;}
-  @media (max-width:370px){body.workout-active .mf-act{padding:7px 8px;font-size:10px}body.workout-active .mf-th,body.workout-active .mf-setrow{grid-template-columns:24px minmax(60px,1fr) minmax(50px,50px) minmax(46px,46px) 28px 28px 0;padding-left:3px;padding-right:6px}.mf-tool{padding:0 7px}.mf-sessiontools{gap:4px}.mf-rirbar{gap:6px}.mf-rcirc{width:28px;height:28px;flex-basis:28px;font-size:11px}.mf-rir{width:20px!important;flex:0 0 20px!important;min-height:20px!important;font-size:9px!important}}
+  @media (max-width:370px){body.workout-active .mf-act{padding:7px 8px;font-size:10px}body.workout-active .mf-th,body.workout-active .mf-setrow{grid-template-columns:36px 1fr 1fr 42px 34px;gap:5px;padding-left:4px;padding-right:4px}.mf-tool{padding:0 7px}.mf-sessiontools{gap:4px}.mf-rirbar{gap:6px}.mf-rcirc{width:28px;height:28px;flex-basis:28px;font-size:11px}.mf-rir{width:28px!important;flex:0 0 28px!important;min-height:22px!important;font-size:10px!important}}
   @media (prefers-reduced-motion:reduce){.mf-kbd.mf-kbdin{animation:none!important}button{transition:none!important}}
 </style>
 </head>
@@ -632,6 +642,7 @@
 <script src="apps/evolucao/exercicios/fotos.js"></script>
 <script src="kernel/db.js"></script>
 <script src="apps/evolucao/logic.js"></script>
+<script src="apps/evolucao/body-visualizer.js"></script>
 <script src="apps/evolucao/views/treino.js"></script>
 <script src="apps/evolucao/views/progresso.js"></script>
 <script src="apps/evolucao/views/historico.js"></script>

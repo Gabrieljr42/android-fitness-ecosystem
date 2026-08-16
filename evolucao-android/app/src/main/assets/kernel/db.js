@@ -1,4 +1,5 @@
 /* kernel/db.js — carga, migração e persistência local */
+var KEY = 'evolucao_treino_state';
 function EX(n,rest,sets,reps){
   var t=targetFor(n);
   var eq=Progression.inferEq(n);
@@ -10,8 +11,10 @@ var DEFAULT_STATE={
     B:{nome:'Costas · Bíceps', ex:[EX('Puxada aberta'),EX('Remada baixa'),EX('Serrote (remada unilateral)'),EX('Crucifixo inverso'),EX('Rosca na polia'),EX('Rosca banco 45° c/ halteres')]},
     C:{nome:'Perna', ex:[EX('Agachamento no Smith'),EX('Leg press 45'),EX('Stiff / Terra romeno'),EX('Cadeira extensora'),EX('Cadeira flexora'),EX('Panturrilha em pé'),EX('Panturrilha sentado'),EX('Adutora'),EX('Abdutora')]}
   },
-  sessions:[], peso:[],
-  draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal'},
+  sessions:[], corridas:[], peso:[],
+  cardioGoalKm:15,
+  draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null},
+  draftCorrida:null,
   settings:{restAuto:true, alarm:true, autoAdvance:true, progressao:{enabled:true, stallSessions:3, deloadPct:10, targetRir:2, expandRepRange:true, weightMatch:true}}
 };
 
@@ -113,10 +116,14 @@ function migrate(s){
   if(s.settings.progressao.expandRepRange==null) s.settings.progressao.expandRepRange=d.settings.progressao.expandRepRange;
   if(s.settings.progressao.weightMatch==null) s.settings.progressao.weightMatch=d.settings.progressao.weightMatch;
   if(!s.peso) s.peso=[];
+  if(!s.corridas) s.corridas=[];
+  if(s.cardioGoalKm==null) s.cardioGoalKm=d.cardioGoalKm||15;
   if(!s.draft) s.draft={day:null,date:null,entries:{}};
   if(!s.draft.warmupMode) s.draft.warmupMode={};
   if(s.draft.startedAt===undefined) s.draft.startedAt=null;
   if(s.draft.sessionMode!=='curto') s.draft.sessionMode='normal';
+  if(s.draft.unilateralPending===undefined) s.draft.unilateralPending=null;
+  if(s.draftCorrida===undefined) s.draftCorrida=null;
   if(!s.ficha) s.ficha=JSON.parse(JSON.stringify(d.ficha));
   if(isLegacyDefaultRoutine(s.ficha)) s.ficha=JSON.parse(JSON.stringify(d.ficha));
   migrateEntryFlags(s.draft.entries);
@@ -148,31 +155,49 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e
 
 /* ---------- merge de backup (nunca sobrescreve, só combina) ---------- */
 function sessionSig(s){ return s.date+'|'+s.day+'|'+(s.mode||'normal')+'|'+JSON.stringify(s.entries); }
+function corridaSig(c){ return (c.id||'')+'|'+c.date+'|'+(c.mode||c.tipo||'continua')+'|'+c.distanciaKm+'|'+(c.duracaoSeg||c.tempoSegundos); }
 function mergeState(cur, inc){
   var bySig={}, order=[];
-  cur.sessions.forEach(function(s){ var k=sessionSig(s); if(!bySig[k]){ bySig[k]=s; order.push(k); } });
+  (cur.sessions||[]).forEach(function(s){ var k=sessionSig(s); if(!bySig[k]){ bySig[k]=s; order.push(k); } });
   var addedSessions=0;
-  inc.sessions.forEach(function(s){ var k=sessionSig(s); if(!bySig[k]){ bySig[k]=s; order.push(k); addedSessions++; } });
+  (inc.sessions||[]).forEach(function(s){ var k=sessionSig(s); if(!bySig[k]){ bySig[k]=s; order.push(k); addedSessions++; } });
   var mergedSessions=order.map(function(k){ return bySig[k]; });
 
-  var curDates={}; cur.peso.forEach(function(p){ curDates[p.date]=1; });
+  var byCorrida={}, corridaOrder=[];
+  (cur.corridas||[]).forEach(function(c){ var k=corridaSig(c); if(!byCorrida[k]){ byCorrida[k]=c; corridaOrder.push(k); } });
+  var addedCorridas=0;
+  (inc.corridas||[]).forEach(function(c){ var k=corridaSig(c); if(!byCorrida[k]){ byCorrida[k]=c; corridaOrder.push(k); addedCorridas++; } });
+  var mergedCorridas=corridaOrder.map(function(k){ return byCorrida[k]; });
+
+  var curDates={}; (cur.peso||[]).forEach(function(p){ curDates[p.date]=1; });
   var addedPeso=0;
   var pesoByDate={};
-  inc.peso.forEach(function(p){ pesoByDate[p.date]=p; if(!curDates[p.date]) addedPeso++; });
-  cur.peso.forEach(function(p){ pesoByDate[p.date]=p; }); // dado atual vence em empate de mesma data
+  (inc.peso||[]).forEach(function(p){ pesoByDate[p.date]=p; if(!curDates[p.date]) addedPeso++; });
+  (cur.peso||[]).forEach(function(p){ pesoByDate[p.date]=p; }); // dado atual vence em empate de mesma data
   var mergedPeso=Object.keys(pesoByDate).map(function(k){ return pesoByDate[k]; });
 
   var mergedFicha={};
   ['A','B','C'].forEach(function(d){
-    var curDay=cur.ficha[d]||{nome:'',ex:[]};
-    var incDay=inc.ficha[d]||{nome:curDay.nome,ex:[]};
-    var ids={}; var names={}; curDay.ex.forEach(function(e){ ids[e.id||exerciseIdFor(e.n)]=1; names[e.n]=1; });
+    var curDay=(cur.ficha&&cur.ficha[d])||{nome:'',ex:[]};
+    var incDay=(inc.ficha&&inc.ficha[d])||{nome:curDay.nome,ex:[]};
+    var ids={}; var names={}; (curDay.ex||[]).forEach(function(e){ ids[e.id||exerciseIdFor(e.n)]=1; names[e.n]=1; });
     var extra=(incDay.ex||[]).filter(function(e){ return !ids[e.id||exerciseIdFor(e.n)] && !names[e.n]; });
-    mergedFicha[d]={ nome: curDay.nome||incDay.nome, ex: curDay.ex.concat(extra) };
+    mergedFicha[d]={ nome: curDay.nome||incDay.nome, ex: (curDay.ex||[]).concat(extra) };
   });
 
   return {
-    state:{ ficha:mergedFicha, sessions:mergedSessions, peso:mergedPeso, draft:cur.draft, settings:cur.settings },
-    addedSessions:addedSessions, addedPeso:addedPeso
+    state:{
+      ficha:mergedFicha,
+      sessions:mergedSessions,
+      corridas:mergedCorridas,
+      peso:mergedPeso,
+      cardioGoalKm:cur.cardioGoalKm || inc.cardioGoalKm || 15,
+      draft:cur.draft,
+      draftCorrida:cur.draftCorrida || null,
+      settings:cur.settings
+    },
+    addedSessions:addedSessions,
+    addedPeso:addedPeso,
+    addedCorridas:addedCorridas
   };
 }

@@ -41,5 +41,8 @@ const REF=[
 ['Crepioca (1 ovo + goma)',150,10,15,5],['Mingau de aveia',90,3,15,2],
 ['Queijo coalho grelhado',280,19,1,22],['Carne de sol',260,32,0,14],
 ['Linguiça assada',300,14,2,26],['Sardinha assada',208,25,0,11.5],
+['Óleo (1 col. sopa)',900,0,0,100],
+['Geleia (col. sopa)',250,0.4,62,0.1],
+['Legumes refogados',60,2,8,2.5]
 ];
 const refMap=REF.map(r=>({nome:r[0],kcal:r[1],p:r[2],c:r[3],g:r[4]}));
