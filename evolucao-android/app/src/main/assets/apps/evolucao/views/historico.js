@@ -13,10 +13,12 @@ function renderHistorico(){
         return (isWarmup(x)?'(aq) ':'')+nkg(x.w)+'×'+x.r+(x.p?('+'+x.p+'p'):'');
       }).join('  ·  ')+'</div>';
     }).join('');
+    var anatMini = (typeof BodyVisualizer !== 'undefined') ?
+      '<div class="sess-anat" style="margin:10px auto 4px;max-width:240px">' + BodyVisualizer.renderSessionAnatomy(s, { height: 135 }) + '</div>' : '';
     h+='<div class="sess" data-id="'+s.id+'"><div class="sess-top"><div class="badge">'+s.day+'</div>'+
       '<div class="grow"><div style="font-weight:700">'+fmtBRfull(s.date)+'</div>'+
       '<div class="meta">'+n+' séries'+(s.duration?' · '+fmtDur(s.duration):'')+(s.mode==='curto'?' · treino curto':'')+' · '+Math.round(vol)+' kg de volume</div></div>'+ 
-      '<button class="del" data-del="'+s.id+'">✕</button></div><div class="det">'+det+'</div></div>';
+      '<button class="del" data-del="'+s.id+'">✕</button></div><div class="det">'+det+anatMini+'</div></div>';
   });
   return h+'</div>';
 }

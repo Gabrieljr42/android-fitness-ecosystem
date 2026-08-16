@@ -177,3 +177,65 @@ kbd{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding
 .plano-total .v{color:var(--accent)}
 .plano-load{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0d0d0f;border:0;border-radius:14px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;margin-top:12px;transition:transform .1s}
 .plano-load:active{transform:scale(.97)}
+
+/* ============ HABITOS & HIDRATACAO ============ */
+.habits-card{padding:14px 16px;margin-bottom:12px}
+.habits-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.habits-head h2{margin-bottom:0}
+.habit-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0 12px;border-bottom:1px solid var(--line)}
+.habit-label{display:flex;align-items:center;gap:10px}
+.habit-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.creatina-icon{background:#f5a62322}
+.water-icon{background:#7ec8ff22}
+.habit-info b{display:block;font-size:13.5px;font-weight:700}
+.habit-info small{display:block;color:var(--txt2);font-size:11.5px}
+.habit-btn{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--txt2);cursor:pointer;transition:all .15s;min-height:38px}
+.habit-btn:active{transform:scale(.96)}
+.habit-btn.done{background:#3ddc8422;border-color:var(--ok);color:var(--ok)}
+
+/* Agua */
+.water-section{padding-top:10px}
+.water-head{display:flex;align-items:center;justify-content:space-between}
+.water-goal-btn{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11.5px;font-weight:600;color:var(--txt2);cursor:pointer}
+.water-prog>div{background:linear-gradient(90deg,#3ddc84,#7ec8ff)}
+.water-actions{display:flex;gap:6px;align-items:center}
+.water-btn{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 4px;font-size:12.5px;font-weight:700;color:var(--txt);cursor:pointer;min-height:38px;text-align:center;transition:background .12s}
+.water-btn:active{transform:scale(.96);background:var(--card)}
+.water-btn.reset-water{flex:0 0 38px;color:var(--txt3);padding:0}
+
+/* Switch */
+.switch{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--line);transition:.2s;border-radius:24px}
+.slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background-color:#ececf0;transition:.2s;border-radius:50%}
+input:checked+.slider{background-color:var(--accent)}
+input:checked+.slider:before{transform:translateX(20px);background-color:#0d0d0f}
+
+/* ============ BALANCO ENERGETICO (M2) ============ */
+.energy-balance-card{padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.energy-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.energy-head h2{margin-bottom:0}
+.energy-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em}
+.energy-badge.ok{background:#3ddc8422;color:var(--ok)}
+.energy-badge.bad{background:#ff6b6b22;color:var(--bad)}
+
+.energy-grid{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center;gap:4px}
+.energy-col{flex:1;display:flex;flex-direction:column;align-items:center}
+.energy-col.highlight{background:var(--card);border-radius:10px;padding:6px 4px}
+.energy-lbl{font-size:10.5px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.energy-val{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.energy-val.in{color:var(--accent)}
+.energy-val.out{color:var(--ok)}
+.energy-val.net{color:#ececf0}
+.energy-unit{font-size:10px;color:var(--txt3);font-weight:600}
+.energy-op{font-size:18px;font-weight:800;color:var(--txt3);padding:0 2px}
+
+.energy-bar-wrap{padding-top:6px}
+.energy-bar-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--txt2)}
+.energy-bar-labels b{color:var(--txt)}
+.energy-sub-text{font-size:12px;color:var(--txt2);text-align:center}
+.energy-sub-text b{color:var(--txt)}
+
+.activity-row{transition:background .12s}
+.activity-row:active{background:var(--bg2)}
+

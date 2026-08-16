@@ -1,7 +1,7 @@
-/* apps/evolucao/views/treino.js */
+/* apps/evolucao/treino.js */
 /* ---------- TREINO (estilo MacroFactor Workouts) ---------- */
 /* Tela única por exercício durante o treino: carrossel de exercícios,
-   tabela de sets com meta automática, teclado numérico fixo com botão RIR. */
+   tabela de sets minimalista 5 colunas, teclado numérico fixo com botão RIR. */
 
 var mfEx = 0;                       // índice do exercício ativo no carrossel
 var kbdBuf = '';                    // buffer do teclado numérico custom
@@ -23,7 +23,13 @@ var RIR_COLORS = {0:'#ef4444', 1:'#f97316', 2:'#eab308', 3:'#a3e635', 4:'#4ade80
 function decorateTreino(){}
 
 function rirColor(q){ return RIR_COLORS[q] || '#3b82f6'; }
-function rirLabel(q){ return q==null ? '?' : (q>=6?'6+':String(q)); }
+function rirLabel(q, fallbackTarget){
+  if(q == null || isNaN(q)){
+    var fb = fallbackTarget != null ? fallbackTarget : 2;
+    return fb >= 6 ? '6+' : String(fb);
+  }
+  return q >= 6 ? '6+' : String(q);
+}
 function mfRirFor(set){
   if(!set) return null;
   var v = set.rir !== undefined ? set.rir : (set.RIR !== undefined ? set.RIR : null);
@@ -31,29 +37,6 @@ function mfRirFor(set){
   v=parseFloat(v);
   if(!isFinite(v)) return null;
   return v>=6?6:Math.max(0,Math.min(5,v));
-}
-
-/* ---------- cabeçalho / resumo ---------- */
-function setupBanner(){
-  if(typeof window==='undefined' || !window.isSecureContext) return '';
-  var parts=[];
-  var ns=notifState();
-  if(ns==='default') parts.push('<button class="cta sm" id="btnNotify" style="flex:1">🔔 Ativar notificações</button>');
-  if(deferredPrompt) parts.push('<button class="cta sm" id="btnInstall" style="flex:1;background:var(--card2);color:var(--txt);box-shadow:none;border:1px solid var(--line)">📲 Instalar app</button>');
-  if(!parts.length) return '';
-  return '<div class="card mf-setupbanner" style="border-color:rgba(74,222,128,.4)"><div class="mf-setupcopy">Deixe pronto pra usar na academia:</div><div class="row">'+parts.join('')+'</div></div>';
-}
-
-function lastSummaryHTML(){
-  if(!lastSummary || !state.ficha[lastSummary.day]) return '';
-  if(lastSummary.mode==='curto') return '<div class="card" style="border-color:rgba(96,165,250,.42)"><div class="summaryline"><span class="summarybadge ok">CURTO</span><div><b>Treino curto registrado</b><div class="sub" style="margin:2px 0 0">As séries realizadas contam para o histórico, mas o volume faltante não penaliza suas metas.</div></div><button class="ic" id="dismissSummary">✕</button></div></div>';
-  var day=state.ficha[lastSummary.day], items=[];
-  day.ex.forEach(function(exo){
-    var m=Progression.calcularMeta(state.ficha,state.sessions,lastSummary.day,exo.n,state.settings.progressao);
-    if(m.status==='travado'||m.status==='volume-baixo') items.push('<div class="summaryline"><span class="summarybadge '+(m.status==='travado'?'stall':'low')+'">'+(m.status==='travado'?'TRAVADO':'VOLUME BAIXO')+'</span><div><b>'+esc(exo.n)+'</b><div class="sub" style="margin:2px 0 0">'+esc(m.motivo)+'</div></div></div>');
-  });
-  if(!items.length) items.push('<div class="summaryline"><span class="summarybadge ok">OK</span><div><b>Treino sem alertas</b><div class="sub" style="margin:2px 0 0">As metas foram atualizadas para a próxima sessão.</div></div></div>');
-  return '<div class="card" style="border-color:rgba(251,191,36,.42)"><div class="ex-head"><div class="ex-name">Resumo de '+lastSummary.day+' · '+fmtBR(lastSummary.date)+'</div><button class="ic" id="dismissSummary">✕</button></div>'+items.join('')+'</div>';
 }
 
 /* ---------- carrossel de exercícios ---------- */
@@ -102,16 +85,38 @@ function mfEntryIndex(ex,rowIndex){
 }
 
 function rirBarHTML(ex){
+  var target = defaultRirFor(ex);
   var selected = kbdRir;
-  if(selected==null && kbdEdit!=null){
-    var current=mfSetRows(ex)[kbdEdit.si];
-    selected=mfRirFor(current);
+  if(selected == null && kbdEdit != null){
+    var current = mfSetRows(ex)[kbdEdit.si];
+    selected = mfRirFor(current);
   }
-  var values=[0,1,2,3,4,5,6,null];
-  return '<div class="mf-rirbar"><div class="mf-rirbar-title">RIR realizado</div>'+values.map(function(q){
-    var key=q==null?'?':(q===6?'6+':String(q));
-    return '<button class="mf-rcirc'+(selected===q?' on':'')+'" data-rirsel="'+key+'" style="--rir:'+rirColor(q)+'" aria-label="RIR '+key+'">'+key+'</button>';
-  }).join('')+'</div>';
+  if(selected == null) selected = target;
+  var values = [0, 1, 2, 3, 4, 5, 6];
+  return '<div class="mf-rirbar"><div class="mf-rirbar-title">RIR realizado</div>' + values.map(function(q){
+    var key = q === 6 ? '6+' : String(q);
+    return '<button class="mf-rcirc' + (selected === q ? ' on' : '') + '" data-rirsel="' + key + '" style="--rir:' + rirColor(q) + '" aria-label="RIR ' + key + '">' + key + '</button>';
+  }).join('') + '</div>';
+}
+
+function isUnilateralEx(exo){
+  if(!exo) return false;
+  if(exo.unilateral === true) return true;
+  return Progression.isUnilateral(exo.n);
+}
+
+function mfGetBufferValues(current, exo){
+  var w = parseFloat(kbdW);
+  var r = parseInt(kbdR, 10);
+  var p = (kbdMode === 'p' && kbdP !== '0') ? (parseInt(kbdP, 10) || 0) : (current && current.p ? current.p : 0);
+  var sets = state.draft && exo ? (state.draft.entries[exo.n] || []) : [];
+  var last = workSets(sets)[workSets(sets).length - 1];
+  var defW = last ? last.w : (exo && exo.lastW != null ? exo.lastW : 20);
+  var defR = last ? last.r : (exo && exo.lastR != null ? exo.lastR : 10);
+
+  if(isNaN(w)) w = current && current.w != null ? current.w : defW;
+  if(isNaN(r)) r = current && current.r != null ? current.r : defR;
+  return { w: w, r: r, p: p };
 }
 
 /* ---------- render ---------- */
@@ -130,14 +135,14 @@ function renderTreino(){
   day.ex.forEach(function(e){ var s=workSets(d.entries[e.n]||[]); totalDone+=s.length; totalGoal+=e.sets; });
   var warmOn = !!d.warmupMode[ex];
 
+  /* Cabeçalho minimalista despoluído (sem botão Curto/Completo topo e sem setup banner) */
   var h='<div class="mf-session"><div><span class="mf-eyebrow">Treino '+d.day+' · '+esc(day.nome)+'</span><strong>'+(d.startedAt?fmtDur((Date.now()-d.startedAt)/1000):'Pronto para registrar')+'</strong></div><div class="mf-sessioncount">'+totalDone+'<small>/'+totalGoal+' séries</small></div></div>';
   h+='<div class="mf-sessiontools"><div class="mf-days">';
   ['A','B','C'].forEach(function(k){ h+='<button class="mf-day'+(d.day===k?' on':'')+'" data-day="'+k+'">'+k+'</button>'; });
-  h+='</div><button class="mf-tool" id="dateBtn">'+(d.date===todayISO()?'Hoje':fmtBR(d.date))+'</button><button class="mf-tool" data-session-mode="'+(d.sessionMode==='normal'?'curto':'normal')+'">'+(d.sessionMode==='curto'?'Curto':'Completo')+'</button><button class="mf-tool" id="mfPreviewBtn">Resumo</button></div>';
-  h+=lastSummaryHTML();
-  h+=setupBanner();
-    if(calOpen) h+=calendarHTML(d.date);
-  /* conteudo do treino (espaco reservado para o teclado fixo na base) */
+  h+='</div><button class="mf-tool" id="dateBtn">'+(d.date===todayISO()?'Hoje':fmtBR(d.date))+'</button><button class="mf-tool" id="mfPreviewBtn">Resumo</button></div>';
+  if(calOpen) h+=calendarHTML(d.date);
+
+  /* conteudo do treino */
   h+='<div class="mf-work">';
   /* carrossel */
   h+=carouselHTML(d.day, mfEx);
@@ -151,33 +156,41 @@ function renderTreino(){
   if(isPR) h+='<div class="pr" style="display:inline-block;margin:0 0 8px;padding:4px 10px">✦ RECORDE PESSOAL</div>';
 
   /* meta automática */
-  h+='<div class="mf-metarow"><span class="mf-metachip '+metaCss(meta.status)+'" title="'+esc(meta.motivo)+'">'+metaLabel(meta,exo)+(meta.targetRir!=null?' · alvo '+meta.targetRir+' RIR':'')+'</span>'+
+  var targetRirEx = meta.targetRir != null ? meta.targetRir : defaultRirFor(ex);
+  h+='<div class="mf-metarow"><span class="mf-metachip '+metaCss(meta.status)+'" title="'+esc(meta.motivo)+'">'+metaLabel(meta,exo)+(targetRirEx!=null?' · alvo '+targetRirEx+' RIR':'')+'</span>'+
     (meta.carga!=null?'<span class="mf-metaauto">Auto · '+nkg(meta.carga)+' kg × '+meta.repsMeta+(exo.perSide?' / lado':'')+'</span>':'')+'</div>';
 
-  /* tabela de sets (células Carga/Reps clicáveis; teclado abre sob demanda) */
-  var nextSet = exo.sets + (setsWork.length >= exo.sets ? 1 : setsWork.length + 1);
-  h+='<div class="mf-table"><div class="mf-th"><span>Set</span><span>Auto ⇄</span><span>Lb</span><span>Reps</span><span></span><span></span><span></span></div>'; /* header MF: Set · Auto ⇄ · Lb · Reps · RIR · ✓ */
+  /* tabela de sets minimalista: 5 colunas (Set | Carga | Reps | RIR | ✓) */
+  h+='<div class="mf-table"><div class="mf-th"><span>Set</span><span>Carga</span><span>Reps</span><span>RIR</span><span>✓</span></div>';
   var showWork = 0;
   mfSetRows(ex).forEach(function(s,si){
     var ph=!!s.phantom;
     var wu = isWarmup(s);
-    var q = ph?null:mfRirFor(s), qDisplay=ph?(meta.targetRir!=null?meta.targetRir:null):q;
+    var q = ph?null:mfRirFor(s);
+    var qDisplay = ph ? targetRirEx : (q != null ? q : targetRirEx);
+    var isManual = !ph && (s.rirManual === true || (s.rir != null && s.rir !== targetRirEx));
     if(!wu) showWork++;
-    h+='<div class="mf-setrow'+(wu?' wu':'')+(ph?' ph':'')+'">';
-    h+='<div class="mf-idx">'+(wu?'AQ':String(showWork+(wu?0:0)))+'</div>';
-    h+='<div class="mf-auto">'+(wu?'—':(meta.carga==null?'—':'<span class="mf-auto-arrow">&#8594;</span>'+nkg(meta.carga)+' kg x '+meta.repsMeta+'<b>+</b>'))+'</div>';
-    h+='<div class="mf-cell mf-w'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="w" data-row="'+si+'">'+(ph&&s.w==null?'–':nkg(s.w))+'</div>';
-    h+='<div class="mf-cell mf-r'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="r" data-row="'+si+'">'+(ph&&s.r==null?'–':s.r+(s.p?('+'+s.p+'p'):''))+'</div>';
-    h+='<div class="mf-rir'+(ph?' phr':'')+'"'+(qDisplay!=null?' style="--rir:'+rirColor(qDisplay)+(q!=null?';background:'+rirColor(q)+';color:#fff':'')+'"':'')+'>'+rirLabel(qDisplay)+'</div>';
-    h+='<button class="mf-chk'+(s.done?' done':'')+'" data-done="'+mfEx+':'+si+'" aria-label="'+(s.done?'Desmarcar':'Marcar')+' série'+(ph?' (registrar)':'')+'">'+(s.done?'&#10003;':'')+'</button>';
-    h+='<button class="mf-rm" data-rm="'+mfEx+':'+si+'" title="Remover série">'+(ph?'':'✕')+'</button>';
+
+    var isPendingSide1 = d.unilateralPending && d.unilateralPending.ex === ex && d.unilateralPending.setIndex === si;
+
+    h+='<div class="mf-setrow'+(wu?' wu':'')+(ph?' ph':'')+(isPendingSide1?' mf-side-pending':'')+'">';
+    h+='<div class="mf-idx">'+(wu?'AQ':String(showWork))+'</div>';
+    h+='<div class="mf-cell mf-w'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="w" data-row="' + si + '">' + (ph&&s.w==null?'–':nkg(s.w)) + '</div>';
+    h+='<div class="mf-cell mf-r'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="r" data-row="' + si + '">' + (ph&&s.r==null?'–':s.r+(s.p?('+'+s.p+'p'):'')) + '</div>';
+
+    var rirBadgeStyle = isManual ?
+      ('style="--rir:'+rirColor(qDisplay)+';background:'+rirColor(qDisplay)+';color:#fff;font-weight:900"') :
+      ('style="--rir:'+rirColor(qDisplay)+';border:1.5px solid '+rirColor(qDisplay)+';color:'+rirColor(qDisplay)+';background:transparent;font-weight:800"');
+    h+='<div class="mf-rir'+(ph?' phr':'')+(isManual?' rir-manual':'')+'" '+rirBadgeStyle+'>'+rirLabel(qDisplay, targetRirEx)+'</div>';
+
+    var chkContent = s.done ? '&#10003;' : (isPendingSide1 ? '½' : '');
+    var chkClass = 'mf-chk' + (s.done ? ' done' : '') + (isPendingSide1 ? ' side-pending' : '');
+    var chkTitle = isPendingSide1 ? 'Concluir Lado 2' : ((s.done ? 'Desmarcar' : 'Marcar') + ' série' + (ph ? ' (registrar)' : ''));
+    h+='<button class="'+chkClass+'" data-done="'+mfEx+':'+si+'" aria-label="'+chkTitle+'" title="'+chkTitle+'">'+chkContent+'</button>';
     h+='</div>';
   });
   h+='<div class="mf-setrow mf-add-row" id="mfAddSet" style="justify-content:center"><div class="mf-idx">+</div></div>';
   h+='</div>';
-
-  /* mapa RIR horizontal: a assinatura visual fica disponível sem abrir diálogo */
-  h+=rirBarHTML(ex);
 
   /* controles rápidos */
   h+='<div class="mf-qrow" style="grid-template-columns:1fr 1fr">';
@@ -188,31 +201,43 @@ function renderTreino(){
   /* teclado numérico custom (sob demanda: abre ao tocar numa célula) */
   if(kbdOpen) h+=kbdHTML(ex);
 
-  /* finalizar */
-  var n=0; Object.keys(d.entries).forEach(function(k){ n+=d.entries[k].length; });
-  h+='<div class="mf-finish"><button class="cta" id="saveSess" style="box-shadow:none">✓ Finalizar treino'+(n?' · '+n+' séries':'')+'</button>'+
-    '<div class="hint">Ao adicionar cada série, o timer de descanso começa sozinho e te avisa na hora certa.</div></div></div>';
+  /* CTA de finalização inteligente (F2.3) */
+  var totalEx = day.ex.length;
+  var isLastEx = (mfEx === totalEx - 1);
+  var allExDone = day.ex.every(function(e, i){ return todosConcluidos(i); });
+
+  h+='<div class="mf-finish">';
+  if(isLastEx || allExDone){
+    h+='<button class="cta" id="saveSess" style="box-shadow:none">✓ Finalizar treino'+(totalDone?' · '+totalDone+' séries':'')+'</button>'+
+      '<div class="hint">Suas cargas e repetições serão salvas e o histórico atualizado.</div>';
+  } else {
+    var nextExName = day.ex[mfEx + 1] ? day.ex[mfEx + 1].n : '';
+    h+='<button class="cta sm ghost" id="mfNextEx">Próximo exercício: '+esc(nextExName)+' →</button>'+
+      '<div style="text-align:center;margin-top:12px">'+
+      '<button class="btn-link" id="saveSessEarly" style="font-size:12px;color:var(--mut);background:none;border:0;cursor:pointer">Encerrar treino mais cedo...</button>'+
+      '</div>';
+  }
+  h+='</div></div>';
   return h;
 }
 
 /* ---------- teclado numérico custom sob demanda (estilo MF) ---------- */
 function kbdHTML(ex){
   var buf = mfKbdBuffer();
+  var rows = mfSetRows(ex);
+  var editRow = kbdEdit != null ? rows[kbdEdit.si] : null;
+  var isExistingRealSet = kbdEdit != null && editRow && !editRow.phantom && kbdEdit.entryIndex >= 0;
   var ctx = kbdEdit!=null ? (ex+' · Set '+(setLabelIdx(kbdEdit.si)+1)) : (ex+' · Nova série');
+  var delBtn = isExistingRealSet ? '<button class="mf-kdel" id="mfKbdDel" title="Excluir série" style="background:transparent;border:0;color:var(--danger,#ff6b6b);font-size:15px;cursor:pointer;padding:2px 8px;margin-right:6px">🗑️</button>' : '';
   var closeBtn = '<button class="mf-kclose" id="mfKbdClose" title="Fechar">✕</button>';
   return '<div class="mf-kbd open" id="mfKbd">'+
-    '<div class="mf-khead">'+ctx+' '+closeBtn+'</div>'+
-    '<div class="mf-kfield">'+
-      '<button class="mf-kmod'+(kbdMode==='w'?' on':'')+'" data-kmod="w"><span class="mf-kmodv">'+buf.w+'</span>Carga</button>'+
-      '<button class="mf-kmod'+(kbdMode==='r'?' on':'')+'" data-kmod="r"><span class="mf-kmodv">'+buf.r+'</span>Reps</button>'+
-      '<button class="mf-kmod mf-ksw" id="mfKbdSwitch" data-kbd-switch title="Alternar carga e repetições">&#8596;</button>'+
-      '<button class="mf-krir" id="mfRirBtn">RIR · '+rirLabel(mfRirSel())+'</button></div>'+ 
+    '<div class="mf-khead"><span>'+ctx+'</span><div style="display:flex;align-items:center">'+delBtn+closeBtn+'</div></div>'+
+    rirBarHTML(ex)+
     '<div class="mf-kgrid">'+
-      ['1','2','3','⇄','4','5','6','RIR','7','8','9','F','0','⌫','−','✓'].map(function(k){
+      ['1','2','3','\u21c6','4','5','6','RIR','7','8','9','P','\u232b','0','\u2713'].map(function(k){
         var cls='mf-key';
-        if(k==='✓'||k==='F') cls+=' ok'; if(k==='⌫'||k==='−'||k==='RIR'||k==='⇄') cls+=' fn';
-        var disp = k==='⇄' ? '&#128430;' : k;
-        return '<button class="'+cls+'" data-key="'+k+'">'+disp+'</button>';
+        if(k==='\u2713'||k==='P') cls+=' ok'; if(k==='\u232b'||k==='RIR'||k==='\u21c6') cls+=' fn';
+        return '<button class="'+cls+'" data-key="'+k+'">'+k+'</button>';
       }).join('')+'</div></div>';
 }
 function mfTempP(){ return mfKbdBuffer().p || '0'; }
@@ -222,20 +247,21 @@ function setLabelIdx(si){
 }
 function kbdClose(){ kbdOpen=false; kbdEdit=null; render(); }
 var kbdFresh=false; // buffer espelha série existente: próximo dígito substitui o valor
-function kbdOpenFor(mode, si){ kbdMode=mode; kbdEdit=(si==null?null:{si:si}); kbdOpen=true;
+function kbdOpenFor(mode, si){
+  kbdMode=mode; kbdEdit=(si==null?null:{si:si}); kbdOpen=true;
   var d=state.draft, exo=state.ficha[d.day].ex[mfEx], rows=mfSetRows(exo.n), row=si==null?null:rows[si];
   if(kbdEdit&&row) kbdEdit.entryIndex=row.__entryIndex;
   kbdFresh=false;
   if(row){
     kbdW=row.w==null?'':String(row.w); kbdR=row.r==null?'':String(row.r); kbdP=row.p!=null?String(row.p):'0';
     kbdFresh=row.w!=null||row.r!=null;
-  } else { kbdW=''; kbdR=''; kbdP='0'; }
-  kbdRir=null; render();
-  var row=document.querySelector('.mf-cell.on'); if(row) row.scrollIntoView({block:'nearest'});
+    if(row.rir!=null) kbdRir=row.rir;
+  } else { kbdW=''; kbdR=''; kbdP='0'; kbdRir=null; }
+  render();
+  var rowEl=document.querySelector('.mf-cell.on'); if(rowEl) rowEl.scrollIntoView({block:'nearest'});
   var kbd=document.getElementById('mfKbd'); if(kbd) kbd.classList.add('mf-kbdin');
 }
 function mfKbdBuffer(){
-  /* buffer por modo persistido em variáveis */
   return {w: kbdW, r: kbdR, p: kbdP};
 }
 var kbdW='', kbdR='', kbdP='0';
@@ -244,22 +270,17 @@ function mfRirSel(){
   var d=state&&state.draft, exo=d&&d.day&&state.ficha[d.day]&&state.ficha[d.day].ex[mfEx];
   return exo?defaultRirFor(exo.n):2;
 }
-var kbdRir = null;            // seleção do modo RIR (null = número)
+var kbdRir = null;
 
-/* Atualiza somente o teclado já aberto. Digitar não deve substituir #app:
-   isso preserva a posição, o foco e impede a animação de entrada de reiniciar. */
 function syncKbdUI(){
   var kbd=document.getElementById('mfKbd');
   if(!kbd) return;
-  var buf=mfKbdBuffer();
-  ['w','r','p'].forEach(function(mode){
-    var button=kbd.querySelector('[data-kmod="'+mode+'"]');
-    if(!button) return;
-    button.classList.toggle('on',kbdMode===mode);
-    var value=button.querySelector('.mf-kmodv'); if(value) value.textContent=buf[mode];
-  });
-  var rir=document.getElementById('mfRirBtn');
-  if(rir) rir.textContent='RIR · '+rirLabel(mfRirSel());
+  var cmode = (kbdMode==='p' ? 'r' : kbdMode);
+  var cell=document.querySelector('.mf-cell.on[data-cell="'+cmode+'"]');
+  if(cell){ cell.textContent=(kbdMode==='w'?nkg(kbdW||null):(kbdMode==='r'?kbdR:kbdP+'p')); }
+  var sel=mfRirSel();
+  var selKey=(sel==null?'2':(sel===6?'6+':String(sel)));
+  kbd.querySelectorAll('[data-rirsel]').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-rirsel')===selKey); });
 }
 
 /* ---------- página de detalhes do exercício ---------- */
@@ -275,7 +296,7 @@ function renderExDetail(){
     pts.push({x:s.date, y:Math.round(max*10)/10});
     lastPts.push({date:s.date, sets:work, rirs:work.map(function(x){return mfRirFor(x);})});
   });
-  var best=allTimeBest(ex), e1=bestE1rm(ex), prev=lastEntry(ex);
+  var best=allTimeBest(ex), e1=bestE1rm(ex);
   var h='<div class="mf-detail"><div class="mf-detailhead"><button class="mf-back" id="mfBack">← Voltar</button></div>'+
     '<div class="mf-dexh"><div class="mf-ext" style="width:58px;height:58px;border-radius:14px">'+exIcon(ex)+'</div>'+
     '<div class="mf-exas"><div class="mf-extit" style="font-size:18px">'+esc(ex)+'</div>'+
@@ -288,7 +309,6 @@ function renderExDetail(){
   } else {
     h+='<div class="card" style="margin-top:12px"><h2 style="margin-top:0">Evolução da carga máxima</h2>'+chartSVG(pts,'#4d7cff')+'</div>';
   }
-  /* histórico por sessão */
   h+='<h2>Últimas sessões</h2><div class="card">';
   if(!lastPts.length){
     h+='<div class="empty"><div class="t">Nada ainda</div><div class="s">Treine este exercício para ver o histórico aqui.</div></div>';
@@ -339,11 +359,13 @@ function metaLabel(meta, exo){
 }
 function metaPlaceholder(meta){ return (meta.carga==null?'?':nkg(meta.carga))+' × '+meta.repsMeta; }
 
-/* ---------- RIR (lógica do usuário preservada) ---------- */
+/* ---------- RIR e Unilateral Flow ---------- */
 function defaultRirFor(ex){
   var exo=exerciseForName(ex,state.draft&&state.draft.day);
-  var cfg=state.settings.progressao;
-  return exo&&exo.progressao&&exo.progressao.targetRir!=null ? exo.progressao.targetRir : cfg.targetRir;
+  var cfg=state.settings&&state.settings.progressao;
+  if(exo&&exo.progressao&&exo.progressao.targetRir!=null) return exo.progressao.targetRir;
+  if(cfg&&cfg.targetRir!=null) return cfg.targetRir;
+  return 2;
 }
 function lastRirFor(ex){
   var d=state.draft, current=d.entries[ex]||[];
@@ -354,6 +376,139 @@ function lastRirFor(ex){
 function todosConcluidos(exIndex){
   var d=state.draft, exo=state.ficha[d.day].ex[exIndex], sets=workSets(d.entries[exo.n]||[]);
   return sets.length>=exo.sets && sets.every(function(set){ return set.done===true; });
+}
+
+function handleSetCompletion(exo, rowIndex, setObj, currentIsPhantom){
+  var d = state.draft;
+  var isUnilateral = isUnilateralEx(exo);
+
+  if(isUnilateral){
+    var pending = d.unilateralPending;
+    var isSide2 = pending && pending.ex === exo.n && pending.setIndex === rowIndex;
+
+    if(!isSide2){
+      // Side 1 concluído: dispara timer intra-set de 30s
+      d.unilateralPending = {
+        ex: exo.n,
+        setIndex: rowIndex,
+        side: 1,
+        w: setObj.w,
+        r: setObj.r,
+        p: setObj.p || 0,
+        rir: setObj.rir,
+        rirManual: setObj.rirManual
+      };
+      save();
+      vibrate([25, 40, 25]);
+      if(state.settings.restAuto){
+        initAudio();
+        startRest(30, 'Trocar de lado · ' + exo.n);
+      }
+      toast('Lado 1 concluído! Troque de lado (30s)');
+      render();
+      return;
+    } else {
+      // Side 2 concluído
+      d.unilateralPending = null;
+    }
+  }
+
+  if(currentIsPhantom){
+    if(!d.entries[exo.n]) d.entries[exo.n] = [];
+    var phWarmCount = (d.entries[exo.n] || []).filter(isWarmup).length;
+    if(setObj.__workIndex != null){
+      d.entries[exo.n].splice(phWarmCount + setObj.__workIndex, 0, setObj);
+    } else {
+      d.entries[exo.n].push(setObj);
+    }
+  } else {
+    var existing = d.entries[exo.n] ? d.entries[exo.n][setObj.__entryIndex] : null;
+    if(existing){
+      existing.w = setObj.w;
+      existing.r = setObj.r;
+      if(setObj.p > 0) existing.p = setObj.p;
+      existing.rir = setObj.rir;
+      existing.rirManual = setObj.rirManual;
+      existing.done = true;
+    }
+  }
+
+  save();
+  vibrate(20);
+
+  var isPR = draftBestE1rm(exo.n) > bestE1rm(exo.n) + 0.01 && draftBestE1rm(exo.n) > 0;
+  if(isPR) celebrate();
+
+  if(state.settings.restAuto){
+    initAudio();
+    if(state.settings.alarm) askNotify();
+    startRest(exo.rest || 90, exo.n);
+  }
+
+  if(state.settings.autoAdvance !== false && todosConcluidos(mfEx) && mfEx < state.ficha[d.day].ex.length - 1){
+    mfEx++;
+    kbdReset();
+    render();
+    var nextEl = document.querySelector('.mf-item.on');
+    if(nextEl) nextEl.scrollIntoView({inline: 'center', block: 'nearest'});
+    toast('Próximo exercício: ' + state.ficha[d.day].ex[mfEx].n);
+    return;
+  }
+
+  kbdReset();
+  render();
+}
+
+function promptFinishSession(){
+  var d = state.draft;
+  if(!d || !Object.keys(d.entries).length){ toast('Nenhuma série registrada'); return; }
+  var totalDone = 0, totalGoal = 0;
+  var day = state.ficha[d.day];
+  if(day && Array.isArray(day.ex)){
+    day.ex.forEach(function(e){
+      var s = workSets(d.entries[e.n] || []).filter(function(x){ return x.done !== false; });
+      totalDone += s.length;
+      totalGoal += e.sets;
+    });
+  }
+  var dur = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+  var isShortDefault = totalDone < totalGoal;
+  var defaultMode = isShortDefault ? 'Treino Curto' : 'Treino Completo';
+  var subtitle = totalDone + ' de ' + totalGoal + ' séries concluídas' + (dur ? ' · ' + fmtDur(dur) : '') +
+    '\n\nClassifique a sessão para o algoritmo de progressão:';
+
+  dlg({
+    title: 'Finalizar Treino ' + d.day,
+    sub: subtitle,
+    seg: ['Treino Completo', 'Treino Curto'],
+    segVal: defaultMode,
+    ok: 'Concluir Treino',
+    onOk: function(selected){
+      var mode = (selected === 'Treino Curto' || selected === 'curto') ? 'curto' : 'normal';
+      var durFinal = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+      var savedSession = {
+        id: Date.now(),
+        date: d.date,
+        day: d.day,
+        mode: mode,
+        entries: d.entries,
+        duration: durFinal,
+        notes: mfNotes
+      };
+      state.sessions.push(savedSession);
+      lastSummary = { day: d.day, date: d.date, mode: mode };
+      mfCompleteSession = savedSession;
+      mfComplete = true;
+      mfKeepPlan = false;
+      state.draft = { day: null, date: null, entries: {}, warmupMode: {}, startedAt: null, sessionMode: 'normal', unilateralPending: null };
+      mfNotes = {};
+      kbdReset();
+      save();
+      hideRest();
+      vibrate([15, 40, 15]);
+      render();
+    }
+  });
 }
 
 /* ---------- bind ---------- */
@@ -369,14 +524,11 @@ function bindTreino(){
     var k=b.getAttribute('data-day'); if(k===d.day) return;
     if(Object.keys(d.entries).length){
       dlg({title:'Trocar de dia', sub:'As séries não salvas serão descartadas. Continuar?', dangerous:true, ok:'Trocar', onOk:function(){
-        d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; calOpen=false; mfEx=0; mfNotes={}; save(); render();
+        d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
       }});
       return;
     }
-    d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; calOpen=false; mfEx=0; mfNotes={}; save(); render();
-  };});
-  document.querySelectorAll('[data-session-mode]').forEach(function(b){ b.onclick=function(){
-    d.sessionMode=b.getAttribute('data-session-mode')==='curto'?'curto':'normal'; save(); render();
+    d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
   };});
   var dateBtn=document.getElementById('dateBtn');
   if(dateBtn) dateBtn.onclick=function(){ if(calOpen){ calOpen=false; } else { openCal(d.date); } render(); };
@@ -440,89 +592,128 @@ function bindTreino(){
     kbdOpenFor(c.getAttribute('data-cell'), +c.getAttribute('data-row'));
   };});
   document.querySelectorAll('[data-rirsel]').forEach(function(b){ b.onclick=function(){
-    var value=b.getAttribute('data-rirsel'), q=value==='?'?null:(value==='6+'?6:parseInt(value,10));
-    kbdRir=q;
+    var value=b.getAttribute('data-rirsel'), q=value==='6+'?6:parseInt(value,10);
+    kbdRir=isFinite(q)?Math.max(0,Math.min(6,q)):2;
     if(kbdEdit!=null){
       var activeEx=state.ficha[d.day].ex[mfEx].n, rows=mfSetRows(activeEx), current=rows[kbdEdit.si], entryIndex=current?current.__entryIndex:-1;
-      if(entryIndex>=0) current=d.entries[activeEx][entryIndex];
-      if(current && !isWarmup(current)){ current.rir=q; save(); }
+      if(entryIndex>=0 && d.entries[activeEx] && d.entries[activeEx][entryIndex]){
+        current=d.entries[activeEx][entryIndex];
+        if(!isWarmup(current)){ current.rir=kbdRir; current.rirManual=true; save(); }
+      }
     }
-    if(!kbdOpen){ kbdOpenFor('r',null); kbdRir=q; }
+    if(!kbdOpen){ kbdOpenFor('r',null); }
     syncKbdUI();
     render();
     vibrate(12);
   };});
+
+  /* Checkmark / Concluir série com buffer commit (F1.1 & F2.2) */
   document.querySelectorAll('[data-done]').forEach(function(b){ b.onclick=function(){
-    var p=b.getAttribute('data-done').split(':'), exoDone=state.ficha[d.day].ex[+p[0]], rowsDone=mfSetRows(exoDone.n), current=rowsDone[+p[1]];
+    var p=b.getAttribute('data-done').split(':');
+    var exoIdx = +p[0], rowIdx = +p[1];
+    var exoDone = state.ficha[d.day].ex[exoIdx];
+    var rowsDone = mfSetRows(exoDone.n);
+    var current = rowsDone[rowIdx];
     if(!current) return;
+
+    var isEditingCurrent = kbdEdit != null && kbdEdit.si === rowIdx;
+    var buf = isEditingCurrent ? mfGetBufferValues(current, exoDone) : { w: current.w, r: current.r, p: current.p || 0 };
+    var wVal = buf.w != null ? buf.w : (exoDone.lastW != null ? exoDone.lastW : 20);
+    var rVal = buf.r != null ? buf.r : (exoDone.lastR != null ? exoDone.lastR : 10);
+    var pVal = buf.p || 0;
+
+    var meta = Progression.calcularMeta(state.ficha, state.sessions, d.day, exoDone.n, state.settings.progressao);
+    var targetRir = meta.targetRir != null ? meta.targetRir : defaultRirFor(exoDone.n);
+    var rirVal = kbdRir != null ? Math.max(0, Math.min(6, kbdRir)) : targetRir;
+    var rirManual = kbdRir != null;
+
+    if(!d.startedAt) d.startedAt = Date.now();
+
     if(current.phantom){
-      var phantomEx=exoDone.n, phantomSet={w:current.w==null?20:current.w,r:current.r==null?10:current.r,wu:false,warmup:false,done:true,rir:null};
-      if(!d.entries[phantomEx]) d.entries[phantomEx]=[];
-      if(!d.startedAt) d.startedAt=Date.now();
-      var phWarmCount=(d.entries[phantomEx]||[]).filter(isWarmup).length;
-      if(kbdRir!=null) phantomSet.rir=Math.max(0,Math.min(6,kbdRir));   /* grava o RIR que estava selecionado */
-      if(current.__workIndex!=null){ d.entries[phantomEx].splice(phWarmCount+current.__workIndex, 0, phantomSet); }
-      else { d.entries[phantomEx].push(phantomSet); }
-      save(); vibrate(20);
-      if(state.settings.restAuto){ initAudio(); startRest(exoDone.rest||90, phantomEx); }
-      if(state.settings.autoAdvance!==false && todosConcluidos(+p[0]) && mfEx<state.ficha[d.day].ex.length-1){
-        mfEx=+p[0]+1; kbdReset(); render(); toast('Próximo exercício: '+state.ficha[d.day].ex[mfEx].n); return;
-      }
-      kbdOpenFor('w',findNextPhantom(phantomEx)); return;
+      var phantomSet = {
+        w: wVal,
+        r: rVal,
+        wu: false,
+        warmup: false,
+        done: true,
+        rir: rirVal,
+        rirManual: rirManual,
+        targetRir: targetRir,
+        __workIndex: current.__workIndex
+      };
+      if(pVal > 0) phantomSet.p = pVal;
+      handleSetCompletion(exoDone, rowIdx, phantomSet, true);
+      return;
     }
-    current=d.entries[exoDone.n][current.__entryIndex]; if(!current) return;
-    current.done=!current.done; save(); vibrate(current.done?20:10);
-    if(current.done && state.settings.autoAdvance!==false && todosConcluidos(+p[0])){
-      if(mfEx<state.ficha[d.day].ex.length-1){
-        mfEx=+p[0]+1; kbdReset(); render();
-        var nextEl=document.querySelector('.mf-item.on'); if(nextEl) nextEl.scrollIntoView({inline:'center',block:'nearest'});
-        toast('Próximo exercício: '+state.ficha[d.day].ex[mfEx].n);
-        return;
+
+    var existingEntry = d.entries[exoDone.n] ? d.entries[exoDone.n][current.__entryIndex] : null;
+    if(!existingEntry) return;
+
+    if(!existingEntry.done){
+      existingEntry.w = wVal;
+      existingEntry.r = rVal;
+      if(pVal > 0) existingEntry.p = pVal;
+      existingEntry.rir = rirVal;
+      existingEntry.rirManual = rirManual;
+      existingEntry.__entryIndex = current.__entryIndex;
+      handleSetCompletion(exoDone, rowIdx, existingEntry, false);
+    } else {
+      // Desmarcar série já feita
+      existingEntry.done = false;
+      if(d.unilateralPending && d.unilateralPending.ex === exoDone.n && d.unilateralPending.setIndex === rowIdx){
+        d.unilateralPending = null;
       }
+      save();
+      vibrate(10);
+      render();
     }
-    render();
   };});
+
   /* adicionar série extra dentro da tabela */
   var as=document.getElementById('mfAddSet'); if(as) as.onclick=function(){ kbdOpenFor('w', null); };
   /* botão fechar do teclado */
   var kbClose=document.getElementById('mfKbdClose'); if(kbClose) kbClose.onclick=kbdClose;
-  /* teclado */
-  document.querySelectorAll('[data-kmod]').forEach(function(b){ b.onclick=function(){
-    kbdMode=b.getAttribute('data-kmod'); if(kbdMode==='r') kbdRir=null; syncKbdUI();
-  };});
-  var kbdSwitch=document.getElementById('mfKbdSwitch'); if(kbdSwitch) kbdSwitch.onclick=function(){
-    kbdMode=kbdMode==='w'?'r':'w'; syncKbdUI();
-  };
-  var rb=document.getElementById('mfRirBtn'); if(rb) rb.onclick=function(){
-    var bar=document.querySelector('.mf-rirbar');
-    if(bar) bar.scrollIntoView({block:'center',behavior:'smooth'});
-    toast('Escolha o RIR na linha colorida');
-  };
+  /* botão excluir série no cabeçalho do teclado (F2.1) */
+  var kbDel=document.getElementById('mfKbdDel');
+  if(kbDel && kbdEdit != null){
+    kbDel.onclick = function(){
+      var activeEx = state.ficha[d.day].ex[mfEx].n;
+      var rows = mfSetRows(activeEx);
+      var current = rows[kbdEdit.si];
+      var entryIdx = current ? current.__entryIndex : -1;
+      if(entryIdx >= 0 && d.entries[activeEx]){
+        d.entries[activeEx].splice(entryIdx, 1);
+        if(!d.entries[activeEx].length) delete d.entries[activeEx];
+        if(!Object.keys(d.entries).length) d.startedAt = null;
+      }
+      kbdReset(); save(); render();
+    };
+  }
+
+  /* teclado numérico */
   document.querySelectorAll('[data-key]').forEach(function(b){ b.onclick=function(){
     var k=b.getAttribute('data-key');
     if(k==='✓'){ kbdCommit(); return; }
-    if(k==='⇄'){ kbdMode = kbdMode==='w' ? 'r' : 'w'; syncKbdUI(); return; }
+    if(k==='\u21c6'){ kbdMode = kbdMode==='w' ? 'r' : 'w'; if(kbdMode==='r') kbdRir=null;
+      var _row = kbdEdit!=null ? mfSetRows(state.ficha[state.draft.day].ex[mfEx].n)[kbdEdit.si] : null;
+      kbdFresh = !!(_row && (kbdMode==='w' ? _row.w!=null : _row.r!=null));
+      syncKbdUI(); return; }
     if(k==='RIR'){
       var rirBar=document.querySelector('.mf-rirbar');
-      if(rirBar) rirBar.scrollIntoView({block:'center',behavior:'smooth'});
+      if(rirBar) rirBar.classList.toggle('mf-rirbar-off');
       return;
     }
-    if(k==='F'){
-      var active=state.ficha[d.day].ex[mfEx].n;
-      if(kbdEdit!=null){ var activeSet=(d.entries[active]||[])[kbdEdit.entryIndex]; if(activeSet){ activeSet.wu=!isWarmup(activeSet); activeSet.warmup=activeSet.wu; save(); } }
-      else d.warmupMode[active]=!d.warmupMode[active];
-      syncKbdUI(); render(); return;
+    if(k==='P'){
+      kbdMode='p'; kbdFresh=false;
+      var _prow = kbdEdit!=null ? mfSetRows(state.ficha[state.draft.day].ex[mfEx].n)[kbdEdit.si] : null;
+      kbdP = (_prow && _prow.p) ? String(_prow.p) : '0';
+      syncKbdUI(); return;
     }
-    if(k==='⌫'){
+    if(k==='\u232b'){
       if(kbdMode==='w') kbdW=String(kbdW).slice(0,-1);
       else if(kbdMode==='r') kbdR=String(kbdR).slice(0,-1);
       else kbdP=String(Math.max(0,(parseInt(kbdP,10)||0)-1));
       kbdFresh=false;
-      syncKbdUI(); return;
-    }
-    if(k==='−'){
-      if(kbdMode==='w'){ var w=parseFloat(kbdW)||0; kbdW=String(Math.max(0,Math.round((w-2.5)*2)/2)); }
-      else if(kbdMode==='r'){ var r=parseInt(kbdR,10)||1; kbdR=String(Math.max(1,r-1)); }
       syncKbdUI(); return;
     }
     if(k==='±'){
@@ -531,7 +722,7 @@ function bindTreino(){
       syncKbdUI(); return;
     }
     if(k==='0.0'){ if(kbdMode==='w'){ var w3=(parseFloat(kbdW)||0); kbdW=String(Math.max(0,Math.round(w3*2-1)/2)); } kbdFresh=false; syncKbdUI(); return; }
-    if(kbdFresh){ /* buffer espelha a série: primeiro dígito substitui o valor */
+    if(kbdFresh){
       kbdFresh=false;
       if(kbdMode==='w') kbdW=''; else if(kbdMode==='r') kbdR=''; else kbdP='0';
     }
@@ -547,6 +738,7 @@ function bindTreino(){
     } else kbdP=String(Math.max(0,parseInt(next,10)||0));
     syncKbdUI();
   };});
+
   document.querySelectorAll('[data-rm]').forEach(function(x){ x.onclick=function(){
     var p=x.getAttribute('data-rm').split(':'), ex=state.ficha[d.day].ex[+p[0]].n, entryIndex=mfEntryIndex(ex,+p[1]);
     if(entryIndex<0) return;
@@ -554,17 +746,24 @@ function bindTreino(){
     if(!Object.keys(d.entries).length) d.startedAt=null;
     kbdReset(); save(); render();
   };});
-  document.getElementById('saveSess').onclick=function(){
-    if(!Object.keys(d.entries).length){ toast('Nenhuma série registrada'); return; }
-    var dur = d.startedAt ? Math.max(1, Math.round((Date.now()-d.startedAt)/1000)) : null;
-    var savedSession={id:Date.now(), date:d.date, day:d.day, mode:d.sessionMode==='curto'?'curto':'normal', entries:d.entries, duration:dur, notes:mfNotes};
-    state.sessions.push(savedSession);
-    lastSummary={day:d.day,date:d.date,mode:d.sessionMode};
-    mfCompleteSession=savedSession; mfComplete=true; mfKeepPlan=false;
-    state.draft={day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal'};
-    mfNotes={}; kbdReset();
-    save(); hideRest(); vibrate([15,40,15]); render();
-  };
+
+  /* Navegação e Finalização (F2.3) */
+  var nextExBtn = document.getElementById('mfNextEx');
+  if(nextExBtn){
+    nextExBtn.onclick = function(){
+      if(mfEx < state.ficha[d.day].ex.length - 1){
+        mfEx++;
+        kbdReset();
+        render();
+        var nextEl = document.querySelector('.mf-item.on');
+        if(nextEl) nextEl.scrollIntoView({inline: 'center', block: 'nearest'});
+      }
+    };
+  }
+  var saveBtn = document.getElementById('saveSess');
+  if(saveBtn) saveBtn.onclick = promptFinishSession;
+  var saveEarlyBtn = document.getElementById('saveSessEarly');
+  if(saveEarlyBtn) saveEarlyBtn.onclick = promptFinishSession;
 }
 function kbdReset(){ kbdW=''; kbdR=''; kbdP='0'; kbdRir=null; kbdOpen=false; kbdEdit=null; }
 function findNextPhantom(ex,start){
@@ -574,96 +773,88 @@ function findNextPhantom(ex,start){
 }
 function kbdCommit(){
   var d=state.draft, exo=state.ficha[d.day].ex[mfEx], ex=exo.n;
-  var rows=mfSetRows(ex), editRow=kbdEdit!=null?rows[kbdEdit.si]:null, sets=d.entries[ex]||[], setsWork=workSets(sets);
-  var last=setsWork[setsWork.length-1], defW=last?last.w:20, defR=last?last.r:10;
-  var w=parseFloat(kbdW), r=parseInt(kbdR,10), p=(kbdMode==='p'&&kbdP!=='0')?parseInt(kbdP,10)||0:0;
-  if(isNaN(w)) w=editRow&&editRow.w!=null?editRow.w:defW;
-  if(isNaN(r)) r=editRow&&editRow.r!=null?editRow.r:defR;
-  if(!isFinite(w)||w<0){ toast('Digite a carga'); return; }
-  if(!isFinite(r)||r<1){ toast('Digite as repetições'); return; }
-  if(kbdMode==='p'){ kbdP=String(Math.max(0,(parseInt(kbdP,10)||0)+1)); syncKbdUI(); return; }
+  var rows=mfSetRows(ex), editRow = kbdEdit!=null?rows[kbdEdit.si]:null;
+  var buf = mfGetBufferValues(editRow, exo);
+  var w = buf.w, r = buf.r, p = buf.p;
 
-  /* edição de uma linha real: confirma e mantém o teclado aberto (foco na próxima linha da meta) */
+  if(!isFinite(w) || w<0){ toast('Digite a carga'); return; }
+  if(!isFinite(r) || r<1){ toast('Digite as repetições'); return; }
+  if(kbdMode==='p' && kbdP==='0'){ toast('Digite as parciais'); return; }
+
+  var meta=Progression.calcularMeta(state.ficha,state.sessions,d.day,ex,state.settings.progressao);
+  var targetRir = meta.targetRir != null ? meta.targetRir : defaultRirFor(ex);
+  var rirVal = kbdRir != null ? Math.max(0, Math.min(6, kbdRir)) : targetRir;
+  var rirManual = kbdRir != null;
+
+  /* edição de uma linha real: atualiza carga, reps e RIR simultaneamente (F1.1 & F1.2) */
   if(kbdEdit!=null && editRow && !editRow.phantom && kbdEdit.entryIndex>=0){
-    var existing=sets[kbdEdit.entryIndex];
-    if(kbdMode==='w') existing.w=w;
-    else if(kbdMode==='r') existing.r=r;
-    else existing.p=p;
-    if(!isWarmup(existing) && kbdRir!=null) existing.rir=Math.max(0,Math.min(6,kbdRir));
-    save(); kbdW=''; kbdR=''; kbdP='0'; kbdRir=null;
-    kbdOpenFor('w',findNextPhantom(ex,kbdEdit.si+1));
-    return;
-  }
-  /* edição de uma linha phantom (novo valor digitado antes de confirmar): materializa na posição da linha */
-  if(kbdEdit!=null && editRow && editRow.phantom && editRow.__workIndex!=null){
-    var warmCount=(d.entries[ex]||[]).filter(isWarmup).length;
-    d.entries[ex].splice(warmCount+editRow.__workIndex, 0, setObj);
-    save(); vibrate(15);
-    var isPR2 = draftBestE1rm(ex) > bestE1rm(ex)+0.01 && draftBestE1rm(ex)>0;
-    if(isPR2) celebrate();
-    if(state.settings.restAuto){ initAudio(); if(state.settings.alarm) askNotify(); startRest(exo.rest||90, ex); }
-    if(!warmOn && state.settings.autoAdvance!==false && todosConcluidos(mfEx) && mfEx<state.ficha[d.day].ex.length-1){
-      mfEx++; kbdReset(); render(); toast('Próximo exercício: '+state.ficha[d.day].ex[mfEx].n); return;
+    var existing=d.entries[ex] ? d.entries[ex][kbdEdit.entryIndex] : null;
+    if(existing){
+      existing.w = w;
+      existing.r = r;
+      if(p > 0) existing.p = p; else delete existing.p;
+      if(!isWarmup(existing)){
+        existing.rir = rirVal;
+        existing.rirManual = rirManual;
+      }
     }
-    kbdW=''; kbdR=''; kbdP='0'; kbdRir=null;
-    kbdOpenFor('w',findNextPhantom(ex,kbdEdit.si+1));
+    save();
+    kbdReset();
+    render();
     return;
   }
 
-  /* confirma um phantom (ou uma série extra) como linha real concluída.
-     Insere na posição da linha da tabela (aquecimentos antes, depois o __workIndex),
-     assim cada série mantém a identidade da sua linha — como no MF. */
+  /* confirma um phantom (ou nova série) */
   if(!d.entries[ex]) d.entries[ex]=[];
   if(!d.startedAt) d.startedAt=Date.now();
   var warmOn=!!d.warmupMode[ex];
   var setObj={w:w, r:r, wu:warmOn, warmup:warmOn, done:true};
   if(p>0) setObj.p=p;
-  if(!warmOn && kbdRir!=null){
-    setObj.rir=Math.max(0,Math.min(6,kbdRir));
-    setObj.targetRir=Progression.calcularMeta(state.ficha,state.sessions,d.day,ex,state.settings.progressao).targetRir;
+  if(!warmOn){
+    setObj.rir=rirVal;
+    setObj.rirManual=rirManual;
+    setObj.targetRir=targetRir;
   }
-  /* phantom confirmado com os valores exibidos na linha (✓ direto, sem digitar) ou série extra:
-     phantom mantém a posição da linha da meta; série extra vai para o fim */
-  if(kbdEdit!=null && editRow && editRow.phantom && editRow.__workIndex!=null){
-    var warmCount=(d.entries[ex]||[]).filter(isWarmup).length;
-    d.entries[ex].splice(warmCount+editRow.__workIndex, 0, setObj);
-  } else { d.entries[ex].push(setObj); }
-  save(); vibrate(15);
-  var isPR = draftBestE1rm(ex) > bestE1rm(ex)+0.01 && draftBestE1rm(ex)>0;
-  if(isPR) celebrate();
-  if(state.settings.restAuto){ initAudio(); if(state.settings.alarm) askNotify(); startRest(exo.rest||90, ex); }
-  if(!warmOn && state.settings.autoAdvance!==false && todosConcluidos(mfEx) && mfEx<state.ficha[d.day].ex.length-1){
-    mfEx++; kbdReset(); render(); toast('Próximo exercício: '+state.ficha[d.day].ex[mfEx].n); return;
+  var commitInPosition=kbdEdit!=null && editRow && editRow.phantom && editRow.__workIndex!=null;
+  if(commitInPosition){
+    setObj.__workIndex = editRow.__workIndex;
+    handleSetCompletion(exo, kbdEdit.si, setObj, true);
+  } else {
+    handleSetCompletion(exo, rows.length, setObj, true);
   }
-  kbdW=''; kbdR=''; kbdP='0'; kbdRir=null; kbdMode='w';
-  kbdOpenFor('w',findNextPhantom(ex,kbdEdit?kbdEdit.si+1:0));
 }
 
-/* ---------- preview e tela de conclusão ---------- */
+/* ---------- preview e tela de conclusão com BodyVisualizer (F1.3) ---------- */
 function muscleForExercise(name){
+  if(typeof BodyVisualizer !== 'undefined'){
+    var summary = BodyVisualizer.getMuscleSummary(BodyVisualizer.getMusclesForExercise(name));
+    if(summary.length) return summary[0].label;
+  }
   var s=(name||'').toLowerCase();
   if(/supino|voador|crucifixo/.test(s)) return 'Peito';
   if(/eleva|desenvolvimento|tríceps|triceps/.test(s)) return 'Ombros e braços';
   if(/puxada|remada|serrote/.test(s)) return 'Costas';
   if(/rosca/.test(s)) return 'Bíceps';
   if(/agach|leg press|stiff|terra|flexora|extensora|panturr|abdutor|adutor|pélvica|pelvica/.test(s)) return 'Pernas';
-  return 'Corpo inteiro';
+  return 'Geral';
 }
+
 function renderPreview(d, day){
-  var totalSets=0, estimated=0, groups={};
+  var totalSets=0, estimated=0;
   day.ex.forEach(function(exo){
     totalSets+=exo.sets; estimated+=exo.sets*45+exo.rest;
-    var group=muscleForExercise(exo.n); groups[group]=(groups[group]||0)+exo.sets;
   });
-  var groupNames=Object.keys(groups).slice(0,4);
+
   var h='<div class="mf-preview">'+
     '<div class="mf-preview-head"><button class="mf-back" id="mfPreviewBack">&#8592;</button><div><span class="mf-eyebrow">Treino '+d.day+'</span><h1>'+esc(day.nome)+'</h1></div></div>'+
     '<div class="mf-preview-meta"><span>'+day.ex.length+' exercícios</span><span>'+totalSets+' séries</span><span>~'+Math.max(1,Math.round(estimated/60))+' min</span></div>'+
-    '<h2 class="mf-section-title">Músculos alvo</h2><div class="mf-targets">'+groupNames.map(function(group){ return '<div class="mf-target"><span class="mf-target-icon">'+group.slice(0,1)+'</span><div><b>'+esc(group)+'</b><small>'+groups[group]+' séries</small></div></div>'; }).join('')+'</div>'+
+    '<h2 class="mf-section-title">Músculos alvo</h2>'+
+    (typeof BodyVisualizer !== 'undefined' ? BodyVisualizer.renderDayAnatomy(day, { height: 155 }) : '')+
     '<div class="mf-preview-title"><div><strong>'+day.ex.length+' exercícios</strong><small>Estimativa aproximada de duração</small></div><span class="mf-preview-plus">+</span></div>';
   day.ex.forEach(function(exo){
-    var target=exo.progressao&&exo.progressao.targetRir!=null?exo.progressao.targetRir:state.settings.progressao.targetRir;
-    h+='<div class="mf-preview-ex"><div class="mf-preview-thumb">'+exIcon(exo.n)+'</div><div class="mf-preview-exbody"><strong>'+esc(exo.n)+'</strong><div class="mf-preview-sets">'+Array.from({length:exo.sets},function(_,i){ return '<span><i>'+((i+1))+'</i> '+esc(exo.reps)+' reps</span>'; }).join('')+'</div><div class="mf-chipline"><span>'+esc(muscleForExercise(exo.n))+'</span><span>'+target+' RIR alvo</span></div></div><div class="mf-preview-rirs">'+Array.from({length:Math.min(exo.sets,5)},function(){ return '<i style="--rir:'+rirColor(target)+'">'+rirLabel(target)+'</i>'; }).join('')+'</div></div>';
+    var target=exo.progressao&&exo.progressao.targetRir!=null?exo.progressao.targetRir:defaultRirFor(exo.n);
+    var mGroup = muscleForExercise(exo.n);
+    h+='<div class="mf-preview-ex"><div class="mf-preview-thumb">'+exIcon(exo.n)+'</div><div class="mf-preview-exbody"><strong>'+esc(exo.n)+'</strong><div class="mf-preview-sets">'+Array.from({length:exo.sets},function(_,i){ return '<span><i>'+((i+1))+'</i> '+esc(exo.reps)+' reps</span>'; }).join('')+'</div><div class="mf-chipline"><span>'+esc(mGroup)+'</span><span>'+target+' RIR alvo</span></div></div><div class="mf-preview-rirs">'+Array.from({length:Math.min(exo.sets,5)},function(){ return '<i style="--rir:'+rirColor(target)+'">'+rirLabel(target)+'</i>'; }).join('')+'</div></div>';
   });
   h+='<div class="mf-preview-cta"><button class="cta mf-cta-black" id="mfStartWorkout">Iniciar treino</button></div></div>';
   return h;
@@ -677,14 +868,25 @@ function completeStats(session){
   Object.keys(session.entries||{}).forEach(function(name){ workSets(session.entries[name]||[]).forEach(function(set){ volume+=set.w*set.r; reps+=set.r; e1=Math.max(e1,e1rm(set.w,set.r)); count++; }); });
   return {volume:Math.round(volume), reps:reps, e1rm:Math.round(e1), count:count};
 }
-function completionAnatomy(){
-  return '<svg class="mf-anatomy-svg" viewBox="0 0 260 150" aria-label="Músculos trabalhados"><g fill="#e7e8eb"><circle cx="76" cy="18" r="10"/><path d="M67 31c-8 7-13 18-13 31l-8 34 12 2 7-26 3 29-8 38h13l8-35 8 35h13l-8-38 3-29 7 26 12-2-8-34c0-13-5-24-13-31z"/><circle cx="184" cy="18" r="10"/><path d="M175 31c-8 7-13 18-13 31l-8 34 12 2 7-26 3 29-8 38h13l8-35 8 35h13l-8-38 3-29 7 26 12-2-8-34c0-13-5-24-13-31z"/></g><g fill="#315ff4"><path d="M62 43c8-10 28-10 36 0l-3 20H65zM166 43c8-10 28-10 36 0l-3 20h-30z"/><path d="M59 65l-8 29 8 2 10-27zM201 65l8 29-8 2-10-27z"/><path d="M69 70h29l-3 28H72zM172 70h29l-3 28h-23z"/></g><g fill="#f97a53"><path d="M73 101h21l-4 28H75zM177 101h21l-4 28h-15z"/></g></svg>';
+function completionAnatomy(session){
+  if(typeof BodyVisualizer !== 'undefined'){
+    return BodyVisualizer.renderSessionAnatomy(session, { height: 165 });
+  }
+  return '<svg class="mf-anatomy-svg" viewBox="0 0 300 200"></svg>';
 }
 function renderComplete(){
   if(!mfCompleteSession){ mfComplete=false; return renderTreino(); }
   var session=mfCompleteSession, stats=completeStats(session);
+  var muscleList = (typeof BodyVisualizer !== 'undefined') ? BodyVisualizer.getMuscleSummary(BodyVisualizer.getMusclesForSession(session)) : [];
+
   var h='<div class="mf-complete"><div class="mf-complete-top"><button class="mf-back" id="mfCompleteClose">&#10005;</button><strong>Treino concluído</strong><span class="mf-more">&#8942;</span></div>'+
-    '<p class="mf-complete-date">'+fmtBRfull(session.date)+' · Treino '+session.day+'</p>'+completionAnatomy()+
+    '<p class="mf-complete-date">'+fmtBRfull(session.date)+' · Treino '+session.day+(session.mode==='curto'?' · Treino Curto':'')+'</p>'+
+    completionAnatomy(session)+
+    (muscleList.length ? (
+      '<div class="mf-chipline" style="justify-content:center;margin:4px 0 14px;flex-wrap:wrap;display:flex;gap:6px">'+
+      muscleList.map(function(m){ return '<span class="rtag" style="background:var(--card2,#222226);color:var(--txt,#f3f4f6)">'+m.label+' · '+Math.round(m.score)+' sets</span>'; }).join('')+
+      '</div>'
+    ) : '')+
     '<div class="mf-records"><div class="mf-rcard"><span class="mf-record-icon">&#127942;</span><b>'+nkg(stats.volume)+' kg</b><small>Volume</small></div><div class="mf-rcard"><span class="mf-record-icon">&#9733;</span><b>'+stats.reps+' reps</b><small>Repetições</small></div><div class="mf-rcard"><span class="mf-record-icon">&#9670;</span><b>'+nkg(stats.e1rm)+' kg</b><small>1RM estimado</small></div></div>'+ 
     '<h2 class="mf-section-title">Resumo do treino</h2><div class="mf-breakdown">';
   Object.keys(session.entries||{}).forEach(function(name){

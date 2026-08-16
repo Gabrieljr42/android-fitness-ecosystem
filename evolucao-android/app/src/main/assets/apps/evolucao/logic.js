@@ -42,10 +42,11 @@ function weekCount(){
   return state.sessions.filter(function(s){ return new Date(s.date+'T00:00:00')>=mon; }).length;
 }
 function ensureDraft(){
-  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal'};
+  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null};
   if(!state.draft.date) state.draft.date=todayISO();
   if(!state.draft.warmupMode) state.draft.warmupMode={};
   if(state.draft.sessionMode!=='curto') state.draft.sessionMode='normal';
+  if(state.draft.unilateralPending===undefined) state.draft.unilateralPending=null;
   if(state.draft.date < todayISO() && !Object.keys(state.draft.entries||{}).length){
     state.draft.date = todayISO(); // não deixa a data travada num dia velho quando não há nada lançado ainda
   }

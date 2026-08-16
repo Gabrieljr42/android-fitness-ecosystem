@@ -32,6 +32,15 @@ New-Item -ItemType Directory -Force $build | Out-Null
 
 function Say($m){ Write-Host ""; Write-Host "==> $m" -ForegroundColor Green }
 
+# ---------- 0. Testes Unitários ----------
+if (Get-Command node -ErrorAction SilentlyContinue) {
+  Say "Executando testes unitários..."
+  & node "app\src\test\js\run_all.js"
+  if ($LASTEXITCODE -ne 0) { throw "Testes unitários falharam! Build cancelado." }
+} else {
+  Write-Host "Node.js não encontrado no PATH; pulando testes unitários automatizados." -ForegroundColor Yellow
+}
+
 # ---------- 1. JDK 17 ----------
 # Reutiliza o JDK portátil do evolucao-android quando os projetos
 # estiverem lado a lado, evitando um segundo download.
@@ -147,9 +156,10 @@ Say "Caminhos corrigidos: $fixedCount"
 # ---------- 4. Java -> .class ----------
 Say "Compilando Java..."
 New-Item -ItemType Directory -Force "build\classes" | Out-Null
+$javaFiles = Get-ChildItem -Recurse "app\src\main\java" -Filter *.java | ForEach-Object { $_.FullName }
 & $javac -source 8 -target 8 -nowarn -classpath "$androidJar" -d "build\classes" `
   -encoding UTF-8 `
-  "app\src\main\java\com\nutricao\app\MainActivity.java"
+  @javaFiles
 if($LASTEXITCODE -ne 0){ throw "javac falhou." }
 
 # ---------- 5. .class -> classes.dex ----------

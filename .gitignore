@@ -15,6 +15,12 @@ build/
 _temp_kernel/
 _temp_views/
 **/_backup_monolito/
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
+verify_all_acceptance.js
 
 # Logs e arquivos de sistema
 *.log
@@ -22,3 +28,4 @@ Thumbs.db
 .DS_Store
 .idea/
 .vscode/
+

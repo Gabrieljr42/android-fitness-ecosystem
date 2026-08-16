@@ -1,0 +1,40 @@
+'use strict';
+
+const { spawnSync } = require('child_process');
+const path = require('path');
+
+const tests = [
+  'gemini_merge.test.js',
+  'tdee_macros.test.js',
+  'gemini_text.test.js',
+  'habits_water.test.js',
+  'meal_plan_custom_food.test.js',
+  'notifications.test.js',
+  'activity_tdee.test.js',
+  'gemini_activity.test.js',
+  'challenger_m1_1_stress.test.js',
+  'adversarial_m2_stress.test.js',
+  'challenger_m2_empirical.test.js',
+  'challenger_m2_2_activity_stress.test.js'
+];
+
+console.log('=== [NUTRITRACK] Executando Suíte de Testes Unitários ===\n');
+
+let failed = 0;
+for (const test of tests) {
+  const filePath = path.join(__dirname, test);
+  const res = spawnSync(process.execPath, [filePath], { stdio: 'inherit' });
+  if (res.status !== 0) {
+    failed++;
+    console.error(`\n❌ Falha no teste: ${test}`);
+  }
+}
+
+console.log('\n========================================================');
+if (failed === 0) {
+  console.log(`✅ Todos os ${tests.length} arquivos de teste passaram com sucesso!`);
+  process.exit(0);
+} else {
+  console.error(`❌ ${failed} de ${tests.length} arquivos de teste falharam!`);
+  process.exit(1);
+}
