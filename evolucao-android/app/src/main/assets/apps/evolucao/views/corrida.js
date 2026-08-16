@@ -554,18 +554,18 @@ function renderCorrida(){
     h += '    <span style="font-size:11.5px;font-weight:900;color:#f97a53;text-transform:uppercase;letter-spacing:0.5px">🏃 Tiro / Corrida de Alta Intensidade</span>';
     h += '    <div class="addgrid" style="margin-top:8px">';
     h += '      <div>';
-    h += '        <span class="flabel">Duração (min : seg)</span>';
+    h += '        <span class="flabel">Duração (min)</span>';
     h += '        <div class="step">';
-    h += '          <button id="btnITiroMinMinus">−1</button>';
-    h += '          <input id="inputITiroMin" type="number" step="1" min="0" value="' + iv.tiroMin + '">';
-    h += '          <button id="btnITiroMinPlus">+1</button>';
+    h += '          <button id="btnITiroMinMinus">−0.5</button>';
+    h += '          <input id="inputITiroMin" type="number" inputmode="decimal" step="0.5" min="0.5" value="' + iv.tiroMin + '">';
+    h += '          <button id="btnITiroMinPlus">+0.5</button>';
     h += '        </div>';
     h += '      </div>';
     h += '      <div>';
     h += '        <span class="flabel">Velocidade Esteira (km/h)</span>';
     h += '        <div class="step">';
     h += '          <button id="btnITiroKmhMinus">−0.5</button>';
-    h += '          <input id="inputITiroKmh" type="number" step="0.5" min="1" value="' + iv.tiroKmh + '">';
+    h += '          <input id="inputITiroKmh" type="number" inputmode="decimal" step="0.5" min="1" value="' + iv.tiroKmh + '">';
     h += '          <button id="btnITiroKmhPlus">+0.5</button>';
     h += '        </div>';
     h += '      </div>';
@@ -577,18 +577,18 @@ function renderCorrida(){
     h += '    <span style="font-size:11.5px;font-weight:900;color:#3b82f6;text-transform:uppercase;letter-spacing:0.5px">🚶 Recuperação / Caminhada</span>';
     h += '    <div class="addgrid" style="margin-top:8px">';
     h += '      <div>';
-    h += '        <span class="flabel">Duração (min : seg)</span>';
+    h += '        <span class="flabel">Duração (min)</span>';
     h += '        <div class="step">';
-    h += '          <button id="btnIRecupMinMinus">−1</button>';
-    h += '          <input id="inputIRecupMin" type="number" step="1" min="0" value="' + iv.recupMin + '">';
-    h += '          <button id="btnIRecupMinPlus">+1</button>';
+    h += '          <button id="btnIRecupMinMinus">−0.5</button>';
+    h += '          <input id="inputIRecupMin" type="number" inputmode="decimal" step="0.5" min="0.5" value="' + iv.recupMin + '">';
+    h += '          <button id="btnIRecupMinPlus">+0.5</button>';
     h += '        </div>';
     h += '      </div>';
     h += '      <div>';
     h += '        <span class="flabel">Velocidade Esteira (km/h)</span>';
     h += '        <div class="step">';
     h += '          <button id="btnIRecupKmhMinus">−0.5</button>';
-    h += '          <input id="inputIRecupKmh" type="number" step="0.5" min="1" value="' + iv.recupKmh + '">';
+    h += '          <input id="inputIRecupKmh" type="number" inputmode="decimal" step="0.5" min="1" value="' + iv.recupKmh + '">';
     h += '          <button id="btnIRecupKmhPlus">+0.5</button>';
     h += '        </div>';
     h += '      </div>';
@@ -600,7 +600,7 @@ function renderCorrida(){
     h += '    <span class="flabel">Número de Repetições / Ciclos (N)</span>';
     h += '    <div class="step">';
     h += '      <button id="btnICiclosMinus">−1</button>';
-    h += '      <input id="inputICiclos" type="number" step="1" min="1" max="50" value="' + iv.ciclos + '">';
+    h += '      <input id="inputICiclos" type="number" inputmode="numeric" step="1" min="1" max="50" value="' + iv.ciclos + '">';
     h += '      <button id="btnICiclosPlus">+1</button>';
     h += '    </div>';
     h += '  </div>';
@@ -760,11 +760,13 @@ function bindCorrida(){
       dlg({
         title: 'Meta Semanal de Cardio',
         sub: 'Defina a meta de distância (km) que você deseja percorrer semanalmente:',
+        input: true,
         num: true,
         value: state.cardioGoalKm || 15,
+        ph: 'Ex.: 15',
         ok: 'Salvar Meta',
         onOk: function(val){
-          var n = parseFloat(val);
+          var n = parseFloat(String(val).replace(',', '.'));
           if(!isNaN(n) && n > 0){
             state.cardioGoalKm = Math.round(n * 10) / 10;
             save();
@@ -915,29 +917,59 @@ function bindCorrida(){
     if(inINotas) inINotas.oninput = function(){ iv.notas = inINotas.value; };
 
     var btnITiroMinMinus = document.getElementById('btnITiroMinMinus');
-    if(btnITiroMinMinus) btnITiroMinMinus.onclick = function(){ iv.tiroMin = Math.max(0.5, (parseFloat(iv.tiroMin)||1) - 0.5); render(); };
+    if(btnITiroMinMinus) btnITiroMinMinus.onclick = function(){
+      iv.tiroMin = Math.max(0.5, Math.round(((parseFloat(iv.tiroMin)||1) - 0.5) * 10) / 10);
+      render();
+    };
     var btnITiroMinPlus = document.getElementById('btnITiroMinPlus');
-    if(btnITiroMinPlus) btnITiroMinPlus.onclick = function(){ iv.tiroMin = (parseFloat(iv.tiroMin)||1) + 0.5; render(); };
+    if(btnITiroMinPlus) btnITiroMinPlus.onclick = function(){
+      iv.tiroMin = Math.round(((parseFloat(iv.tiroMin)||1) + 0.5) * 10) / 10;
+      render();
+    };
 
     var btnITiroKmhMinus = document.getElementById('btnITiroKmhMinus');
-    if(btnITiroKmhMinus) btnITiroKmhMinus.onclick = function(){ iv.tiroKmh = Math.max(1, (parseFloat(iv.tiroKmh)||9) - 0.5); render(); };
+    if(btnITiroKmhMinus) btnITiroKmhMinus.onclick = function(){
+      iv.tiroKmh = Math.max(1, Math.round(((parseFloat(iv.tiroKmh)||9) - 0.5) * 10) / 10);
+      render();
+    };
     var btnITiroKmhPlus = document.getElementById('btnITiroKmhPlus');
-    if(btnITiroKmhPlus) btnITiroKmhPlus.onclick = function(){ iv.tiroKmh = (parseFloat(iv.tiroKmh)||9) + 0.5; render(); };
+    if(btnITiroKmhPlus) btnITiroKmhPlus.onclick = function(){
+      iv.tiroKmh = Math.round(((parseFloat(iv.tiroKmh)||9) + 0.5) * 10) / 10;
+      render();
+    };
 
     var btnIRecupMinMinus = document.getElementById('btnIRecupMinMinus');
-    if(btnIRecupMinMinus) btnIRecupMinMinus.onclick = function(){ iv.recupMin = Math.max(0.5, (parseFloat(iv.recupMin)||1) - 0.5); render(); };
+    if(btnIRecupMinMinus) btnIRecupMinMinus.onclick = function(){
+      iv.recupMin = Math.max(0.5, Math.round(((parseFloat(iv.recupMin)||1) - 0.5) * 10) / 10);
+      render();
+    };
     var btnIRecupMinPlus = document.getElementById('btnIRecupMinPlus');
-    if(btnIRecupMinPlus) btnIRecupMinPlus.onclick = function(){ iv.recupMin = (parseFloat(iv.recupMin)||1) + 0.5; render(); };
+    if(btnIRecupMinPlus) btnIRecupMinPlus.onclick = function(){
+      iv.recupMin = Math.round(((parseFloat(iv.recupMin)||1) + 0.5) * 10) / 10;
+      render();
+    };
 
     var btnIRecupKmhMinus = document.getElementById('btnIRecupKmhMinus');
-    if(btnIRecupKmhMinus) btnIRecupKmhMinus.onclick = function(){ iv.recupKmh = Math.max(1, (parseFloat(iv.recupKmh)||3) - 0.5); render(); };
+    if(btnIRecupKmhMinus) btnIRecupKmhMinus.onclick = function(){
+      iv.recupKmh = Math.max(1, Math.round(((parseFloat(iv.recupKmh)||3) - 0.5) * 10) / 10);
+      render();
+    };
     var btnIRecupKmhPlus = document.getElementById('btnIRecupKmhPlus');
-    if(btnIRecupKmhPlus) btnIRecupKmhPlus.onclick = function(){ iv.recupKmh = (parseFloat(iv.recupKmh)||3) + 0.5; render(); };
+    if(btnIRecupKmhPlus) btnIRecupKmhPlus.onclick = function(){
+      iv.recupKmh = Math.round(((parseFloat(iv.recupKmh)||3) + 0.5) * 10) / 10;
+      render();
+    };
 
     var btnICiclosMinus = document.getElementById('btnICiclosMinus');
-    if(btnICiclosMinus) btnICiclosMinus.onclick = function(){ iv.ciclos = Math.max(1, (parseInt(iv.ciclos,10)||8) - 1); render(); };
+    if(btnICiclosMinus) btnICiclosMinus.onclick = function(){
+      iv.ciclos = Math.max(1, (parseInt(iv.ciclos,10)||8) - 1);
+      render();
+    };
     var btnICiclosPlus = document.getElementById('btnICiclosPlus');
-    if(btnICiclosPlus) btnICiclosPlus.onclick = function(){ iv.ciclos = (parseInt(iv.ciclos,10)||8) + 1; render(); };
+    if(btnICiclosPlus) btnICiclosPlus.onclick = function(){
+      iv.ciclos = (parseInt(iv.ciclos,10)||8) + 1;
+      render();
+    };
 
     // Iniciar com Live Timer
     var btnIniciar = document.getElementById('btnIniciarTreinoIntervalado');
