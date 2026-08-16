@@ -43,6 +43,8 @@ const context = {
   Array: Array,
   Object: Object,
   Number: Number,
+  setTimeout: setTimeout,
+  clearTimeout: clearTimeout,
   document: {
     getElementById: () => dummyEl,
     querySelector: () => dummyEl,
@@ -347,6 +349,49 @@ console.log('--- 6. Navegação e Roteamento de Abas ---');
   assert(NAV_ICONS.corrida.includes('<path'), 'Ícone de corrida deve conter elementos path SVG');
 
   console.log('✅ Teste 6: Navegação de 5 abas e ícone de corrida validados com sucesso.');
+}
+
+// -----------------------------------------------------------------------------
+// 7. Modal de Ajuste de Meta Semanal & Steppers (Validação de UI e Handlers)
+// -----------------------------------------------------------------------------
+console.log('--- 7. Modal de Ajuste de Meta Semanal & Steppers ---');
+{
+  let lastDlgConfig = null;
+  context.dlg = function(cfg){
+    lastDlgConfig = cfg;
+  };
+  context.state = {
+    sessions: [],
+    corridas: [],
+    peso: [],
+    cardioGoalKm: 15,
+    ficha: context.DEFAULT_STATE.ficha,
+    settings: context.DEFAULT_STATE.settings
+  };
+
+  const btnGoalMock = { onclick: null };
+  context.document.getElementById = function(id){
+    if(id === 'btnEditCardioGoal') return btnGoalMock;
+    return dummyEl;
+  };
+
+  context.bindCorrida();
+  assert(btnGoalMock.onclick, 'btnEditCardioGoal deve ter evento onclick');
+
+  btnGoalMock.onclick();
+  assert(lastDlgConfig, 'dlg deve ter sido chamado ao clicar em Ajustar Meta');
+  assert.strictEqual(lastDlgConfig.input, true, 'dlg deve conter input: true para renderizar campo de entrada');
+  assert.strictEqual(lastDlgConfig.num, true, 'dlg deve definir num: true para teclado numérico');
+  assert.strictEqual(lastDlgConfig.value, 15, 'dlg deve vir preenchido com a meta atual');
+
+  // Testa salvamento com valor numérico e valor com vírgula decimal
+  lastDlgConfig.onOk('22.5');
+  assert.strictEqual(context.state.cardioGoalKm, 22.5, 'Meta deve ser atualizada para 22.5 km');
+
+  lastDlgConfig.onOk('18,7');
+  assert.strictEqual(context.state.cardioGoalKm, 18.7, 'Meta deve aceitar vírgula e atualizar para 18.7 km');
+
+  console.log('✅ Teste 7: Modal de Ajuste de Meta Semanal validado com sucesso.');
 }
 
 console.log('\n======================================================');
