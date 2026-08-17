@@ -30,6 +30,44 @@ public class NotificationReceiver extends BroadcastReceiver {
     public static final String PREFS_NAME = "nutritrack_alarms";
     public static final String KEY_REMINDERS = "reminders_json";
 
+    private static final String[] POSITIVE_MESSAGES = {
+        "Hora de nutrir o seu corpo e manter a sua melhor versão em alta! ✨",
+        "Foco na meta! Cada refeição equilibrada é mais um passo rumo à sua evolução. 🚀",
+        "Você está no comando! Que tal uma refeição deliciosa para recarregar as energias? 💪",
+        "Consistência é a chave da vitória. Bora registrar com foco total! 🎯",
+        "Seu corpo agradece todo o cuidado e dedicação de hoje. Bom apetite! 🥗",
+        "Mais um momento para fazer escolhas incríveis e bater suas metas diárias! ⚡",
+        "A disciplina de hoje constrói o resultado de amanhã. Vamos com tudo! 🏆",
+        "Pausa para a sua saúde: nutra o seu corpo com o que ele precisa para brilhar! 🌟",
+        "Energia lá em cima! Registre sua refeição e continue firme na sua jornada. 🔥",
+        "Excelente momento para alimentar seu potencial. Mantenha o ritmo! 💥",
+        "Lembrete positivo: você está indo muito bem. Bora registrar e seguir focado! 👏",
+        "Cuidar de você é a sua melhor prioridade. Aproveite sua refeição! 💚",
+        "Alimente seus sonhos com escolhas saudáveis e consistência! 🥑",
+        "Hora de abastecer a máquina com comida de verdade! Vamos pra cima! 🔋",
+        "Pequenos hábitos diários geram grandes transformações. Foco no objetivo! 📈"
+    };
+
+    public static String getPositiveMessageFor(String name) {
+        if (name == null || name.trim().isEmpty()) name = "Refeição";
+        String cleanName = name.replace("NutriTrack ⏰", "").trim();
+        String lower = cleanName.toLowerCase();
+        if (lower.contains("água") || lower.contains("agua") || lower.contains("hidrata")) {
+            return "Hidratação é poder! Beba um bom copo d'água e sinta sua energia renovada. 💧";
+        }
+        if (lower.contains("creatina")) {
+            return "Hora da creatina! Força e foco consistentes para os seus treinos diários. ⚡";
+        }
+        if (lower.contains("pré-treino") || lower.contains("pre-treino") || lower.contains("pre treino")) {
+            return "Hora de abastecer o tanque pro treino! Energia máxima e foco total. 🔥";
+        }
+        if (lower.contains("pós-treino") || lower.contains("pos-treino") || lower.contains("pos treino")) {
+            return "Recuperação muscular em ação! Nutrientes certos pro seu crescimento. 🥩";
+        }
+        int idx = (int) (Math.random() * POSITIVE_MESSAGES.length);
+        return POSITIVE_MESSAGES[idx];
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null) return;
@@ -54,16 +92,17 @@ public class NotificationReceiver extends BroadcastReceiver {
             if (title == null || title.trim().isEmpty()) {
                 title = "NutriTrack ⏰ Lembrete";
             }
-            if (message == null || message.trim().isEmpty()) {
-                message = "Hora da sua refeição! Mantenha seus registros e metas em dia.";
+            if (message == null || message.trim().isEmpty() || message.startsWith("Hora da sua refeição") || message.startsWith("Hora do seu")) {
+                message = getPositiveMessageFor(title);
             }
 
             Log.d(TAG, "Disparando notificacao de lembrete: " + id + " - " + title);
             showNotification(context, id, title, message);
 
-            // Rearma o alarme automaticamente para o dia seguinte (24 horas depois)
+            // Rearma o alarme automaticamente para o dia seguinte com nova mensagem positiva e animadora
             if (id != null && timeStr != null && !timeStr.trim().isEmpty()) {
-                rearmAlarm(context, id, title, message, timeStr);
+                String nextMessage = getPositiveMessageFor(title);
+                rearmAlarm(context, id, title, nextMessage, timeStr);
             }
         }
     }
@@ -220,7 +259,7 @@ public class NotificationReceiver extends BroadcastReceiver {
 
                 if (ativo && !hora.isEmpty()) {
                     String title = "NutriTrack ⏰ " + nome;
-                    String msg = "Hora do seu " + nome + "! Registre seus alimentos e metas no app.";
+                    String msg = item.optString("mensagem", item.optString("message", getPositiveMessageFor(nome)));
                     scheduleAlarm(context, id, title, msg, hora);
                 } else {
                     cancelAlarm(context, id);

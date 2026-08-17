@@ -259,7 +259,7 @@ public class MainActivity extends Activity {
 
                     if (ativo && !hora.isEmpty()) {
                         String title = "NutriTrack ⏰ " + nome;
-                        String msg = "Hora do seu " + nome + "! Registre seus alimentos e metas no app.";
+                        String msg = item.optString("mensagem", item.optString("message", NotificationReceiver.getPositiveMessageFor(nome)));
                         NotificationReceiver.scheduleAlarm(MainActivity.this, id, title, msg, hora);
                     } else {
                         NotificationReceiver.cancelAlarm(MainActivity.this, id);
