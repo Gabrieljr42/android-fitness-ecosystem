@@ -418,25 +418,25 @@ function renderCorrida(){
   h += '    <h1>Corrida</h1>';
   h += '    <div class="sub">Monitore ritmo, volume e treinos intervalados</div>';
   h += '  </div>';
-  h += '  <span class="mf-dashboard-mark" style="background:#f97a53;color:#fff"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#fff;stroke-width:2.2;fill:none">' + NAV_ICONS.corrida + '</svg></span>';
+  h += '  <span class="mf-dashboard-mark"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ffffff;stroke-width:2.2;fill:none">' + NAV_ICONS.corrida + '</svg></span>';
   h += '</div>';
 
   // 2. Overlay do Live Interval Timer (quando ativo)
   if(liveIntervalRunner.active){
     var curPhase = liveIntervalRunner.phases[liveIntervalRunner.currentPhaseIdx];
-    h += '<div class="card" style="border:2px solid #f97a53;background:#181c24;padding:18px;margin-bottom:14px;box-shadow:0 12px 30px rgba(249,122,83,0.25)">';
+    h += '<div class="card" style="border:1px solid var(--border-focus);background:var(--card);padding:18px;margin-bottom:14px">';
     h += '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-    h += '    <span style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.8px;color:' + curPhase.color + '">' + curPhase.emoji + ' ' + esc(curPhase.label) + '</span>';
+    h += '    <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#ffffff">' + curPhase.emoji + ' ' + esc(curPhase.label) + '</span>';
     if(curPhase.cycleNum){
-      h += '    <span style="font-size:11px;font-weight:800;background:rgba(255,255,255,0.1);padding:3px 9px;border-radius:999px">Ciclo ' + curPhase.cycleNum + ' / ' + curPhase.totalCycles + '</span>';
+      h += '    <span style="font-size:11px;font-weight:700;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary);padding:3px 9px;border-radius:999px">Ciclo ' + curPhase.cycleNum + ' / ' + curPhase.totalCycles + '</span>';
     }
     h += '  </div>';
 
     h += '  <div style="text-align:center;padding:12px 0">';
-    h += '    <div id="liveRunnerTime" style="font-size:48px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px;color:' + curPhase.color + '">' + fmtClock(liveIntervalRunner.secondsLeft) + '</div>';
-    h += '    <div style="font-size:13px;color:var(--txt);font-weight:700;margin-top:6px">' + esc(curPhase.desc) + '</div>';
-    h += '    <div style="font-size:18px;font-weight:900;color:#fff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);padding:7px 16px;border-radius:12px;display:inline-block;margin-top:10px">';
-    h += '      Velocidade Esteira: <b style="color:' + curPhase.color + '">' + nkg(curPhase.speedKmh) + ' km/h</b>';
+    h += '    <div id="liveRunnerTime" style="font-size:48px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-1px;color:#ffffff">' + fmtClock(liveIntervalRunner.secondsLeft) + '</div>';
+    h += '    <div style="font-size:13px;color:var(--txt-secondary);font-weight:600;margin-top:6px">' + esc(curPhase.desc) + '</div>';
+    h += '    <div style="font-size:16px;font-weight:700;color:var(--txt-primary);background:var(--bg-input);border:1px solid var(--border-subtle);padding:7px 16px;border-radius:12px;display:inline-block;margin-top:10px">';
+    h += '      Velocidade Esteira: <b style="color:#ffffff">' + nkg(curPhase.speedKmh) + ' km/h</b>';
     h += '    </div>';
     h += '  </div>';
 
@@ -448,7 +448,7 @@ function renderCorrida(){
     h += '  <div style="display:flex;gap:8px;margin-top:12px">';
     h += '    <button class="cta sm" id="btnLivePause" style="flex:1;background:var(--card2);color:var(--txt);border:1px solid var(--line)">' + (liveIntervalRunner.paused ? '▶ Continuar' : '⏸ Pausar') + '</button>';
     h += '    <button class="cta sm" id="btnLiveSkip" style="flex:1;background:var(--card2);color:var(--txt);border:1px solid var(--line)">⏭ Pular Fase</button>';
-    h += '    <button class="cta sm" id="btnLiveStop" style="flex:1;background:rgba(255,107,107,0.15);color:var(--danger);border:1px solid rgba(255,107,107,0.3)">⏹ Concluir</button>';
+    h += '    <button class="cta sm" id="btnLiveStop" style="flex:1;background:var(--status-danger-dim);color:var(--status-danger);border:1px solid rgba(248,113,113,0.25)">⏹ Concluir</button>';
     h += '  </div>';
     h += '</div>';
   }
@@ -456,15 +456,15 @@ function renderCorrida(){
   // 3. Card de Meta Semanal de Cardio & Volume Cumulativo
   h += '<div class="card">';
   h += '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-  h += '    <span style="font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:0.6px">Meta Semanal de Cardio</span>';
+  h += '    <span style="font-size:11px;font-weight:700;color:var(--txt-secondary);text-transform:uppercase;letter-spacing:0.6px">Meta Semanal de Cardio</span>';
   h += '    <button id="btnEditCardioGoal" class="rtag" style="cursor:pointer;padding:3px 9px">⚙️ Ajustar Meta</button>';
   h += '  </div>';
   h += '  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">';
-  h += '    <span style="font-size:28px;font-weight:900;line-height:1">' + nkg(weekKm) + ' <small style="font-size:14px;color:var(--mut);font-weight:700">km</small></span>';
-  h += '    <span style="font-size:13px;color:var(--mut)">de <b>' + nkg(goalKm) + ' km</b> meta (' + pct + '%)</span>';
+  h += '    <span style="font-size:28px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">' + nkg(weekKm) + ' <small style="font-size:14px;color:var(--txt-secondary);font-weight:600">km</small></span>';
+  h += '    <span style="font-size:13px;color:var(--txt-secondary)">de <b>' + nkg(goalKm) + ' km</b> meta (' + pct + '%)</span>';
   h += '  </div>';
-  h += '  <div style="height:10px;background:var(--card2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:4px">';
-  h += '    <div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg, #f97a53, #ff9f43);border-radius:999px;transition:width 0.4s ease"></div>';
+  h += '  <div style="height:8px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:999px;overflow:hidden;margin-bottom:4px">';
+  h += '    <div style="height:100%;width:' + pct + '%;background:#ffffff;border-radius:999px;transition:width 0.4s ease"></div>';
   h += '  </div>';
   h += '</div>';
 
@@ -524,7 +524,7 @@ function renderCorrida(){
 
     // Preview em tempo real de Métricas (Pace, Velocidade, Calorias)
     h += '  <div class="stat" style="margin:6px 0 14px">';
-    h += '    <div><div class="v" style="color:#f97a53">' + paceFmt + '</div><div class="l">Ritmo / Pace</div></div>';
+    h += '    <div><div class="v">' + paceFmt + '</div><div class="l">Ritmo / Pace</div></div>';
     h += '    <div><div class="v">' + nkg(speedKmh) + ' <small style="font-size:11px">km/h</small></div><div class="l">Velocidade</div></div>';
     h += '    <div><div class="v">' + kcalEst + ' <small style="font-size:11px">kcal</small></div><div class="l">Calorias</div></div>';
     h += '  </div>';
@@ -536,7 +536,7 @@ function renderCorrida(){
     h += '  <input id="inputCNotas" class="txt" type="text" placeholder="Observações (ex.: esteira 1% inclinação, rua, FC 150 bpm)" value="' + esc(cNotas) + '" style="margin-bottom:14px">';
 
     // Botão Salvar
-    h += '  <button class="cta" id="btnSalvarCorridaContinua" style="background:#f97a53;color:#fff">Salvar Corrida</button>';
+    h += '  <button class="cta" id="btnSalvarCorridaContinua" style="background:#ffffff;color:#09090b">Salvar Corrida</button>';
     h += '</div>';
 
   } else {
@@ -550,8 +550,8 @@ function renderCorrida(){
     h += '  <h2 style="margin:2px 0 10px;color:var(--txt)">Estrutura de Intervalos</h2>';
 
     // Tiro / Corrida (Duração e Velocidade)
-    h += '  <div style="background:rgba(249,122,83,0.08);border:1px solid rgba(249,122,83,0.25);border-radius:14px;padding:12px;margin-bottom:11px">';
-    h += '    <span style="font-size:11.5px;font-weight:900;color:#f97a53;text-transform:uppercase;letter-spacing:0.5px">🏃 Tiro / Corrida de Alta Intensidade</span>';
+    h += '  <div style="background:var(--card2);border:1px solid var(--border-subtle);border-radius:14px;padding:12px;margin-bottom:11px">';
+    h += '    <span style="font-size:11.5px;font-weight:700;color:var(--txt-primary);text-transform:uppercase;letter-spacing:0.5px">🏃 Tiro / Corrida de Alta Intensidade</span>';
     h += '    <div class="addgrid" style="margin-top:8px">';
     h += '      <div>';
     h += '        <span class="flabel">Duração (min)</span>';
@@ -573,8 +573,8 @@ function renderCorrida(){
     h += '  </div>';
 
     // Recuperação / Caminhada (Duração e Velocidade)
-    h += '  <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:14px;padding:12px;margin-bottom:11px">';
-    h += '    <span style="font-size:11.5px;font-weight:900;color:#3b82f6;text-transform:uppercase;letter-spacing:0.5px">🚶 Recuperação / Caminhada</span>';
+    h += '  <div style="background:var(--card2);border:1px solid var(--border-subtle);border-radius:14px;padding:12px;margin-bottom:11px">';
+    h += '    <span style="font-size:11.5px;font-weight:700;color:var(--txt-secondary);text-transform:uppercase;letter-spacing:0.5px">🚶 Recuperação / Caminhada</span>';
     h += '    <div class="addgrid" style="margin-top:8px">';
     h += '      <div>';
     h += '        <span class="flabel">Duração (min)</span>';
@@ -607,7 +607,7 @@ function renderCorrida(){
 
     // Aquecimento e Desaquecimento (Warmup / Cooldown opcionais)
     h += '  <details style="margin-bottom:12px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px">';
-    h += '    <summary style="font-size:12px;font-weight:800;color:var(--mut);cursor:pointer;text-transform:uppercase;letter-spacing:0.4px">Opções Avançadas (Aquecimento / Desaquecimento)</summary>';
+    h += '    <summary style="font-size:12px;font-weight:700;color:var(--txt-secondary);cursor:pointer;text-transform:uppercase;letter-spacing:0.4px">Opções Avançadas (Aquecimento / Desaquecimento)</summary>';
     h += '    <div style="margin-top:10px">';
     h += '      <div class="addgrid" style="margin-bottom:8px">';
     h += '        <div>';
@@ -634,7 +634,7 @@ function renderCorrida(){
 
     // Totais Calculados Automaticamente
     h += '  <div class="stat" style="margin:6px 0 12px">';
-    h += '    <div><div class="v" style="color:#f97a53">' + nkg(iCalc.totalDistKm) + ' <small style="font-size:10.5px">km</small></div><div class="l">Distância Total</div></div>';
+    h += '    <div><div class="v">' + nkg(iCalc.totalDistKm) + ' <small style="font-size:10.5px">km</small></div><div class="l">Distância Total</div></div>';
     h += '    <div><div class="v">' + fmtDur(iCalc.totalDurationSec) + '</div><div class="l">Duração Total</div></div>';
     h += '    <div><div class="v">' + iCalc.paceFormatted + '</div><div class="l">Pace Médio</div></div>';
     h += '  </div>';
@@ -646,7 +646,7 @@ function renderCorrida(){
     h += '  <input id="inputINotas" class="txt" type="text" placeholder="Observações (ex.: protocolo esteira 8 ciclos 1x1 min)" value="' + esc(iNotas) + '" style="margin-bottom:14px">';
 
     // Ações: Iniciar Timer ou Salvar Manual
-    h += '  <button class="cta" id="btnIniciarTreinoIntervalado" style="background:#f97a53;color:#fff;margin-bottom:8px">▶ Iniciar Sessão com Timer</button>';
+    h += '  <button class="cta" id="btnIniciarTreinoIntervalado" style="background:#ffffff;color:#09090b;margin-bottom:8px">▶ Iniciar Sessão com Timer</button>';
     h += '  <button class="cta sm" id="btnSalvarTreinoIntervalado" style="background:var(--card2);color:var(--txt);border:1px solid var(--line)">Salvar Registro sem Timer</button>';
     h += '</div>';
   }
@@ -664,7 +664,7 @@ function renderCorrida(){
   } else {
     if(corridaChartTab === 'distancia'){
       var ptsDist = corridas.map(function(c){ return { x: c.date, y: Number(c.distanciaKm) || 0 }; });
-      h += chartSVG(ptsDist, '#3b82f6');
+      h += chartSVG(ptsDist, '#ffffff');
       var totalKm = corridas.reduce(function(a,c){ return a + (Number(c.distanciaKm)||0); }, 0);
       var avgKm = totalKm / corridas.length;
       h += '  <div class="stat"><div><div class="v">' + nkg(totalKm) + ' km</div><div class="l">Volume Total</div></div>';
@@ -672,11 +672,11 @@ function renderCorrida(){
       h += '  <div><div class="v pos">' + corridas.length + '</div><div class="l">Sessões</div></div></div>';
     } else {
       var ptsPace = corridas.map(function(c){ return { x: c.date, y: Number(c.ritmoMedioSegKm) || calcPaceSec(c.distanciaKm, c.duracaoSeg) }; });
-      h += paceChartSVG(ptsPace, '#f97a53');
+      h += paceChartSVG(ptsPace, '#ffffff');
       var paces = ptsPace.map(function(p){ return p.y; }).filter(function(y){ return y > 0; });
       var bestPace = paces.length ? Math.min.apply(null, paces) : 0;
       var avgPace = paces.length ? (paces.reduce(function(a,b){return a+b;},0)/paces.length) : 0;
-      h += '  <div class="stat"><div><div class="v pos" style="color:#f97a53">' + fmtPace(bestPace) + '</div><div class="l">Melhor Pace</div></div>';
+      h += '  <div class="stat"><div><div class="v pos">' + fmtPace(bestPace) + '</div><div class="l">Melhor Pace</div></div>';
       h += '  <div><div class="v">' + fmtPace(avgPace) + '</div><div class="l">Pace Médio</div></div>';
       h += '  <div><div class="v">' + corridas.length + '</div><div class="l">Sessões</div></div></div>';
     }
@@ -694,15 +694,15 @@ function renderCorrida(){
     historyDesc.forEach(function(c){
       var isInterval = (c.mode === 'intervalada' || c.tipo === 'intervalada');
       var badgeHtml = isInterval ?
-        '<span style="background:rgba(249,122,83,0.18);color:#f97a53;font-size:10px;font-weight:900;padding:2px 7px;border-radius:6px;text-transform:uppercase">Intervalada</span>' :
-        '<span style="background:rgba(59,130,246,0.18);color:#3b82f6;font-size:10px;font-weight:900;padding:2px 7px;border-radius:6px;text-transform:uppercase">Contínua</span>';
+        '<span style="background:var(--card2);border:1px solid var(--border-subtle);color:#ffffff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase">Intervalada</span>' :
+        '<span style="background:var(--card2);border:1px solid var(--border-subtle);color:var(--txt-secondary);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase">Contínua</span>';
 
       var paceStr = c.paceMinKm || fmtPace(c.ritmoMedioSegKm || calcPaceSec(c.distanciaKm, c.duracaoSeg));
       var durStr = fmtDur(c.duracaoSeg || 0);
 
       h += '<div class="sess" data-cid="' + c.id + '">';
       h += '  <div class="sess-top">';
-      h += '    <div class="badge" style="background:' + (isInterval ? '#f97a53' : '#3b82f6') + ';border-color:transparent">' + (isInterval ? '⚡' : '🏃') + '</div>';
+      h += '    <div class="badge" style="background:var(--card2);border:1px solid var(--border-subtle);color:#ffffff">' + (isInterval ? '⚡' : '🏃') + '</div>';
       h += '    <div class="grow">';
       h += '      <div style="display:flex;align-items:center;gap:6px;font-weight:700">';
       h += '        <span>' + fmtBRfull(c.date) + '</span>' + badgeHtml;
@@ -1066,7 +1066,7 @@ function toastWithUndo(msg){
     toast(msg);
     return;
   }
-  t.innerHTML = esc(msg) + ' <button id="toastUndoBtn" style="background:#f97a53;color:#fff;border:0;padding:3px 10px;border-radius:999px;margin-left:8px;font-weight:900;font-size:11px;cursor:pointer">DESFAZER</button>';
+  t.innerHTML = esc(msg) + ' <button id="toastUndoBtn" style="background:#ffffff;color:#09090b;border:0;padding:3px 10px;border-radius:999px;margin-left:8px;font-weight:700;font-size:11px;cursor:pointer">DESFAZER</button>';
   t.classList.add('show');
   clearTimeout(t._tm);
 

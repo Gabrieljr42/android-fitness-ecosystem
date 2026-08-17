@@ -1,4 +1,4 @@
-/* apps/nutricao/views/ajustes.js */
+/* apps/nutricao/views/ajustes.js — Configurações, Lembretes, Backup e API */
 
 const DEFAULT_LEMBRETES = [
   { id: 'cafe', nome: 'Café da manhã', hora: '07:30', ativo: true },
@@ -23,12 +23,12 @@ function saveLembretes(list) {
 
 function renderLembretesHtml(list) {
   return list.map((lembrete, index) => `
-    <div class="remind-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)">
+    <div class="remind-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
       <div style="flex:1">
-        <div style="font-weight:700;font-size:14px;color:var(--txt)">${lembrete.nome}</div>
+        <div style="font-weight:700;font-size:14px;color:var(--txt-primary)">${lembrete.nome}</div>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <input type="time" value="${lembrete.hora}" style="padding:6px 10px;border-radius:10px;background:var(--bg2);color:var(--txt);border:1px solid var(--line);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
+        <input type="time" value="${lembrete.hora}" style="padding:6px 10px;border-radius:10px;background:var(--bg-input);color:var(--txt-primary);border:1px solid var(--border-subtle);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
         <label class="switch">
           <input type="checkbox" ${lembrete.ativo ? 'checked' : ''} onchange="toggleLembrete(${index}, this.checked)"/>
           <span class="slider"></span>
@@ -42,17 +42,23 @@ function renderAjustes(main) {
   const lembretes = loadLembretes();
 
   main.innerHTML = `
+  <!-- API Gemini -->
   <div class="card">
     <h2>API do Gemini (análise de foto &amp; texto)</h2>
-    <p class="small mb8">Crie uma chave gratuita em <a class="accent" href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a> (Google account, sem cartão) e cole aqui. A chave fica salva apenas no seu aparelho.</p>
+    <p class="small mb8">Chave gratuita em <a class="accent" href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. A chave fica salva apenas localmente no aparelho.</p>
     <input id="apiKeyIn" type="password" value="${apikey}" placeholder="AIza..."/>
     <button class="bigbtn secondary mt12" onclick="salvarKey()">Salvar chave</button>
-    <div class="small mt8" id="keyStatus">${apikey ? '<span style="color:var(--ok)">● Chave configurada</span>' : '<span style="color:var(--bad)">● Sem chave — a análise com IA não funcionará</span>'}</div>
+    <div class="small mt8" id="keyStatus">
+      ${apikey 
+        ? '<span style="color:var(--status-ok)">● Chave configurada e ativa</span>' 
+        : '<span style="color:var(--status-danger)">● Sem chave — a análise com IA não funcionará</span>'}
+    </div>
   </div>
 
+  <!-- Lembretes de Refeições -->
   <div class="card">
     <h2>Lembretes de Refeições</h2>
-    <p class="small mb8">Configure os horários para ser alertado sobre suas principais refeições do dia.</p>
+    <p class="small mb8">Horários para alertas diários de alimentação e hidratação.</p>
     <div id="lembretesList" class="lembretes-box">
       ${renderLembretesHtml(lembretes)}
     </div>
@@ -60,44 +66,48 @@ function renderAjustes(main) {
       <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">
         <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      Testar notificação
+      Testar notificação nativa
     </button>
   </div>
 
+  <!-- Modo de Análise IA -->
   <div class="card">
     <h2>Modo de análise IA</h2>
     <div class="seg">
       <button class="${pref.precisao === 'precisa' ? 'on' : ''}" onclick="setPrec('precisa')">Precisa (3× + média)</button>
       <button class="${pref.precisao === 'rapida' ? 'on' : ''}" onclick="setPrec('rapida')">Rápida (1×)</button>
     </div>
-    <p class="small">No modo preciso, a requisição é enviada 3 vezes e o app calcula a média dos resultados, descartando respostas muito divergentes.</p>
+    <p class="small">No modo preciso, a requisição é enviada 3 vezes para calcular a média e descartar outliers.</p>
   </div>
 
+  <!-- Execução das Análises -->
   <div class="card">
     <h2>Execução das análises</h2>
     <div class="seg">
       <button class="${pref.paralelo ? '' : 'on'}" onclick="setParalelo(false)">Sequencial</button>
       <button class="${pref.paralelo ? 'on' : ''}" onclick="setParalelo(true)">Paralela</button>
     </div>
-    <p class="small">Paralela inicia as 3 análises ao mesmo tempo. Sequencial aguarda cada resposta antes da próxima e pode ser mais estável em cotas menores. Em ambos os modos há nova tentativa e fallback de modelo.</p>
+    <p class="small">Paralela inicia as análises simultaneamente. Sequencial aguarda cada resposta para maior estabilidade.</p>
   </div>
 
+  <!-- Backup & Restauração -->
   <div class="card">
-    <h2>Backup</h2>
-    <p class="small mb8">Seus dados ficam no aparelho. Faça backup periodicamente.</p>
+    <h2>Backup e Restauração</h2>
+    <p class="small mb8">Seus dados ficam 100% no aparelho. Faça backup para transferir de dispositivo.</p>
     <div class="row">
-      <button class="bigbtn secondary" onclick="doBackup()">Exportar backup</button>
+      <button class="bigbtn secondary" onclick="doBackup()">Exportar backup (JSON)</button>
     </div>
     <input type="file" accept="application/json" id="restoreIn" class="mt12" style="display:none"/>
     <button class="bigbtn secondary mt8" onclick="$('#restoreIn').click()">Restaurar backup</button>
   </div>
 
+  <!-- Limpeza de Dados -->
   <div class="card">
-    <h2>Dados</h2>
+    <h2>Gerenciamento de Dados</h2>
     <p class="small mb8">${meals.length} refeição(ões) e ${activities.length} atividade(s) registradas no total.</p>
-    <button class="bigbtn secondary" style="color:var(--bad);border-color:#ff6b6b33" onclick="wipeAll()">Apagar todos os dados</button>
+    <button class="bigbtn secondary" style="color:var(--status-danger);border-color:rgba(248,113,113,0.3)" onclick="wipeAll()">Apagar todos os dados</button>
   </div>
-  <div class="small center mt8">NutriTrack v1.0 · dados 100% locais</div>`;
+  <div class="small center mt8" style="color:var(--txt-tertiary)">NutriTrack v1.0 · dados 100% locais e offline-first</div>`;
 
   if ($('#restoreIn')) $('#restoreIn').onchange = e => doRestore(e.target.files[0]);
 
@@ -108,7 +118,9 @@ function renderAjustes(main) {
     apikey = v;
     localStorage.setItem(LS.k, v);
     if ($('#keyStatus')) {
-      $('#keyStatus').innerHTML = v ? '<span style="color:var(--ok)">● Chave configurada</span>' : '<span style="color:var(--bad)">● Sem chave</span>';
+      $('#keyStatus').innerHTML = v 
+        ? '<span style="color:var(--status-ok)">● Chave configurada e ativa</span>' 
+        : '<span style="color:var(--status-danger)">● Sem chave</span>';
     }
     toast('Chave salva!');
   };
@@ -224,7 +236,7 @@ window.doBackup = doBackup;
 window.doRestore = doRestore;
 window.wipeAll = wipeAll;
 
-// Inicializacao e sincronizacao de lembretes nativos
+// Inicialização e sincronização de lembretes nativos
 try {
   const _initReminders = loadLembretes();
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.syncAlarms === 'function') {

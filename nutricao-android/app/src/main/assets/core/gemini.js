@@ -1,4 +1,4 @@
-/* core/gemini.js — fluxo de análise de fotos e texto com Gemini */
+/* core/gemini.js — fluxo de análise de fotos, texto e atividade com Gemini */
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const GEMINI_MODELS = [
   { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', thinkingLevel: 'low' },
@@ -344,9 +344,7 @@ function openFoto() {
     }
     inp.value = '';
   };
-  inp.onclick = () => {
-    // Mantem listener ativo e evita descarte
-  };
+  inp.onclick = () => {};
   inp.click();
 }
 function abrirFoto() { openFoto(); }
@@ -437,10 +435,10 @@ async function processarFoto(file) {
         }
       }
       if (result) {
-        setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--ok)"><span>✓ Análise ${i + 1}: ${Math.round(result.kcal_total || 0)} kcal · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
+        setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-ok)"><span>✓ Análise ${i + 1}: ${Math.round(result.kcal_total || 0)} kcal · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
       } else {
         const status = selectedTrace?.status ? ` (HTTP ${selectedTrace.status})` : '';
-        setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--bad)"><span>✕ Análise ${i + 1} falhou${status} após fallback</span></div>`);
+        setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-danger)"><span>✕ Análise ${i + 1} falhou${status} após fallback</span></div>`);
       }
       return result;
     };
@@ -452,7 +450,7 @@ async function processarFoto(file) {
     if (!validos.length) {
       const status = apiReturns.slice().reverse().find(x => x.status)?.status;
       steps.innerHTML = `
-        <div class="ai-step" style="color:var(--bad);display:block">
+        <div class="ai-step" style="color:var(--status-danger);display:block">
           <b>${run.cancelled ? 'Análise encerrada sem respostas concluídas.' : 'Não foi possível analisar a foto.'}</b>
           <div class="api-hint">${apiHint(status)}</div>
           ${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}
@@ -490,10 +488,10 @@ function renderFotoItens() {
       <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" oninput="updItem(${i},'porcao_g',this.value)"/>
       <span class="small" style="color:var(--txt3)">g</span>
       <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" oninput="updItem(${i},'kcal',this.value)"/>
-      <button class="det-del" onclick="rmItem(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="#9a9aa4" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="det-del" onclick="rmItem(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
   `).join('') +
-  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:44px;padding:10px" onclick="addItemFoto()">+ Adicionar item</button>
+  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemFoto()">+ Adicionar item</button>
    <div class="formrow three mt8">
      <div><label>P (g)</label><input id="cP" type="number" value="${p}" oninput="updTotais()"/></div>
      <div><label>C (g)</label><input id="cC" type="number" value="${c}" oninput="updTotais()"/></div>
@@ -507,7 +505,7 @@ function mostrarConfirmacaoFoto(final, n, responses, apiReturns = [], cancelled 
   const accHtml = cancelled
     ? `<div class="det-acc"><button class="on" disabled>Parcial (${responses.length}/${n})</button></div><p class="small mb8">Usando ${responses.length} resposta(s) recebida(s) antes do encerramento · valores estimados, edite se precisar</p>`
     : responses.length > 1
-    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} análises · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--bad)' : varPct > 15 ? 'var(--accent)' : 'var(--ok)'}">${varPct}%</b></p>`
+    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} análises · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--status-danger)' : varPct > 15 ? 'var(--status-warn)' : 'var(--status-ok)'}">${varPct}%</b></p>`
     : `<p class="small mb8">Análise rápida · valores estimados, edite se precisar</p>`;
   const legendaHtml = window.__fotoLegenda ? `<div class="small mb8"><b>Descrição enviada:</b> ${escapeHtml(window.__fotoLegenda)}</div>` : '';
   const nomeSugerido = escapeHtml(String(final.nome_refeicao || '').trim() || 'Refeição com foto');
@@ -521,7 +519,7 @@ function mostrarConfirmacaoFoto(final, n, responses, apiReturns = [], cancelled 
     ${legendaHtml}${accHtml}${apiHtml}
     <div id="itensBox"></div>
     <div class="det-total">Total: <span class="v" id="cTotal">${Math.round(final.kcal_total || 0)} kcal</span></div>
-    <div class="small" style="margin-top:6px">P <b style="color:#7ec8ff">${final.proteina_total || 0}g</b> · C <b style="color:#3ddc84">${final.carbo_total || 0}g</b> · G <b style="color:#f2a2ff">${final.gordura_total || 0}g</b></div>
+    <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
     <input id="cNome" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
     <button id="saveFotoAlimento" class="bigbtn secondary mt8" onclick="salvarFotoAlimento()">Salvar refeição em Meus alimentos</button>
@@ -600,7 +598,7 @@ window.addItemFoto = addItemFoto;
 window.updTotais = updTotais;
 window.confirmFoto = confirmFoto;
 
-/* ============ FLUXO DE TEXTO (F3.2) ============ */
+/* ============ FLUXO DE TEXTO (IA) ============ */
 function abrirTextoIA() {
   openModal(`
     <h2>✍️ Descrever com IA</h2>
@@ -688,10 +686,10 @@ async function processarTexto(texto) {
       }
     }
     if (result) {
-      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--ok)"><span>✓ Análise ${i + 1}: ${Math.round(result.kcal_total || 0)} kcal · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
+      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-ok)"><span>✓ Análise ${i + 1}: ${Math.round(result.kcal_total || 0)} kcal · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
     } else {
       const status = selectedTrace?.status ? ` (HTTP ${selectedTrace.status})` : '';
-      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--bad)"><span>✕ Análise ${i + 1} falhou${status} após fallback</span></div>`);
+      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-danger)"><span>✕ Análise ${i + 1} falhou${status} após fallback</span></div>`);
     }
     return result;
   };
@@ -706,7 +704,7 @@ async function processarTexto(texto) {
   if (!validos.length) {
     const status = apiReturns.slice().reverse().find(x => x.status)?.status;
     steps.innerHTML = `
-      <div class="ai-step" style="color:var(--bad);display:block">
+      <div class="ai-step" style="color:var(--status-danger);display:block">
         <b>${run.cancelled ? 'Análise encerrada sem respostas concluídas.' : 'Não foi possível analisar a descrição.'}</b>
         <div class="api-hint">${apiHint(status)}</div>
         ${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}
@@ -726,7 +724,7 @@ function mostrarConfirmacaoTexto(final, n, responses, apiReturns = [], cancelled
   const accHtml = cancelled
     ? `<div class="det-acc"><button class="on" disabled>Parcial (${responses.length}/${n})</button></div><p class="small mb8">Usando ${responses.length} resposta(s) recebida(s) antes do encerramento · valores estimados, edite se precisar</p>`
     : responses.length > 1
-    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} análises · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--bad)' : varPct > 15 ? 'var(--accent)' : 'var(--ok)'}">${varPct}%</b></p>`
+    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} análises · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--status-danger)' : varPct > 15 ? 'var(--status-warn)' : 'var(--status-ok)'}">${varPct}%</b></p>`
     : `<p class="small mb8">Análise rápida · valores estimados, edite se precisar</p>`;
   
   const descHtml = textoOriginal ? `<div class="small mb8"><b>Texto enviado:</b> ${escapeHtml(textoOriginal)}</div>` : '';
@@ -740,7 +738,7 @@ function mostrarConfirmacaoTexto(final, n, responses, apiReturns = [], cancelled
     ${descHtml}${accHtml}${apiHtml}
     <div id="itensBoxTexto"></div>
     <div class="det-total">Total: <span class="v" id="cTotalTexto">${Math.round(final.kcal_total || 0)} kcal</span></div>
-    <div class="small" style="margin-top:6px">P <b style="color:#7ec8ff">${final.proteina_total || 0}g</b> · C <b style="color:#3ddc84">${final.carbo_total || 0}g</b> · G <b style="color:#f2a2ff">${final.gordura_total || 0}g</b></div>
+    <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
     <input id="cNomeTexto" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
     <button id="saveTextoAlimento" class="bigbtn secondary mt8" onclick="salvarTextoAlimento()">Salvar refeição em Meus alimentos</button>
@@ -769,10 +767,10 @@ function renderTextoItens() {
       <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" oninput="updItemTexto(${i},'porcao_g',this.value)"/>
       <span class="small" style="color:var(--txt3)">g</span>
       <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" oninput="updItemTexto(${i},'kcal',this.value)"/>
-      <button class="det-del" onclick="rmItemTexto(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="#9a9aa4" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="det-del" onclick="rmItemTexto(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
   `).join('') +
-  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:44px;padding:10px" onclick="addItemTexto()">+ Adicionar item</button>
+  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemTexto()">+ Adicionar item</button>
    <div class="formrow three mt8">
      <div><label>P (g)</label><input id="cPT" type="number" value="${p}" oninput="updTotaisTexto()"/></div>
      <div><label>C (g)</label><input id="cCT" type="number" value="${c}" oninput="updTotaisTexto()"/></div>
@@ -898,8 +896,8 @@ function addLinha() {
   d.innerHTML = `
     <input placeholder="Alimento" style="flex:1.4" oninput="updFTotal()"/>
     <input type="number" placeholder="g" class="d-qty" value="100" oninput="updFTotal()"/>
-    <input type="number" placeholder="kcal" class="d-kcal" style="color:var(--accent);width:60px" oninput="updFTotal()"/>
-    <button class="det-del" onclick="this.parentElement.remove();updFTotal()"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="#9a9aa4" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <input type="number" placeholder="kcal" class="d-kcal" style="color:#ffffff;width:60px" oninput="updFTotal()"/>
+    <button class="det-del" onclick="this.parentElement.remove();updFTotal()"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   `;
   box.appendChild(d);
 }
@@ -932,7 +930,7 @@ window.addLinha = addLinha;
 window.updFTotal = updFTotal;
 window.confirmManual = confirmManual;
 
-/* ============ ATIVIDADE / GASTO COM IA (M2) ============ */
+/* ============ ATIVIDADE / GASTO COM IA ============ */
 function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undefined' ? profile : {})) {
   const descricao = String(texto || '').trim().slice(0, 1000);
   const peso = Number(userProfile?.peso) > 0 ? Number(userProfile.peso) : 75;
@@ -1032,9 +1030,9 @@ function mergeActivityAnalisys(res) {
 function abrirAtividadeIA() {
   openModal(`
     <h2>⚡ Estimar gasto com IA</h2>
-    <p class="small mb8">Descreva a atividade física que você praticou (exercício contínuo ou intervalado). A IA estimará a duração, METs e calorias queimadas com base no seu peso e biometria.</p>
+    <p class="small mb8">Descreva a atividade física praticada. A IA estimará a duração, METs e calorias com base na sua biometria.</p>
     <label for="textoAtividade">Descrição do exercício / treino</label>
-    <textarea id="textoAtividade" rows="4" maxlength="1000" placeholder="Ex.: Corri alternando corrida a 9 km/h e caminhada a 3 km/h de 1 em 1 minuto por 20 minutos (ou: fiz 45 minutos de musculação pesada)"></textarea>
+    <textarea id="textoAtividade" rows="4" maxlength="1000" placeholder="Ex.: Corri alternando corrida a 9 km/h e caminhada a 3 km/h de 1 em 1 minuto por 20 minutos"></textarea>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
       <button class="bigbtn primary" onclick="iniciarAnaliseAtividade()">Estimar gasto</button>
@@ -1116,10 +1114,10 @@ async function processarAtividade(texto) {
       }
     }
     if (result) {
-      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--ok)"><span>✓ Estimativa ${i + 1}: ${Math.round(result.kcal_gasto_total || 0)} kcal queimadas · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
+      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-ok)"><span>✓ Estimativa ${i + 1}: ${Math.round(result.kcal_gasto_total || 0)} kcal queimadas · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
     } else {
       const status = selectedTrace?.status ? ` (HTTP ${selectedTrace.status})` : '';
-      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--bad)"><span>✕ Estimativa ${i + 1} falhou${status} após fallback</span></div>`);
+      setAnalysisStep(steps, i, `<div class="ai-step" style="color:var(--status-danger)"><span>✕ Estimativa ${i + 1} falhou${status} após fallback</span></div>`);
     }
     return result;
   };
@@ -1134,7 +1132,7 @@ async function processarAtividade(texto) {
   if (!validos.length) {
     const status = apiReturns.slice().reverse().find(x => x.status)?.status;
     steps.innerHTML = `
-      <div class="ai-step" style="color:var(--bad);display:block">
+      <div class="ai-step" style="color:var(--status-danger);display:block">
         <b>${run.cancelled ? 'Análise encerrada sem respostas concluídas.' : 'Não foi possível estimar o gasto.'}</b>
         <div class="api-hint">${apiHint(status)}</div>
         ${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}
@@ -1154,7 +1152,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
   const accHtml = cancelled
     ? `<div class="det-acc"><button class="on" disabled>Parcial (${responses.length}/${n})</button></div><p class="small mb8">Usando ${responses.length} resposta(s) recebida(s) antes do encerramento · valores editáveis</p>`
     : responses.length > 1
-    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} estimativas · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--bad)' : varPct > 15 ? 'var(--accent)' : 'var(--ok)'}">${varPct}%</b></p>`
+    ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média de ${responses.length} estimativas · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--status-danger)' : varPct > 15 ? 'var(--status-warn)' : 'var(--status-ok)'}">${varPct}%</b></p>`
     : `<p class="small mb8">Estimativa rápida · confira e ajuste os dados se desejar</p>`;
 
   const descHtml = textoOriginal ? `<div class="small mb8"><b>Descrição enviada:</b> ${escapeHtml(textoOriginal)}</div>` : '';
@@ -1168,7 +1166,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
   if (Array.isArray(final.segmentos) && final.segmentos.length > 0) {
     segHtml = `
       <div class="formcard mt8">
-        <div style="font-size:12px;font-weight:700;color:var(--txt2);text-transform:uppercase;margin-bottom:6px">Segmentos do Treino (${final.segmentos.length})</div>
+        <div style="font-size:11px;font-weight:700;color:var(--txt-secondary);text-transform:uppercase;margin-bottom:6px">Segmentos do Treino (${final.segmentos.length})</div>
         ${final.segmentos.map((s, idx) => {
           const desc = escapeHtml(s.descricao || s.tipo || `Bloco ${idx + 1}`);
           const vel = Number(s.velocidade_kmh) > 0 ? ` · ${s.velocidade_kmh} km/h` : '';
@@ -1176,12 +1174,12 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
           const sMet = Number(s.met) || 0;
           const sKcal = Math.round(Number(s.kcal_gasto ?? s.kcal) || 0);
           return `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-subtle);font-size:13px">
               <div>
                 <b>${desc}</b>${vel}
                 <div class="small">${sDur} min · MET ${sMet}</div>
               </div>
-              <div style="font-weight:800;color:var(--ok)">-${sKcal} kcal</div>
+              <div style="font-weight:800;color:#ffffff">-${sKcal} kcal</div>
             </div>`;
         }).join('')}
       </div>`;
@@ -1189,7 +1187,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
 
   let expHtml = '';
   if (final.explicacao_calculo) {
-    expHtml = `<div class="small mt8" style="background:var(--bg2);padding:8px 10px;border-radius:10px;border:1px solid var(--line)"><b>Cálculo:</b> ${escapeHtml(final.explicacao_calculo)}</div>`;
+    expHtml = `<div class="small mt8" style="background:var(--bg-input);padding:8px 10px;border-radius:10px;border:1px solid var(--border-subtle)"><b>Cálculo:</b> ${escapeHtml(final.explicacao_calculo)}</div>`;
   }
 
   const okCalls = apiReturns.filter(x => x.ok).length;
@@ -1237,7 +1235,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
       </div>
       <div>
         <label>Gasto (kcal)</label>
-        <input id="actKcal" type="number" min="1" max="10000" style="color:var(--ok);font-weight:800" value="${kcalTotal}"/>
+        <input id="actKcal" type="number" min="1" max="10000" style="color:#ffffff;font-weight:800" value="${kcalTotal}"/>
       </div>
     </div>
 
@@ -1246,7 +1244,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
 
     <div class="det-total mt8">
       <span>Gasto calórico estimado:</span>
-      <span class="v" style="color:var(--ok)">-${fmt(kcalTotal)} kcal</span>
+      <span class="v" style="color:#ffffff">-${fmt(kcalTotal)} kcal</span>
     </div>
 
     <div class="row mt12">
@@ -1281,7 +1279,7 @@ function confirmAtividadeIA() {
   render();
 }
 
-/* ============ ATIVIDADE MANUAL (M2) ============ */
+/* ============ ATIVIDADE MANUAL ============ */
 const EXERCISE_PRESETS = [
   { nome: 'Musculação / Hipertrofia', met: 5.0, intensidade: 'moderada' },
   { nome: 'Caminhada (5 km/h)', met: 3.5, intensidade: 'moderada' },
@@ -1331,7 +1329,7 @@ function modalManualExercicio() {
       </div>
       <div>
         <label>Gasto estimado (kcal)</label>
-        <input id="manExKcal" type="number" min="0" max="10000" value="${defaultKcal}" style="color:var(--ok);font-weight:800"/>
+        <input id="manExKcal" type="number" min="0" max="10000" value="${defaultKcal}" style="color:#ffffff;font-weight:800"/>
       </div>
     </div>
 
@@ -1339,7 +1337,7 @@ function modalManualExercicio() {
 
     <div class="det-total mt8">
       <span>Gasto calórico:</span>
-      <span class="v" id="manExKcalDisplay" style="color:var(--ok)">-${fmt(defaultKcal)} kcal</span>
+      <span class="v" id="manExKcalDisplay" style="color:#ffffff">-${fmt(defaultKcal)} kcal</span>
     </div>
 
     <div class="row mt12">

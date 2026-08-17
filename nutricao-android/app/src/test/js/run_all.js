@@ -15,7 +15,10 @@ const tests = [
   'challenger_m1_1_stress.test.js',
   'adversarial_m2_stress.test.js',
   'challenger_m2_empirical.test.js',
-  'challenger_m2_2_activity_stress.test.js'
+  'challenger_m2_2_activity_stress.test.js',
+  'challenger_m3_2_adversarial.test.js',
+  'r4_nutricao_regression.test.js',
+  'challenger_preview_m1_m2_2_nutricao.test.js'
 ];
 
 console.log('=== [NUTRITRACK] Executando Suíte de Testes Unitários ===\n');

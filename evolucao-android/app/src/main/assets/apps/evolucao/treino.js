@@ -108,7 +108,7 @@ function isUnilateralEx(exo){
 function mfGetBufferValues(current, exo){
   var w = parseFloat(kbdW);
   var r = parseInt(kbdR, 10);
-  var p = (kbdMode === 'p' && kbdP !== '0') ? (parseInt(kbdP, 10) || 0) : (current && current.p ? current.p : 0);
+  var p = (kbdP && kbdP !== '0') ? (parseInt(kbdP, 10) || 0) : (current && current.p ? current.p : 0);
   var sets = state.draft && exo ? (state.draft.entries[exo.n] || []) : [];
   var last = workSets(sets)[workSets(sets).length - 1];
   var defW = last ? last.w : (exo && exo.lastW != null ? exo.lastW : 20);
@@ -158,7 +158,7 @@ function renderTreino(){
   /* meta automática */
   var targetRirEx = meta.targetRir != null ? meta.targetRir : defaultRirFor(ex);
   h+='<div class="mf-metarow"><span class="mf-metachip '+metaCss(meta.status)+'" title="'+esc(meta.motivo)+'">'+metaLabel(meta,exo)+(targetRirEx!=null?' · alvo '+targetRirEx+' RIR':'')+'</span>'+
-    (meta.carga!=null?'<span class="mf-metaauto">Auto · '+nkg(meta.carga)+' kg × '+meta.repsMeta+(exo.perSide?' / lado':'')+'</span>':'')+'</div>';
+    (meta.carga!=null?'<button type="button" class="mf-metaauto" id="mfAutoProg" title="Aplicar meta sugerida na série ativa">Auto · '+nkg(meta.carga)+' kg × '+meta.repsMeta+(exo.perSide?' / lado':'')+'</button>':'')+'</div>';
 
   /* tabela de sets minimalista: 5 colunas (Set | Carga | Reps | RIR | ✓) */
   h+='<div class="mf-table"><div class="mf-th"><span>Set</span><span>Carga</span><span>Reps</span><span>RIR</span><span>✓</span></div>';
@@ -172,11 +172,14 @@ function renderTreino(){
     if(!wu) showWork++;
 
     var isPendingSide1 = d.unilateralPending && d.unilateralPending.ex === ex && d.unilateralPending.setIndex === si;
+    var isEditingThisRow = kbdEdit != null && kbdEdit.si === si;
+    var wCellDisplay = isEditingThisRow ? (kbdW !== '' ? nkg(kbdW) : '–') : (ph && s.w == null ? '–' : nkg(s.w));
+    var rCellDisplay = isEditingThisRow ? ((kbdR !== '' ? kbdR : '–') + (kbdP && kbdP !== '0' ? ('+' + kbdP + 'p') : (s.p ? ('+' + s.p + 'p') : ''))) : (ph && s.r == null ? '–' : s.r + (s.p ? ('+' + s.p + 'p') : ''));
 
     h+='<div class="mf-setrow'+(wu?' wu':'')+(ph?' ph':'')+(isPendingSide1?' mf-side-pending':'')+'">';
     h+='<div class="mf-idx">'+(wu?'AQ':String(showWork))+'</div>';
-    h+='<div class="mf-cell mf-w'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="w" data-row="' + si + '">' + (ph&&s.w==null?'–':nkg(s.w)) + '</div>';
-    h+='<div class="mf-cell mf-r'+(kbdEdit&&kbdEdit.si===si?' on':'')+(ph?' phc':'')+'" data-cell="r" data-row="' + si + '">' + (ph&&s.r==null?'–':s.r+(s.p?('+'+s.p+'p'):'')) + '</div>';
+    h+='<div class="mf-cell mf-w'+(isEditingThisRow?' on':'')+(ph?' phc':'')+'" data-cell="w" data-row="' + si + '">' + wCellDisplay + '</div>';
+    h+='<div class="mf-cell mf-r'+(isEditingThisRow?' on':'')+(ph?' phc':'')+'" data-cell="r" data-row="' + si + '">' + rCellDisplay + '</div>';
 
     var rirBadgeStyle = isManual ?
       ('style="--rir:'+rirColor(qDisplay)+';background:'+rirColor(qDisplay)+';color:#fff;font-weight:900"') :
@@ -194,7 +197,7 @@ function renderTreino(){
 
   /* controles rápidos */
   h+='<div class="mf-qrow" style="grid-template-columns:1fr 1fr">';
-  h+='<button class="mf-q'+(warmOn?' warmq':'')+'" id="mfWarmAdd" style="'+(warmOn?'background:rgba(255,201,77,.16);border-color:var(--gold);color:var(--gold)':'')+'">🔥 Aquecimento</button>';
+  h+='<button class="mf-q'+(warmOn?' warmq':'')+'" id="mfWarmAdd">🔥 Aquecimento</button>';
   h+='<button class="mf-q ghost" id="mfSwap" title="Mover o exercício no dia">⇄ Trocar ordem</button>';
   h+='</div>';
 
@@ -248,18 +251,44 @@ function setLabelIdx(si){
 function kbdClose(){ kbdOpen=false; kbdEdit=null; render(); }
 var kbdFresh=false; // buffer espelha série existente: próximo dígito substitui o valor
 function kbdOpenFor(mode, si){
-  kbdMode=mode; kbdEdit=(si==null?null:{si:si}); kbdOpen=true;
-  var d=state.draft, exo=state.ficha[d.day].ex[mfEx], rows=mfSetRows(exo.n), row=si==null?null:rows[si];
-  if(kbdEdit&&row) kbdEdit.entryIndex=row.__entryIndex;
-  kbdFresh=false;
+  var isSameSet = kbdOpen && kbdEdit != null && si != null && kbdEdit.si === si;
+  if(isSameSet){
+    if(kbdMode !== mode){
+      kbdMode = mode;
+      var d = state.draft, exo = state.ficha[d.day].ex[mfEx], rows = mfSetRows(exo.n), _row = kbdEdit != null ? rows[kbdEdit.si] : null;
+      kbdFresh = !!(_row && (kbdMode === 'w' ? _row.w != null : _row.r != null));
+    }
+    render();
+    syncKbdUI();
+    var rowEl = document.querySelector('.mf-cell.on');
+    if(rowEl) rowEl.scrollIntoView({block:'nearest'});
+    var kbd = document.getElementById('mfKbd');
+    if(kbd) kbd.classList.add('mf-kbdin');
+    return;
+  }
+  kbdMode = mode;
+  kbdEdit = (si == null ? null : {si: si});
+  kbdOpen = true;
+  var d = state.draft, exo = state.ficha[d.day].ex[mfEx], rows = mfSetRows(exo.n), row = si == null ? null : rows[si];
+  if(kbdEdit && row) kbdEdit.entryIndex = row.__entryIndex;
+  kbdFresh = false;
   if(row){
-    kbdW=row.w==null?'':String(row.w); kbdR=row.r==null?'':String(row.r); kbdP=row.p!=null?String(row.p):'0';
-    kbdFresh=row.w!=null||row.r!=null;
-    if(row.rir!=null) kbdRir=row.rir;
-  } else { kbdW=''; kbdR=''; kbdP='0'; kbdRir=null; }
+    kbdW = row.w == null ? '' : String(row.w);
+    kbdR = row.r == null ? '' : String(row.r);
+    kbdP = row.p != null ? String(row.p) : '0';
+    kbdFresh = row.w != null || row.r != null;
+    if(row.rir != null) kbdRir = row.rir;
+  } else {
+    kbdW = '';
+    kbdR = '';
+    kbdP = '0';
+    kbdRir = null;
+  }
   render();
-  var rowEl=document.querySelector('.mf-cell.on'); if(rowEl) rowEl.scrollIntoView({block:'nearest'});
-  var kbd=document.getElementById('mfKbd'); if(kbd) kbd.classList.add('mf-kbdin');
+  var rowEl = document.querySelector('.mf-cell.on');
+  if(rowEl) rowEl.scrollIntoView({block:'nearest'});
+  var kbd = document.getElementById('mfKbd');
+  if(kbd) kbd.classList.add('mf-kbdin');
 }
 function mfKbdBuffer(){
   return {w: kbdW, r: kbdR, p: kbdP};
@@ -273,14 +302,15 @@ function mfRirSel(){
 var kbdRir = null;
 
 function syncKbdUI(){
-  var kbd=document.getElementById('mfKbd');
+  var kbd = document.getElementById('mfKbd');
   if(!kbd) return;
-  var cmode = (kbdMode==='p' ? 'r' : kbdMode);
-  var cell=document.querySelector('.mf-cell.on[data-cell="'+cmode+'"]');
-  if(cell){ cell.textContent=(kbdMode==='w'?nkg(kbdW||null):(kbdMode==='r'?kbdR:kbdP+'p')); }
-  var sel=mfRirSel();
-  var selKey=(sel==null?'2':(sel===6?'6+':String(sel)));
-  kbd.querySelectorAll('[data-rirsel]').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-rirsel')===selKey); });
+  var wCell = document.querySelector('.mf-cell.on[data-cell="w"]');
+  if(wCell) wCell.textContent = kbdW ? nkg(kbdW) : '–';
+  var rCell = document.querySelector('.mf-cell.on[data-cell="r"]');
+  if(rCell) rCell.textContent = (kbdR || '–') + (kbdP && kbdP !== '0' ? ('+' + kbdP + 'p') : '');
+  var sel = mfRirSel();
+  var selKey = (sel == null ? '2' : (sel === 6 ? '6+' : String(sel)));
+  kbd.querySelectorAll('[data-rirsel]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-rirsel') === selKey); });
 }
 
 /* ---------- página de detalhes do exercício ---------- */
@@ -307,7 +337,7 @@ function renderExDetail(){
   if(pts.length<2){
     h+='<div class="card" style="margin-top:12px"><div class="empty"><div class="big">📈</div><div class="t">Registre séries deste exercício</div><div class="s">Com 2 ou mais sessões você vê a curva de progressão aqui.</div></div></div>';
   } else {
-    h+='<div class="card" style="margin-top:12px"><h2 style="margin-top:0">Evolução da carga máxima</h2>'+chartSVG(pts,'#4d7cff')+'</div>';
+    h+='<div class="card" style="margin-top:12px"><h2 style="margin-top:0">Evolução da carga máxima</h2>'+chartSVG(pts,'#ffffff')+'</div>';
   }
   h+='<h2>Últimas sessões</h2><div class="card">';
   if(!lastPts.length){
@@ -587,6 +617,37 @@ function bindTreino(){
     var tmp=day.ex[mfEx-1]; day.ex[mfEx-1]=day.ex[mfEx]; day.ex[mfEx]=tmp;
     mfEx--; save(); render();
   };
+  var autoBtn = document.getElementById('mfAutoProg');
+  if(autoBtn){
+    autoBtn.onclick = function(){
+      var exo = state.ficha[d.day].ex[mfEx];
+      var ex = exo.n;
+      var meta = Progression.calcularMeta(state.ficha, state.sessions, d.day, ex, state.settings.progressao);
+      if(meta && meta.carga != null){
+        var rows = mfSetRows(ex);
+        var targetSi = kbdEdit != null ? kbdEdit.si : rows.findIndex(function(r){ return !r.done; });
+        if(targetSi < 0) targetSi = 0;
+        kbdOpenFor(kbdMode || 'w', targetSi);
+        kbdW = String(meta.carga);
+        kbdR = String(meta.repsMeta);
+        kbdP = '0';
+        kbdFresh = false;
+        if(meta.targetRir != null) kbdRir = meta.targetRir;
+        var row = rows[targetSi];
+        if(row && !row.phantom && row.__entryIndex >= 0 && d.entries[ex] && d.entries[ex][row.__entryIndex]){
+          var existing = d.entries[ex][row.__entryIndex];
+          existing.w = meta.carga;
+          existing.r = meta.repsMeta;
+          if(meta.targetRir != null) existing.rir = meta.targetRir;
+          save();
+        }
+        vibrate(15);
+        render();
+        syncKbdUI();
+        toast('Meta aplicada: ' + nkg(meta.carga) + ' kg × ' + meta.repsMeta + ' reps');
+      }
+    };
+  }
   /* células clicáveis da tabela (abre o teclado sob demanda) */
   document.querySelectorAll('[data-cell]').forEach(function(c){ c.onclick=function(){
     kbdOpenFor(c.getAttribute('data-cell'), +c.getAttribute('data-row'));
@@ -719,8 +780,7 @@ function bindTreino(){
     if(k==='±'){
       if(kbdMode==='w'){ var w2=parseFloat(kbdW)||0; kbdW=String(Math.round((w2+2.5)*2)/2); }
       else if(kbdMode==='r'){ var r2=parseInt(kbdR,10)||1; kbdR=String(r2+1); }
-      syncKbdUI(); return;
-    }
+      syncKbdUI(); return; }
     if(k==='0.0'){ if(kbdMode==='w'){ var w3=(parseFloat(kbdW)||0); kbdW=String(Math.max(0,Math.round(w3*2-1)/2)); } kbdFresh=false; syncKbdUI(); return; }
     if(kbdFresh){
       kbdFresh=false;
@@ -815,6 +875,7 @@ function kbdCommit(){
     setObj.rirManual=rirManual;
     setObj.targetRir=targetRir;
   }
+  var warmCount=(d.entries[ex]||[]).filter(isWarmup).length;
   var commitInPosition=kbdEdit!=null && editRow && editRow.phantom && editRow.__workIndex!=null;
   if(commitInPosition){
     setObj.__workIndex = editRow.__workIndex;
@@ -884,7 +945,7 @@ function renderComplete(){
     completionAnatomy(session)+
     (muscleList.length ? (
       '<div class="mf-chipline" style="justify-content:center;margin:4px 0 14px;flex-wrap:wrap;display:flex;gap:6px">'+
-      muscleList.map(function(m){ return '<span class="rtag" style="background:var(--card2,#222226);color:var(--txt,#f3f4f6)">'+m.label+' · '+Math.round(m.score)+' sets</span>'; }).join('')+
+      muscleList.map(function(m){ return '<span class="rtag" style="background:var(--card2,#202024);color:var(--txt,#ffffff)">'+m.label+' · '+Math.round(m.score)+' sets</span>'; }).join('')+
       '</div>'
     ) : '')+
     '<div class="mf-records"><div class="mf-rcard"><span class="mf-record-icon">&#127942;</span><b>'+nkg(stats.volume)+' kg</b><small>Volume</small></div><div class="mf-rcard"><span class="mf-record-icon">&#9733;</span><b>'+stats.reps+' reps</b><small>Repetições</small></div><div class="mf-rcard"><span class="mf-record-icon">&#9670;</span><b>'+nkg(stats.e1rm)+' kg</b><small>1RM estimado</small></div></div>'+ 

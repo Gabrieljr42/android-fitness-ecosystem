@@ -180,15 +180,15 @@
 
   function resolveColor(score, maxScore) {
     if (!score || score <= 0) {
-      return { fill: 'var(--anat-base, #25262b)', opacity: '0.45' };
+      return { fill: 'var(--anat-base, #27272a)', opacity: '0.45' };
     }
     var ratio = maxScore > 0 ? (score / maxScore) : 1;
     if (ratio >= 0.75) {
-      return { fill: 'var(--anat-active, #f97a53)', opacity: '1.0' };
+      return { fill: 'var(--anat-active, #ffffff)', opacity: '1.0' };
     } else if (ratio >= 0.4) {
-      return { fill: 'var(--anat-sec, #ff9f7d)', opacity: '0.85' };
+      return { fill: 'var(--anat-sec, #71717a)', opacity: '0.85' };
     } else {
-      return { fill: 'var(--anat-sec, #ff9f7d)', opacity: '0.55' };
+      return { fill: 'var(--anat-sec, #71717a)', opacity: '0.55' };
     }
   }
 
@@ -221,10 +221,10 @@
 
       // === SILHUETA FRONTAL (X: 10 a 140, centro 75) ===
       '<g id="anatFront" transform="translate(10, 0)">' +
-        '<text x="65" y="16" fill="#8e8e93" font-size="9" font-family="sans-serif" font-weight="700" text-anchor="middle" letter-spacing="1">FRENTE</text>' +
+        '<text x="65" y="16" fill="#a1a1aa" font-size="9" font-family="-apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif" font-weight="700" text-anchor="middle" letter-spacing="1">FRENTE</text>' +
 
         // Base Body Outline Front (Head, Neck, Traps, Hands, Feet)
-        '<g class="anat-base-silhouette" fill="var(--anat-base, #25262b)" opacity="0.3">' +
+        '<g class="anat-base-silhouette" fill="var(--anat-base, #27272a)" opacity="0.35">' +
           '<circle cx="65" cy="30" r="11"/>' + // Head
           '<path d="M60 41 L70 41 L73 48 L57 48 Z"/>' + // Neck
           '<path d="M38 100 C34 104 33 112 36 116 C39 116 43 110 44 102 Z"/>' + // Forearm L
@@ -271,10 +271,10 @@
 
       // === SILHUETA DORSAL (X: 160 a 290, centro 225) ===
       '<g id="anatBack" transform="translate(150, 0)">' +
-        '<text x="75" y="16" fill="#8e8e93" font-size="9" font-family="sans-serif" font-weight="700" text-anchor="middle" letter-spacing="1">COSTAS</text>' +
+        '<text x="75" y="16" fill="#a1a1aa" font-size="9" font-family="-apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif" font-weight="700" text-anchor="middle" letter-spacing="1">COSTAS</text>' +
 
         // Base Body Outline Back (Head, Neck, Hands, Feet)
-        '<g class="anat-base-silhouette" fill="var(--anat-base, #25262b)" opacity="0.3">' +
+        '<g class="anat-base-silhouette" fill="var(--anat-base, #27272a)" opacity="0.35">' +
           '<circle cx="75" cy="30" r="11"/>' + // Head
           '<path d="M70 41 L80 41 L83 48 L67 48 Z"/>' + // Neck
           '<path d="M48 90 C44 94 43 102 46 106 C49 106 53 100 54 92 Z"/>' + // Forearm L
