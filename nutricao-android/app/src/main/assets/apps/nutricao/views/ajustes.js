@@ -8,6 +8,46 @@ const DEFAULT_LEMBRETES = [
   { id: 'ceia', nome: 'Ceia', hora: '22:00', ativo: false }
 ];
 
+const MENSAGENS_POSITIVAS = [
+  'Hora de nutrir o seu corpo e manter a sua melhor versão em alta! ✨',
+  'Foco na meta! Cada refeição equilibrada é mais um passo rumo à sua evolução. 🚀',
+  'Você está no comando! Que tal uma refeição deliciosa para recarregar as energias? 💪',
+  'Consistência é a chave da vitória. Bora registrar com foco total! 🎯',
+  'Seu corpo agradece todo o cuidado e dedicação de hoje. Bom apetite! 🥗',
+  'Mais um momento para fazer escolhas incríveis e bater suas metas diárias! ⚡',
+  'A disciplina de hoje constrói o resultado de amanhã. Vamos com tudo! 🏆',
+  'Pausa para a sua saúde: nutra o seu corpo com o que ele precisa para brilhar! 🌟',
+  'Energia lá em cima! Registre sua refeição e continue firme na sua jornada. 🔥',
+  'Excelente momento para alimentar seu potencial. Mantenha o ritmo! 💥',
+  'Lembrete positivo: você está indo muito bem. Bora registrar e seguir focado! 👏',
+  'Cuidar de você é a sua melhor prioridade. Aproveite sua refeição! 💚',
+  'Alimente seus sonhos com escolhas saudáveis e consistência! 🥑',
+  'Hora de abastecer a máquina com comida de verdade! Vamos pra cima! 🔋',
+  'Pequenos hábitos diários geram grandes transformações. Foco no objetivo! 📈'
+];
+
+function obterMensagemPositiva(nomeRefeicao) {
+  const n = (nomeRefeicao || '').toLowerCase().trim();
+  if (n.includes('água') || n.includes('agua') || n.includes('hidrata')) {
+    const msgsAgua = [
+      'Hidratação é poder! Beba um bom copo d’água e sinta sua energia renovada. 💧',
+      'Lembrete de hidratação: seu corpo funcionando em 100%! Beba água agora. 🌊',
+      'Pausa rápida para hidratar o corpo e manter a mente focada! 💦'
+    ];
+    return msgsAgua[Math.floor(Math.random() * msgsAgua.length)];
+  }
+  if (n.includes('creatina')) {
+    return 'Hora da creatina! Força e foco consistentes para os seus treinos diários. ⚡';
+  }
+  if (n.includes('pré-treino') || n.includes('pre-treino') || n.includes('pre treino')) {
+    return 'Hora de abastecer o tanque pro treino! Energia máxima e foco total. 🔥';
+  }
+  if (n.includes('pós-treino') || n.includes('pos-treino') || n.includes('pos treino')) {
+    return 'Recuperação muscular em ação! Nutrientes certos pro seu crescimento. 🥩';
+  }
+  return MENSAGENS_POSITIVAS[Math.floor(Math.random() * MENSAGENS_POSITIVAS.length)];
+}
+
 function loadLembretes() {
   const saved = load(LS.reminders, null);
   if (Array.isArray(saved) && saved.length > 0) return saved;
@@ -17,22 +57,32 @@ function loadLembretes() {
 function saveLembretes(list) {
   save(LS.reminders, list);
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.syncAlarms === 'function') {
-    AndroidBridge.syncAlarms(JSON.stringify(list));
+    const listWithMsgs = list.map(item => ({
+      ...item,
+      mensagem: obterMensagemPositiva(item.nome)
+    }));
+    AndroidBridge.syncAlarms(JSON.stringify(listWithMsgs));
   }
 }
 
 function renderLembretesHtml(list) {
+  if (!list || list.length === 0) {
+    return '<p class="small text-muted" style="padding:12px 0;text-align:center">Nenhum lembrete configurado. Adicione um horário abaixo!</p>';
+  }
   return list.map((lembrete, index) => `
-    <div class="remind-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-subtle)">
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px;color:var(--txt-primary)">${lembrete.nome}</div>
+    <div class="remind-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-subtle);gap:8px">
+      <div style="flex:1;min-width:0">
+        <input type="text" value="${(lembrete.nome || '').replace(/"/g, '&quot;')}" style="font-weight:700;font-size:14px;color:var(--txt-primary);background:transparent;border:0;padding:2px 0;width:100%;font-family:inherit" onchange="atualizarNomeLembrete(${index}, this.value)" placeholder="Nome do lembrete"/>
       </div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <input type="time" value="${lembrete.hora}" style="padding:6px 10px;border-radius:10px;background:var(--bg-input);color:var(--txt-primary);border:1px solid var(--border-subtle);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <input type="time" value="${lembrete.hora}" style="padding:6px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt-primary);border:1px solid var(--border-subtle);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
         <label class="switch">
           <input type="checkbox" ${lembrete.ativo ? 'checked' : ''} onchange="toggleLembrete(${index}, this.checked)"/>
           <span class="slider"></span>
         </label>
+        <button type="button" class="del-btn" style="background:transparent;border:0;color:var(--txt-tertiary);cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;border-radius:8px" onclick="removerLembrete(${index})" title="Excluir lembrete">
+          <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
       </div>
     </div>
   `).join('');
@@ -55,19 +105,34 @@ function renderAjustes(main) {
     </div>
   </div>
 
-  <!-- Lembretes de Refeições -->
+  <!-- Lembretes de Refeições & Horários -->
   <div class="card">
-    <h2>Lembretes de Refeições</h2>
-    <p class="small mb8">Horários para alertas diários de alimentação e hidratação.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <h2 style="margin:0">Lembretes &amp; Horários</h2>
+      <span class="badge" style="font-size:11px;padding:2px 8px">${lembretes.filter(l => l.ativo).length} ativos</span>
+    </div>
+    <p class="small mb8">Configure alertas positivos personalizados para seus horários de refeição e hidratação.</p>
+    
     <div id="lembretesList" class="lembretes-box">
       ${renderLembretesHtml(lembretes)}
     </div>
-    <button class="bigbtn secondary mt12" onclick="testarNotificacao()">
-      <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;vertical-align:middle;margin-right:6px">
-        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Testar notificação nativa
-    </button>
+
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="bigbtn secondary" style="flex:1;min-width:140px" onclick="abrirModalNovoLembrete()">
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;vertical-align:middle;margin-right:6px">
+          <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Adicionar horário
+      </button>
+
+      <button class="bigbtn secondary" style="flex:1;min-width:140px" onclick="testarNotificacao()">
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;vertical-align:middle;margin-right:6px">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Testar notificação
+      </button>
+    </div>
   </div>
 
   <!-- Modo de Análise IA -->
@@ -126,6 +191,97 @@ function renderAjustes(main) {
   };
 }
 
+function abrirModalNovoLembrete() {
+  const agora = new Date();
+  const hPad = String(agora.getHours()).padStart(2, '0');
+  const mPad = String(agora.getMinutes()).padStart(2, '0');
+  const horaPadrao = `${hPad}:${mPad}`;
+
+  const tags = [
+    'Café da manhã',
+    'Colação',
+    'Almoço',
+    'Lanche 1',
+    'Lanche 2',
+    'Pré-Treino',
+    'Pós-Treino',
+    'Jantar',
+    'Ceia',
+    'Água / Hidratação',
+    'Creatina',
+    'Shake Proteico'
+  ];
+
+  if (typeof openModal === 'function') {
+    openModal(`
+      <div style="padding:4px 0">
+        <h2 style="font-size:18px;margin-bottom:8px;color:var(--txt-primary)">Adicionar Lembrete</h2>
+        <p class="small mb12">Escolha uma sugestão rápida ou digite um nome e horário personalizado.</p>
+        
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+          ${tags.map(t => `<button type="button" class="btn-preset" style="background:var(--bg-card);border:1px solid var(--border-subtle);color:var(--txt-secondary);padding:5px 10px;border-radius:16px;font-size:12px;cursor:pointer;transition:all 0.15s ease" onclick="$('#novoLembreteNome').value='${t}';this.style.borderColor='var(--txt-primary)';this.style.color='var(--txt-primary)'">${t}</button>`).join('')}
+        </div>
+
+        <label class="small" style="display:block;margin-bottom:4px;font-weight:700">Nome da refeição / alerta:</label>
+        <input id="novoLembreteNome" type="text" placeholder="Ex: Lanche da tarde, Shake..." value="Lanche" style="margin-bottom:12px"/>
+
+        <label class="small" style="display:block;margin-bottom:4px;font-weight:700">Horário diário:</label>
+        <input id="novoLembreteHora" type="time" value="${horaPadrao}" style="margin-bottom:16px"/>
+
+        <div style="display:flex;gap:10px">
+          <button class="bigbtn secondary" style="flex:1" onclick="if(typeof closeModal==='function') closeModal()">Cancelar</button>
+          <button class="bigbtn primary" style="flex:1" onclick="salvarNovoLembrete()">Salvar</button>
+        </div>
+      </div>
+    `);
+  }
+}
+
+function salvarNovoLembrete() {
+  const nomeIn = $('#novoLembreteNome');
+  const horaIn = $('#novoLembreteHora');
+  const nome = (nomeIn ? nomeIn.value : '').trim() || 'Lembrete';
+  const hora = (horaIn ? horaIn.value : '').trim();
+
+  if (!hora || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) {
+    toast('Defina um horário válido (HH:MM)');
+    return;
+  }
+
+  const list = loadLembretes();
+  const novoId = 'lembrete_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  list.push({
+    id: novoId,
+    nome: nome,
+    hora: hora,
+    ativo: true
+  });
+
+  saveLembretes(list);
+  if (typeof closeModal === 'function') closeModal();
+  toast(`Lembrete de ${nome} adicionado! ✨`);
+  render();
+}
+
+function removerLembrete(index) {
+  const list = loadLembretes();
+  if (list[index]) {
+    const nome = list[index].nome;
+    list.splice(index, 1);
+    saveLembretes(list);
+    toast(`Lembrete "${nome}" removido`);
+    render();
+  }
+}
+
+function atualizarNomeLembrete(index, novoNome) {
+  const list = loadLembretes();
+  if (list[index]) {
+    list[index].nome = (novoNome || '').trim() || list[index].nome;
+    saveLembretes(list);
+  }
+}
+
 function atualizarHoraLembrete(index, novaHora) {
   const list = loadLembretes();
   if (list[index]) {
@@ -145,17 +301,21 @@ function toggleLembrete(index, ativo) {
 }
 
 function testarNotificacao() {
-  const titulo = 'NutriTrack ⏰ Lembrete';
-  const msg = 'Hora do seu Lanche! Mantenha suas metas e hidratação em dia.';
+  const list = loadLembretes();
+  const ativos = list.filter(l => l.ativo);
+  const lembreteExemplo = ativos.length > 0 ? ativos[Math.floor(Math.random() * ativos.length)] : { nome: 'Refeição' };
+  const titulo = `NutriTrack ⏰ ${lembreteExemplo.nome}`;
+  const msg = obterMensagemPositiva(lembreteExemplo.nome);
+
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.sendNotification === 'function') {
     AndroidBridge.sendNotification(titulo, msg);
     if (typeof AndroidBridge.vibrate === 'function') AndroidBridge.vibrate(150);
-    toast('Notificação nativa enviada!');
+    toast(`Notificação: "${msg}"`);
   } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     new Notification(titulo, { body: msg });
-    toast('Notificação web enviada!');
+    toast(`Notificação: "${msg}"`);
   } else {
-    toast('Notificação de teste disparada (no app nativo abrirá como aviso do sistema)');
+    toast(`Preview: ${titulo} — "${msg}"`);
   }
 }
 
@@ -229,21 +389,27 @@ function wipeAll() {
   render();
 }
 
+window.MENSAGENS_POSITIVAS = MENSAGENS_POSITIVAS;
+window.obterMensagemPositiva = obterMensagemPositiva;
+window.loadLembretes = loadLembretes;
+window.saveLembretes = saveLembretes;
+window.renderLembretesHtml = renderLembretesHtml;
 window.atualizarHoraLembrete = atualizarHoraLembrete;
+window.atualizarNomeLembrete = atualizarNomeLembrete;
 window.toggleLembrete = toggleLembrete;
+window.abrirModalNovoLembrete = abrirModalNovoLembrete;
+window.salvarNovoLembrete = salvarNovoLembrete;
+window.removerLembrete = removerLembrete;
 window.testarNotificacao = testarNotificacao;
 window.doBackup = doBackup;
 window.doRestore = doRestore;
 window.wipeAll = wipeAll;
+window.renderAjustes = renderAjustes;
 
 // Inicialização e sincronização de lembretes nativos
 try {
   const _initReminders = loadLembretes();
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.syncAlarms === 'function') {
-    AndroidBridge.syncAlarms(JSON.stringify(_initReminders));
+    saveLembretes(_initReminders);
   }
 } catch(e) {}
-
-window.loadLembretes = loadLembretes;
-window.saveLembretes = saveLembretes;
-window.renderAjustes = renderAjustes;

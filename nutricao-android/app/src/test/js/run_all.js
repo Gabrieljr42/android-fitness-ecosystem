@@ -18,7 +18,8 @@ const tests = [
   'challenger_m2_2_activity_stress.test.js',
   'challenger_m3_2_adversarial.test.js',
   'r4_nutricao_regression.test.js',
-  'challenger_preview_m1_m2_2_nutricao.test.js'
+  'challenger_preview_m1_m2_2_nutricao.test.js',
+  'custom_reminders_positive_messages.test.js'
 ];
 
 console.log('=== [NUTRITRACK] Executando Suíte de Testes Unitários ===\n');
