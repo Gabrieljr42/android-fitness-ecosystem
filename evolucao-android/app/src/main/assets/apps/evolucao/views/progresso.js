@@ -10,7 +10,7 @@ function renderProgresso(){
   var pct=targetSets?Math.min(100,Math.round(weekSets/targetSets*100)):0;
   var recent=sortedSessions().slice(-6).reverse();
   var h='<div class="mf-dashboard-head"><div><span class="mf-eyebrow">Resumo da semana</span><h1>Dashboard</h1><div class="sub">Treine com clareza. Progrida com consistência.</div></div><span class="mf-dashboard-mark">'+weekSessions.length+'</span></div>';
-  h+='<div class="mf-dash-rings"><div class="mf-dash-ring" style="--pct:'+pct+'%;--ring:#f97a53"><div><b>'+pct+'%</b><small>sets alvo</small></div></div><div class="mf-dash-stat"><b>'+weekSets+'</b><small>séries esta semana</small></div><div class="mf-dash-stat"><b>'+state.sessions.length+'</b><small>treinos registrados</small></div></div>';
+  h+='<div class="mf-dash-rings"><div class="mf-dash-ring" style="--pct:'+pct+'%"><div><b>'+pct+'%</b><small>sets alvo</small></div></div><div class="mf-dash-stat"><b>'+weekSets+'</b><small>séries esta semana</small></div><div class="mf-dash-stat"><b>'+state.sessions.length+'</b><small>treinos registrados</small></div></div>';
   h+='<div class="mf-dash-section"><div class="mf-dash-section-head"><h2>Registros recentes</h2><span>últimos treinos</span></div><div class="mf-recent-records">';
   if(!recent.length) h+='<div class="mf-recent-empty">Seu primeiro treino aparece aqui.</div>';
   recent.forEach(function(s){
@@ -39,7 +39,7 @@ function renderProgresso(){
   if(pts.length<2){
     h+='<div class="empty"><svg viewBox="0 0 24 24"><polyline points="4 18 9 13 13 15.5 20 7"/><polyline points="16 7 20 7 20 11"/><line x1="4" y1="21" x2="20" y2="21"/></svg><div class="t">Sem dados ainda</div><div class="s">Registre séries de treino na aba Treino para ver sua evolução aqui.</div></div>';
   } else {
-  h+=chartSVG(pts, metric==='vol'?'#ff6b3d':'#4d7cff');
+  h+=chartSVG(pts, '#ffffff');
   if(pts.length>=2){
     var f=pts[0].y, l=pts[pts.length-1].y, diff=l-f, pct=f?Math.round(diff/f*1000)/10:0, cls=diff>=0?'pos':'neg', sg=diff>=0?'+':'';
     h+='<div class="stat"><div><div class="v">'+nkg(f)+'</div><div class="l">início</div></div>'+
@@ -56,7 +56,7 @@ function renderProgresso(){
   if(pp.length<2){
     h+='<div class="empty"><svg viewBox="0 0 24 24"><path d="M6 3v18"/><circle cx="16" cy="16" r="5"/><line x1="16" y1="13" x2="16" y2="19"/></svg><div class="t">Nenhuma pesagem</div><div class="s">Registre seu peso hoje para acompanhar a tendência ao longo do tempo.</div></div>';
   } else {
-  h+=chartSVG(pp,'#60a5fa');
+  h+=chartSVG(pp,'#ffffff');
   if(pp.length) h+='<div class="sub" style="margin:10px 0 0">Último: <b style="color:var(--txt)">'+nkg(pp[pp.length-1].y)+' kg</b> · '+fmtBRfull(pp[pp.length-1].x)+'</div>';
   }
   h+='<div class="hint">Bulking limpo: ~0,25–0,5 kg por semana. Pese-se em jejum, 1–2×/semana.</div></div>';

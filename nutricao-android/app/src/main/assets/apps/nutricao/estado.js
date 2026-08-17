@@ -13,8 +13,26 @@ const LS = {
 };
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-const today = () => new Date().toISOString().slice(0, 10);
-const dateKey = (d = new Date()) => d.toISOString().slice(0, 10);
+function localDateStr(d = new Date()) {
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    return d;
+  }
+  const isDate = d && (d instanceof Date || (typeof d === 'object' && typeof d.getTime === 'function')) && !isNaN(d.getTime());
+  const date = isDate
+    ? d
+    : (typeof d === 'number' || (typeof d === 'string' && d.length >= 10)) ? new Date(d) : new Date();
+  if (isNaN(date.getTime())) {
+    const fallback = new Date();
+    return fallback.getFullYear() + '-' + String(fallback.getMonth() + 1).padStart(2, '0') + '-' + String(fallback.getDate()).padStart(2, '0');
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function today() { return localDateStr(); }
+function dateKey(d = new Date()) { return localDateStr(d); }
+function todayISO() { return localDateStr(); }
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch(e) { return d; } };
@@ -56,7 +74,7 @@ function dayBurned(d = today()) {
 function addActivity(act) {
   if (!act || typeof act !== 'object') act = {};
   const d = act.date || act.data || today();
-  const h = act.hour || act.hora || (typeof horaNow === 'function' ? horaNow() : new Date().toTimeString().slice(0, 5));
+  const h = act.hour || act.hora || (typeof horaNow === 'function' ? horaNow() : (function() { const now = new Date(); return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'); })());
   const dur = Number(act.duracaoMin ?? act.duracao_min) || 0;
   const k = Number(act.kcal_gasto ?? act.kcal) || 0;
   const m = Number(act.met ?? act.met_medio) || 0;
@@ -175,20 +193,31 @@ function setWaterIntake(ml, date = today()) {
 }
 
 // Global exports
-window.LS = LS;
-window.today = today;
-window.activities = activities;
-window.saveActivities = saveActivities;
-window.dayActivities = dayActivities;
-window.dayBurned = dayBurned;
-window.addActivity = addActivity;
-window.delActivity = delActivity;
-window.calcBMR = calcBMR;
-window.calcTDEE = calcTDEE;
-window.getCreatinaStatus = getCreatinaStatus;
-window.toggleCreatina = toggleCreatina;
-window.getWaterGoal = getWaterGoal;
-window.setWaterGoal = setWaterGoal;
-window.getWaterIntake = getWaterIntake;
-window.addWaterIntake = addWaterIntake;
-window.setWaterIntake = setWaterIntake;
+if (typeof window !== 'undefined') {
+  window.LS = LS;
+  window.localDateStr = localDateStr;
+  window.today = today;
+  window.dateKey = dateKey;
+  window.todayISO = todayISO;
+  window.activities = activities;
+  window.saveActivities = saveActivities;
+  window.dayActivities = dayActivities;
+  window.dayBurned = dayBurned;
+  window.addActivity = addActivity;
+  window.delActivity = delActivity;
+  window.calcBMR = calcBMR;
+  window.calcTDEE = calcTDEE;
+  window.getCreatinaStatus = getCreatinaStatus;
+  window.toggleCreatina = toggleCreatina;
+  window.getWaterGoal = getWaterGoal;
+  window.setWaterGoal = setWaterGoal;
+  window.getWaterIntake = getWaterIntake;
+  window.addWaterIntake = addWaterIntake;
+  window.setWaterIntake = setWaterIntake;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.localDateStr = localDateStr;
+  globalThis.today = today;
+  globalThis.dateKey = dateKey;
+  globalThis.todayISO = todayISO;
+}

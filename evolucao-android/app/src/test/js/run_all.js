@@ -11,8 +11,13 @@ const tests = [
   'treino_fixes.test.js',
   'challenger_stress.test.js',
   'challenger_m1_2.test.js',
+  'challenger_m2_1.test.js',
+  'challenger_m2_2.test.js',
   'corrida.test.js',
-  'challenger_m3_2.test.js'
+  'challenger_m3_2.test.js',
+  'm4_challenger2_verification.test.js',
+  'r4_evolucao_regression.test.js',
+  'challenger_preview_m1_m2_2_treino.test.js'
 ];
 
 console.log('=== [EVOLUÇÃO] Executando Suíte de Testes Unitários ===\n');

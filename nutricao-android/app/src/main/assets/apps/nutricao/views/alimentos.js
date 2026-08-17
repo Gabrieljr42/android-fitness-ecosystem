@@ -329,25 +329,25 @@ function renderPlano(box) {
           <div class="info">
             <div class="nome">${r.nome}</div>
             <div class="det">${r.itens.map(i => i.nome).join(' · ')}</div>
-            <div class="small" style="margin-top:3px;font-size:11.5px">
-              <span style="color:#7ec8ff">P ${r.proteina_g}g</span> · 
-              <span style="color:#3ddc84">C ${r.carbo_g}g</span> · 
-              <span style="color:#f2a2ff">G ${r.gordura_g}g</span>
+            <div class="small" style="margin-top:3px;font-size:11.5px;color:var(--txt-secondary)">
+              <span>P ${r.proteina_g}g</span> · 
+              <span>C ${r.carbo_g}g</span> · 
+              <span>G ${r.gordura_g}g</span>
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
             <div class="k">${fmt(r.kcal)} kcal</div>
-            <button class="plus" style="width:32px;height:32px;font-size:16px" title="Adicionar à Hoje" onclick="event.stopPropagation();carregarRefeicao('${aberto.dia}', ${idx})">+</button>
+            <button class="plus" style="width:32px;height:32px;font-size:16px" title="Adicionar ao Hoje" onclick="event.stopPropagation();carregarRefeicao('${aberto.dia}', ${idx})">+</button>
           </div>
         </div>`).join('')}
 
       <div class="plano-total">
         <div>
           <span>Total do dia</span>
-          <div class="small" style="font-weight:600;margin-top:2px">
-            <span style="color:#7ec8ff">P ${diaMacros.totalP}g</span> · 
-            <span style="color:#3ddc84">C ${diaMacros.totalC}g</span> · 
-            <span style="color:#f2a2ff">G ${diaMacros.totalG}g</span>
+          <div class="small" style="font-weight:600;margin-top:2px;color:var(--txt-secondary)">
+            <span>P ${diaMacros.totalP}g</span> · 
+            <span>C ${diaMacros.totalC}g</span> · 
+            <span>G ${diaMacros.totalG}g</span>
           </div>
         </div>
         <span class="v">≈${fmt(diaMacros.totalKcal)} kcal</span>
@@ -371,7 +371,7 @@ function abrirModalRefPlano(dia, refIndex) {
   openModal(`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <h2 style="margin:0">${r.nome}</h2>
-      <span class="small" style="font-weight:700;color:var(--accent)">${diaCap}</span>
+      <span class="small" style="font-weight:700;color:var(--txt-primary)">${diaCap}</span>
     </div>
 
     <div class="macro-grid" style="margin-bottom:12px">
@@ -384,14 +384,14 @@ function abrirModalRefPlano(dia, refIndex) {
     <label style="margin-bottom:6px">Itens da Refeição (${m.itens.length})</label>
     <div class="formcard" style="padding:4px 12px;margin-bottom:12px">
       ${m.itens.map(item => `
-        <div class="det-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+        <div class="det-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle);background:transparent;border-radius:0">
           <div style="flex:1;min-width:0;padding-right:8px">
-            <div style="font-weight:700;font-size:14px;color:var(--txt)">${item.nome}</div>
-            <div class="small" style="color:var(--txt2);margin-top:2px">
-              ${item.porcao_g}g · <span style="color:#7ec8ff">P ${item.proteina_g}g</span> · <span style="color:#3ddc84">C ${item.carbo_g}g</span> · <span style="color:#f2a2ff">G ${item.gordura_g}g</span>
+            <div style="font-weight:700;font-size:14px;color:var(--txt-primary)">${item.nome}</div>
+            <div class="small" style="color:var(--txt-secondary);margin-top:2px">
+              ${item.porcao_g}g · <span>P ${item.proteina_g}g</span> · <span>C ${item.carbo_g}g</span> · <span>G ${item.gordura_g}g</span>
             </div>
           </div>
-          <div class="d-kcal" style="font-weight:800;color:var(--accent);font-size:14px;white-space:nowrap">${fmt(item.kcal)} kcal</div>
+          <div class="d-kcal" style="font-weight:800;color:#ffffff;font-size:14px;white-space:nowrap">${fmt(item.kcal)} kcal</div>
         </div>
       `).join('')}
     </div>
@@ -399,7 +399,7 @@ function abrirModalRefPlano(dia, refIndex) {
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Fechar</button>
       <button class="bigbtn primary" onclick="carregarRefeicao('${dia}', ${refIndex}); closeModal();">
-        + Adicionar à Hoje
+        + Adicionar ao Hoje
       </button>
     </div>
   `);
@@ -428,7 +428,7 @@ function carregarRefeicao(dia, refIndex) {
 
   meals.push(novaRef);
   save(LS.m, meals);
-  toast(`"${r.nome}" adicionada a Hoje! (${fmt(macros.kcal)} kcal)`);
+  toast(`"${r.nome}" adicionada ao Hoje! (${fmt(macros.kcal)} kcal)`);
   if ($('#planoBox')) renderPlano($('#planoBox'));
 }
 window.carregarRefeicao = carregarRefeicao;
@@ -539,7 +539,7 @@ function renderCustomAlimsList() {
   if (!container) return;
   const list = userAlims();
   if (!list.length) {
-    container.innerHTML = '<div class="small" style="color:var(--txt3);padding:8px 0">Nenhum alimento personalizado cadastrado ainda.</div>';
+    container.innerHTML = '<div class="small" style="color:var(--txt-tertiary);padding:8px 0">Nenhum alimento personalizado cadastrado ainda.</div>';
     return;
   }
 
@@ -553,13 +553,13 @@ function renderCustomAlimsList() {
         <div class="nm" style="cursor:pointer" onclick="modalEditarAlimento(${idx})">
           <b style="display:flex;align-items:center;gap:6px">
             ${a.nome} 
-            <span style="font-size:10px;background:var(--accent-dim);color:var(--accent);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
+            <span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
           </b>
           <small>${fmt(a.kcal)} kcal · P ${p}g · C ${c}g · G ${g}g (${porc}g)</small>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button class="plus" style="width:36px;height:36px;font-size:14px;background:var(--bg2);border:1px solid var(--line);color:var(--txt2)" title="Editar" onclick="modalEditarAlimento(${idx})">✏️</button>
-          <button class="plus" style="width:36px;height:36px" title="Adicionar ao diário" onclick="addRef('${a.nome.replace(/'/g, "\\'")}')">+</button>
+          <button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" onclick="modalEditarAlimento(${idx})">✏️</button>
+          <button class="plus" style="width:34px;height:34px" title="Adicionar ao diário" onclick="addRef('${a.nome.replace(/'/g, "\\'")}')">+</button>
         </div>
       </div>
     `;
@@ -581,7 +581,7 @@ function modalEditarAlimento(index) {
   openModal(`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <h2 style="margin:0">Editar Alimento</h2>
-      <span class="small" style="color:var(--txt2)">Meus Alimentos</span>
+      <span class="small" style="color:var(--txt-secondary)">Meus Alimentos</span>
     </div>
 
     <div class="formrow">
@@ -618,8 +618,10 @@ function modalEditarAlimento(index) {
     </div>
 
     <div class="row mt12">
-      <button class="bigbtn secondary" style="color:var(--bad);border-color:var(--bad);flex:0.8" onclick="excluirAlimento(${index})">
-        <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <button class="bigbtn secondary" style="color:var(--status-danger);border-color:rgba(248,113,113,0.3);flex:0.8" onclick="excluirAlimento(${index})">
+        <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px">
+          <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
         Excluir
       </button>
       <button class="bigbtn primary" style="flex:1.2" onclick="salvarEdicaoAlimento(${index})">
@@ -715,12 +717,12 @@ function filtrarRef() {
         <div class="nm">
           <b style="display:flex;align-items:center;gap:6px">
             ${a.nome} 
-            ${isCust ? '<span style="font-size:10px;background:var(--accent-dim);color:var(--accent);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>' : ''}
+            ${isCust ? '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>' : ''}
           </b>
           <small>${fmt(a.kcal)} kcal · P ${p} · C ${c} · G ${g}${porcDesc}</small>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          ${isCust ? `<button class="plus" style="width:36px;height:36px;font-size:14px;background:var(--bg2);border:1px solid var(--line);color:var(--txt2)" title="Editar" onclick="event.stopPropagation();modalEditarAlimento(${a.customIndex})">✏️</button>` : ''}
+          ${isCust ? `<button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" onclick="event.stopPropagation();modalEditarAlimento(${a.customIndex})">✏️</button>` : ''}
           <button class="plus" onclick="event.stopPropagation();addRef('${a.nome.replace(/'/g, "\\'")}')">+</button>
         </div>
       </div>`;
@@ -757,10 +759,10 @@ window.calcPrev = () => {
   const baseG = (a.gordura_g !== undefined ? a.gordura_g : a.g) || 0;
 
   $('#prevBox').innerHTML = `
-    <div class="det-item"><span class="d-qty">${porcanoLabel(porcao)}</span><span style="flex:1">Calorias</span><span class="d-kcal">${fmt(baseKcal * f)} kcal</span></div>
-    <div class="det-item"><span></span><span style="flex:1">Proteína</span><span class="d-kcal" style="color:#7ec8ff">${(baseP * f).toFixed(1)} g</span></div>
-    <div class="det-item"><span></span><span style="flex:1">Carboidrato</span><span class="d-kcal" style="color:#3ddc84">${(baseC * f).toFixed(1)} g</span></div>
-    <div class="det-item"><span></span><span style="flex:1">Gordura</span><span class="d-kcal" style="color:#f2a2ff">${(baseG * f).toFixed(1)} g</span></div>`;
+    <div class="det-item"><span class="d-qty">${porcanoLabel(porcao)}</span><span style="flex:1;color:var(--txt-primary)">Calorias</span><span class="d-kcal">${fmt(baseKcal * f)} kcal</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Proteína</span><span class="d-kcal">${(baseP * f).toFixed(1)} g</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Carboidrato</span><span class="d-kcal">${(baseC * f).toFixed(1)} g</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Gordura</span><span class="d-kcal">${(baseG * f).toFixed(1)} g</span></div>`;
 };
 
 function porcanoLabel(g) {

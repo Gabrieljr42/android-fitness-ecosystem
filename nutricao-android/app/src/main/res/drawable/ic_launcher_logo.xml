@@ -3,11 +3,44 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#111116" android:pathData="M0,0h108v108h-108z" />
-    <path android:fillColor="#F5A623" android:pathData="M54,8A46,46 0,1 0,54 100A46,46 0,1 0,54 8" />
-    <path android:fillColor="#111116" android:pathData="M25,51h58c-2.7,20.4 -13.6,32.5 -29,32.5S27.7,71.4 25,51z" />
-    <path android:fillColor="#3DDC84" android:pathData="M53.5,46C58.5,27.5 72.8,20.6 87,23.5C84.7,39.2 73,49.2 54,50z" />
-    <path android:strokeColor="#111116" android:strokeWidth="2.4" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M54,48C61,38 70,31 82,27" />
-    <path android:strokeColor="#111116" android:strokeWidth="3.5" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M20,51h68" />
-    <path android:strokeColor="#111116" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M35,92h38" />
+    <!-- Deep Matte Dark Background #09090B -->
+    <path
+        android:fillColor="#09090B"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Subtle Outer Border Squircle #27272A -->
+    <path
+        android:strokeColor="#27272A"
+        android:strokeWidth="1.5"
+        android:fillColor="#18181B"
+        android:pathData="M54,12C78,12 96,30 96,54C96,78 78,96 54,96C30,96 12,78 12,54C12,30 30,12 54,12z" />
+
+    <!-- Pure White Circular Plate Outline -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,26A28,28 0 1 0 54,82A28,28 0 1 0 54,26" />
+
+    <!-- Geometric Nourishment Leaf Emblem (White / Silver Accent) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,34C63,42 66,54 54,66C42,54 45,42 54,34z" />
+
+    <!-- Leaf Center Axis -->
+    <path
+        android:strokeColor="#18181B"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,36L54,64" />
+
+    <!-- Horizontal Precision Ring Indicators -->
+    <path
+        android:strokeColor="#A1A1AA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M38,54h4M66,54h4" />
 </vector>
