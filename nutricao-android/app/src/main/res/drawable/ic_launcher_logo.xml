@@ -15,32 +15,56 @@
         android:fillColor="#18181B"
         android:pathData="M54,12C78,12 96,30 96,54C96,78 78,96 54,96C30,96 12,78 12,54C12,30 30,12 54,12z" />
 
-    <!-- Pure White Circular Plate Outline -->
+    <!-- Macro Track 1: Outer Background Track (Zinc #27272A) -->
+    <path
+        android:strokeColor="#27272A"
+        android:strokeWidth="5.0"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,22A32,32 0 1 0 54,86A32,32 0 1 0 54,22" />
+
+    <!-- Macro Ring 1: Proteína (White #FFFFFF, 270 deg arc) -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
+        android:strokeWidth="5.0"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"
-        android:pathData="M54,26A28,28 0 1 0 54,82A28,28 0 1 0 54,26" />
+        android:pathData="M54,22A32,32 0 1 1 22,54" />
 
-    <!-- Geometric Nourishment Leaf Emblem (White / Silver Accent) -->
+    <!-- Macro Track 2: Middle Background Track (Zinc #27272A) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,34C63,42 66,54 54,66C42,54 45,42 54,34z" />
-
-    <!-- Leaf Center Axis -->
-    <path
-        android:strokeColor="#18181B"
-        android:strokeWidth="2.0"
+        android:strokeColor="#27272A"
+        android:strokeWidth="5.0"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"
-        android:pathData="M54,36L54,64" />
+        android:pathData="M54,33A21,21 0 1 0 54,75A21,21 0 1 0 54,33" />
 
-    <!-- Horizontal Precision Ring Indicators -->
+    <!-- Macro Ring 2: Carboidrato (Silver #D4D4D8, 220 deg arc) -->
+    <path
+        android:strokeColor="#D4D4D8"
+        android:strokeWidth="5.0"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,33A21,21 0 1 1 35.8,43.5" />
+
+    <!-- Macro Track 3: Inner Background Track (Zinc #27272A) -->
+    <path
+        android:strokeColor="#27272A"
+        android:strokeWidth="5.0"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,44A10,10 0 1 0 54,64A10,10 0 1 0 54,44" />
+
+    <!-- Macro Ring 3: Gordura (Zinc #A1A1AA, 160 deg arc) -->
     <path
         android:strokeColor="#A1A1AA"
-        android:strokeWidth="1.5"
+        android:strokeWidth="5.0"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"
-        android:pathData="M38,54h4M66,54h4" />
+        android:pathData="M54,44A10,10 0 1 1 44.6,50.6" />
+
+    <!-- Center Precision Energy Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,52A2,2 0 1 0 54,56A2,2 0 1 0 54,52" />
 </vector>
