@@ -17,7 +17,8 @@ const tests = [
   'challenger_m3_2.test.js',
   'm4_challenger2_verification.test.js',
   'r4_evolucao_regression.test.js',
-  'challenger_preview_m1_m2_2_treino.test.js'
+  'challenger_preview_m1_m2_2_treino.test.js',
+  'ble_diag.test.js'
 ];
 
 console.log('=== [EVOLUÇÃO] Executando Suíte de Testes Unitários ===\n');

@@ -58,6 +58,10 @@ function renderFicha(){
     '<div class="row" style="margin-top:10px"><button class="rpill" id="stallBtn">Travado: '+st.progressao.stallSessions+' sessões</button><button class="rpill" id="deloadBtn">Deload: '+st.progressao.deloadPct+'%</button></div>'+ 
     '<div class="hint" style="text-align:left">O incremento e o equipamento são inferidos pelo nome e podem ser ajustados nos dados do backup.</div></div>';
 
+  h+='<h2>Balança & BLE</h2><div class="card">'+
+    '<div class="setrow"><div class="lbl">Diagnóstico BLE da Balança<small>Captura os pacotes brutos transmitidos via Bluetooth Low Energy pela balança Davely.</small></div>'+
+    '<button class="cta sm" id="fBleDiagBtn" style="width:auto;flex:0 0 auto;padding:8px 14px">🔬 Abrir</button></div></div>';
+
   var nativeSave = (typeof window!=='undefined' && window.AndroidBridge && window.AndroidBridge.saveBackup);
   h+='<h2>Dados</h2><div class="card"><div class="databtns">'+
     '<button id="expBtn">⬇ Fazer backup</button><button id="impBtn">⬆ Restaurar arquivo</button><button class="dg" id="wipeBtn">Apagar tudo</button></div>'+
@@ -152,6 +156,7 @@ function bindFicha(){
   };
   var fn=document.getElementById('fNotify'); if(fn) fn.onclick=enableNotify;
   var fi=document.getElementById('fInstall'); if(fi) fi.onclick=doInstall;
+  var fb=document.getElementById('fBleDiagBtn'); if(fb) fb.onclick=function(){ if(window.BleDiag&&window.BleDiag.open) window.BleDiag.open(); };
 
   var nativeSave = (typeof window!=='undefined' && window.AndroidBridge && window.AndroidBridge.saveBackup);
   document.getElementById('expBtn').onclick=function(){
