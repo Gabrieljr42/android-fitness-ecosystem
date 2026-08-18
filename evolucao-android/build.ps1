@@ -146,9 +146,10 @@ Say "Caminhos corrigidos: $fixedCount"
 # ---------- 4. Java -> .class ----------
 Say "Compilando Java..."
 New-Item -ItemType Directory -Force "build\classes" | Out-Null
+$javaSources = Get-ChildItem -Recurse "app\src\main\java" -Filter *.java | ForEach-Object { $_.FullName }
 & $javac -source 8 -target 8 -nowarn -classpath "$androidJar" -d "build\classes" `
   -encoding UTF-8 `
-  "app\src\main\java\com\evolucao\treino\MainActivity.java"
+  @javaSources
 if($LASTEXITCODE -ne 0){ throw "javac falhou." }
 
 # ---------- 5. .class -> classes.dex ----------

@@ -59,7 +59,8 @@ function renderProgresso(){
   h+=chartSVG(pp,'#ffffff');
   if(pp.length) h+='<div class="sub" style="margin:10px 0 0">Último: <b style="color:var(--txt)">'+nkg(pp[pp.length-1].y)+' kg</b> · '+fmtBRfull(pp[pp.length-1].x)+'</div>';
   }
-  h+='<div class="hint">Bulking limpo: ~0,25–0,5 kg por semana. Pese-se em jejum, 1–2×/semana.</div></div>';
+  h+='<div class="hint">Bulking limpo: ~0,25–0,5 kg por semana. Pese-se em jejum, 1–2×/semana.</div>'+
+    '<div style="margin-top:10px"><button class="rpill" id="pBleDiagBtn" style="width:100%;justify-content:center;padding:8px 12px">🔬 Diagnóstico BLE da Balança Davely</button></div></div>';
   return h;
 }
 function bindProgresso(){
@@ -73,4 +74,6 @@ function bindProgresso(){
     var t=todayISO(); state.peso=state.peso.filter(function(p){return p.date!==t;});
     state.peso.push({date:t, kg:kg}); save(); vibrate(15); toast('Peso registrado'); render();
   };
+  var pBle = document.getElementById('pBleDiagBtn');
+  if (pBle) pBle.onclick = function() { if (window.BleDiag && window.BleDiag.open) window.BleDiag.open(); };
 }

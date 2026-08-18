@@ -6,6 +6,8 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -28,6 +30,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -39,6 +44,8 @@ public class MainActivity extends Activity {
     private static final int REST_NOTIFICATION_ID = 1;
     private static final int REST_DONE_NOTIFICATION_ID = 2;
     private static final int FILE_CHOOSER_CODE = 51;
+    private static final int BLE_PERMISSION_REQ_CODE = 201;
+
     private ValueCallback<Uri[]> filePathCallback;
     private final Handler restHandler = new Handler(Looper.getMainLooper());
     private boolean restActive;
@@ -47,6 +54,8 @@ public class MainActivity extends Activity {
     private boolean appInForeground;
     private long restEndAt;
     private String restLabel = "";
+
+    private ScaleBleScanner bleScanner;
 
     private String restClock(long seconds) {
         long safe = Math.max(0, seconds);
@@ -118,11 +127,52 @@ public class MainActivity extends Activity {
         }
     };
 
+    private void runOnJs(final String js) {
+        if (web == null) return;
+        web.post(new Runnable() {
+            @Override
+            public void run() {
+                if (web != null) {
+                    web.evaluateJavascript(js, null);
+                }
+            }
+        });
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         createChannel();
         requestNotifPermission();
+
+        // Inicializa o Scanner BLE de diagnóstico
+        bleScanner = new ScaleBleScanner(this, new ScaleBleScanner.BleScanListener() {
+            @Override
+            public void onScanStateChanged(final boolean scanning, final String statusMessage) {
+                try {
+                    final JSONObject json = new JSONObject();
+                    json.put("scanning", scanning);
+                    json.put("message", statusMessage);
+                    runOnJs("if (window.onBleScanStateChanged) window.onBleScanStateChanged(" + json.toString() + ");");
+                } catch (Exception e) { /* ignore */ }
+            }
+
+            @Override
+            public void onAdvertisementsBatchReceived(final JSONArray batchJson) {
+                if (batchJson == null || batchJson.length() == 0) return;
+                runOnJs("if (window.onBleAdvertisementsBatch) { window.onBleAdvertisementsBatch(" + batchJson.toString() + "); } else if (window.onBleAdvertisement) { var _arr=" + batchJson.toString() + "; for(var _i=0;_i<_arr.length;_i++) window.onBleAdvertisement(_arr[_i]); }");
+            }
+
+            @Override
+            public void onScanError(final int errorCode, final String errorMessage) {
+                try {
+                    final JSONObject json = new JSONObject();
+                    json.put("code", errorCode);
+                    json.put("message", errorMessage);
+                    runOnJs("if (window.onBleScanError) window.onBleScanError(" + json.toString() + ");");
+                } catch (Exception e) { /* ignore */ }
+            }
+        });
 
         web = new WebView(this);
         WebSettings s = web.getSettings();
@@ -170,7 +220,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         appInForeground = false;
+        if (bleScanner != null) {
+            bleScanner.stopScan();
+        }
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (bleScanner != null) {
+            bleScanner.stopScan();
+        }
+        super.onDestroy();
     }
 
     @Override
@@ -185,6 +246,35 @@ public class MainActivity extends Activity {
             filePathCallback = null;
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == BLE_PERMISSION_REQ_CODE) {
+            boolean allGranted = true;
+            if (grantResults.length == 0) {
+                allGranted = false;
+            } else {
+                for (int res : grantResults) {
+                    if (res != PackageManager.PERMISSION_GRANTED) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+            }
+            if (allGranted && bleScanner != null) {
+                bleScanner.startScan();
+            } else {
+                try {
+                    JSONObject err = new JSONObject();
+                    err.put("code", 103);
+                    err.put("message", "Permissão necessária de Bluetooth não foi concedida.");
+                    runOnJs("if (window.onBleScanError) window.onBleScanError(" + err.toString() + ");");
+                } catch (Exception e) { /* ignore */ }
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
 
@@ -351,6 +441,137 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() { public void run() {
                     Toast.makeText(MainActivity.this, "Erro ao salvar backup", Toast.LENGTH_LONG).show();
                 }});
+            }
+        }
+
+        // =========================================================================
+        // BLE DIAGNOSTIC BRIDGE METHODS
+        // =========================================================================
+
+        @JavascriptInterface
+        public void startBleScan() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (bleScanner == null) return;
+                    if (bleScanner.hasRequiredPermissions()) {
+                        bleScanner.startScan();
+                    } else if (Build.VERSION.SDK_INT >= 23) {
+                        requestPermissions(bleScanner.getRequiredPermissions(), BLE_PERMISSION_REQ_CODE);
+                    } else {
+                        bleScanner.startScan();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopBleScan() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (bleScanner != null) {
+                        bleScanner.stopScan();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean isBluetoothAvailable() {
+            return bleScanner != null && bleScanner.isBluetoothSupported();
+        }
+
+        @JavascriptInterface
+        public boolean isBluetoothEnabled() {
+            return bleScanner != null && bleScanner.isBluetoothEnabled();
+        }
+
+        @JavascriptInterface
+        public boolean hasBlePermissions() {
+            return bleScanner != null && bleScanner.hasRequiredPermissions();
+        }
+
+        @JavascriptInterface
+        public void requestBlePermissions() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (bleScanner != null && Build.VERSION.SDK_INT >= 23) {
+                        requestPermissions(bleScanner.getRequiredPermissions(), BLE_PERMISSION_REQ_CODE);
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getBleDiagnosticState() {
+            return bleScanner != null ? bleScanner.getDiagnosticState().toString() : "{}";
+        }
+
+        @JavascriptInterface
+        public void copyToClipboard(final String text) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (cm != null) {
+                            ClipData cd = ClipData.newPlainText("Evolucao BLE Diagnostic", text != null ? text : "");
+                            cm.setPrimaryClip(cd);
+                            Toast.makeText(MainActivity.this, "Copiado para a área de transferência", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this, "Falha ao copiar", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void saveBleDiagnosticFile(final String content, final String filename, final String mimeType) {
+            try {
+                String safeMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "text/plain";
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                    cv.put(MediaStore.Downloads.MIME_TYPE, safeMime);
+                    cv.put(MediaStore.Downloads.IS_PENDING, 1);
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri != null) {
+                        OutputStream os = getContentResolver().openOutputStream(uri);
+                        if (os != null) {
+                            os.write((content != null ? content : "").getBytes("UTF-8"));
+                            os.close();
+                        }
+                        cv.clear();
+                        cv.put(MediaStore.Downloads.IS_PENDING, 0);
+                        getContentResolver().update(uri, cv, null, null);
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "Diagnóstico salvo em Downloads/" + filename, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        return;
+                    }
+                }
+                File dir = getExternalFilesDir(null);
+                File f = new File(dir, filename);
+                FileOutputStream fos = new FileOutputStream(f);
+                fos.write((content != null ? content : "").getBytes("UTF-8"));
+                fos.close();
+                final String path = f.getAbsolutePath();
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "Salvo em " + path, Toast.LENGTH_LONG).show();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "Erro ao salvar arquivo de diagnóstico", Toast.LENGTH_LONG).show();
+                    }
+                });
             }
         }
     }
