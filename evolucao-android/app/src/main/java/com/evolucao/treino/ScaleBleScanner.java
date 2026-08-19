@@ -11,6 +11,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,11 +30,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * ScaleBleScanner
- * Scanner Bluetooth Low Energy (BLE) de diagnóstico de alta fidelidade para captura
- * de pacotes brutos emitidos pela balança Davely e outros dispositivos BLE.
+ * Scanner Bluetooth Low Energy (BLE) de alto desempenho e diagnóstico em tempo real
+ * para captura contínua e decodificação de pacotes brutos emitidos pela balança Davely
+ * e outros periféricos BLE.
  */
 public class ScaleBleScanner {
     public static final String TAG = "EvolucaoBLE";
@@ -43,6 +46,8 @@ public class ScaleBleScanner {
         void onScanStateChanged(boolean scanning, String statusMessage);
         void onAdvertisementsBatchReceived(JSONArray batchJson);
         void onScanError(int errorCode, String errorMessage);
+        default void onScaleMeasurementPacket(DavelyMeasurementPacket packet) {}
+        default void onScaleTelemetryUpdated(JSONObject telemetry) {}
     }
 
     private final Context context;
@@ -56,6 +61,17 @@ public class ScaleBleScanner {
 
     private final List<JSONObject> packetBatch = new ArrayList<>();
     private boolean batchFlushScheduled = false;
+
+    // Contadores de telemetria de alta precisão
+    private final AtomicLong startScanAttempts = new AtomicLong(0);
+    private final AtomicLong nativeScanResultCount = new AtomicLong(0);
+    private final AtomicLong recognizedScalePacketCount = new AtomicLong(0);
+    private final AtomicLong parsedWeightPacketCount = new AtomicLong(0);
+    private final AtomicLong stableWeightPacketCount = new AtomicLong(0);
+    private volatile String lastNativePacketAt = null;
+    private volatile double lastParsedWeight = 0.0;
+    private volatile boolean lastParsedStable = false;
+    private volatile String lastScaleMac = null;
 
     private final Runnable batchFlushRunnable = new Runnable() {
         @Override
@@ -100,6 +116,25 @@ public class ScaleBleScanner {
         }
     }
 
+    public boolean isLocationServiceEnabled() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            return true;
+        }
+        try {
+            LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+            if (lm == null) return false;
+            if (Build.VERSION.SDK_INT >= 28) {
+                return lm.isLocationEnabled();
+            } else {
+                return lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                       lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Erro ao verificar status do serviço de localização", e);
+            return false;
+        }
+    }
+
     public String[] getRequiredPermissions() {
         if (Build.VERSION.SDK_INT >= 31) {
             return new String[]{
@@ -113,16 +148,91 @@ public class ScaleBleScanner {
         }
     }
 
+    public long getStartScanAttempts() {
+        return startScanAttempts.get();
+    }
+
+    public long getNativeScanResultCount() {
+        return nativeScanResultCount.get();
+    }
+
+    public long getRecognizedScalePacketCount() {
+        return recognizedScalePacketCount.get();
+    }
+
+    public long getParsedWeightPacketCount() {
+        return parsedWeightPacketCount.get();
+    }
+
+    public long getStableWeightPacketCount() {
+        return stableWeightPacketCount.get();
+    }
+
+    public String getLastNativePacketAt() {
+        return lastNativePacketAt;
+    }
+
+    public double getLastParsedWeight() {
+        return lastParsedWeight;
+    }
+
+    public boolean isLastParsedStable() {
+        return lastParsedStable;
+    }
+
+    public String getLastScaleMac() {
+        return lastScaleMac;
+    }
+
+    public void resetTelemetry() {
+        nativeScanResultCount.set(0);
+        recognizedScalePacketCount.set(0);
+        parsedWeightPacketCount.set(0);
+        stableWeightPacketCount.set(0);
+        lastNativePacketAt = null;
+        lastParsedWeight = 0.0;
+        lastParsedStable = false;
+        lastScaleMac = null;
+    }
+
+    public JSONObject getTelemetryJson() {
+        JSONObject t = new JSONObject();
+        try {
+            t.put("startScanAttempts", startScanAttempts.get());
+            t.put("nativeScanResultCount", nativeScanResultCount.get());
+            t.put("recognizedScalePacketCount", recognizedScalePacketCount.get());
+            t.put("parsedWeightPacketCount", parsedWeightPacketCount.get());
+            t.put("stableWeightPacketCount", stableWeightPacketCount.get());
+            if (lastNativePacketAt != null) {
+                t.put("lastNativePacketAt", lastNativePacketAt);
+            } else {
+                t.put("lastNativePacketAt", JSONObject.NULL);
+            }
+            t.put("lastParsedWeight", lastParsedWeight);
+            t.put("lastParsedStable", lastParsedStable);
+            if (lastScaleMac != null) {
+                t.put("lastScaleMac", lastScaleMac);
+            } else {
+                t.put("lastScaleMac", JSONObject.NULL);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Erro ao gerar getTelemetryJson", e);
+        }
+        return t;
+    }
+
     public JSONObject getDiagnosticState() {
         JSONObject state = new JSONObject();
         try {
             state.put("isSupported", isBluetoothSupported());
             state.put("isEnabled", isBluetoothEnabled());
             state.put("hasPermissions", hasRequiredPermissions());
+            state.put("isLocationEnabled", isLocationServiceEnabled());
             state.put("isScanning", isScanning);
             state.put("androidVersion", Build.VERSION.RELEASE);
             state.put("sdkInt", Build.VERSION.SDK_INT);
             state.put("deviceModel", Build.MANUFACTURER + " " + Build.MODEL);
+            state.put("telemetry", getTelemetryJson());
         } catch (JSONException e) {
             Log.e(TAG, "Erro ao montar getDiagnosticState", e);
         }
@@ -130,6 +240,8 @@ public class ScaleBleScanner {
     }
 
     public synchronized void startScan() {
+        startScanAttempts.incrementAndGet();
+
         if (!isBluetoothSupported()) {
             notifyError(101, "Bluetooth Low Energy não é suportado neste aparelho.");
             return;
@@ -142,6 +254,11 @@ public class ScaleBleScanner {
 
         if (!hasRequiredPermissions()) {
             notifyError(103, "Permissão Bluetooth / Localização necessária para escanear.");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT < 31 && !isLocationServiceEnabled()) {
+            notifyError(106, "A localização (GPS) do aparelho precisa estar ativada no Android 11 ou anterior.");
             return;
         }
 
@@ -159,6 +276,12 @@ public class ScaleBleScanner {
 
             ScanSettings.Builder settingsBuilder = new ScanSettings.Builder();
             settingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
+            settingsBuilder.setReportDelay(0);
+            if (Build.VERSION.SDK_INT >= 23) {
+                settingsBuilder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES);
+                settingsBuilder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE);
+                settingsBuilder.setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT);
+            }
 
             scanCallback = new ScanCallback() {
                 @Override
@@ -181,10 +304,10 @@ public class ScaleBleScanner {
                 }
             };
 
-            // Scan sem filtros para capturar todos os broadcasts entregues pelo subsistema Android
+            // Scan sem filtros de nome para garantir descoberta de dispositivos sem Complete Local Name (device.getName() == null)
             bleScanner.startScan(null, settingsBuilder.build(), scanCallback);
             isScanning = true;
-            Log.i(TAG, "BLE Scan iniciado com sucesso (LOW_LATENCY, sem filtros).");
+            Log.i(TAG, "BLE Scan iniciado com sucesso (LOW_LATENCY, sem filtros, reportDelay=0).");
 
             if (listener != null) {
                 mainHandler.post(new Runnable() {
@@ -232,8 +355,40 @@ public class ScaleBleScanner {
 
     private void processScanResult(ScanResult result) {
         if (result == null) return;
+
+        nativeScanResultCount.incrementAndGet();
+        long nowMs = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        lastNativePacketAt = sdf.format(new Date(nowMs));
+
+        // Inspeção de pacote Davely
+        DavelyMeasurementPacket parsedPacket = inspectDavelyPacket(result);
+        if (parsedPacket != null && parsedPacket.isValid()) {
+            recognizedScalePacketCount.incrementAndGet();
+            parsedWeightPacketCount.incrementAndGet();
+            lastParsedWeight = parsedPacket.getWeightKg();
+            lastParsedStable = parsedPacket.isStable();
+            lastScaleMac = parsedPacket.getEmbeddedMac();
+
+            if (parsedPacket.isStable()) {
+                stableWeightPacketCount.incrementAndGet();
+            }
+
+            if (listener != null) {
+                final DavelyMeasurementPacket finalPacket = parsedPacket;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        listener.onScaleMeasurementPacket(finalPacket);
+                        listener.onScaleTelemetryUpdated(getTelemetryJson());
+                    }
+                });
+            }
+        }
+
         try {
-            JSONObject packet = parseScanResult(result);
+            JSONObject packet = parseScanResult(result, parsedPacket, nowMs, lastNativePacketAt);
             synchronized (packetBatch) {
                 packetBatch.add(packet);
                 if (!batchFlushScheduled) {
@@ -244,6 +399,39 @@ public class ScaleBleScanner {
         } catch (Exception e) {
             Log.e(TAG, "Erro ao processar ScanResult", e);
         }
+    }
+
+    private DavelyMeasurementPacket inspectDavelyPacket(ScanResult result) {
+        ScanRecord record = result.getScanRecord();
+        String deviceAddress = null;
+        try {
+            BluetoothDevice device = result.getDevice();
+            if (device != null) {
+                deviceAddress = device.getAddress();
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        if (record != null) {
+            byte[] rawBytes = record.getBytes();
+            if (rawBytes != null && DavelyScaleParser.looksLikeDavelyPacket(rawBytes)) {
+                DavelyMeasurementPacket p = DavelyScaleParser.parse(rawBytes, deviceAddress);
+                if (p.isValid()) return p;
+            }
+
+            SparseArray<byte[]> mfgData = record.getManufacturerSpecificData();
+            if (mfgData != null && mfgData.size() > 0) {
+                for (int i = 0; i < mfgData.size(); i++) {
+                    byte[] mfgBytes = mfgData.valueAt(i);
+                    if (mfgBytes != null && DavelyScaleParser.looksLikeDavelyPacket(mfgBytes)) {
+                        DavelyMeasurementPacket p = DavelyScaleParser.parse(mfgBytes, deviceAddress);
+                        if (p.isValid()) return p;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void flushBatch() {
@@ -310,17 +498,17 @@ public class ScaleBleScanner {
     /**
      * Extrai todos os metadados do ScanResult e ScanRecord em um JSONObject completo.
      */
-    private JSONObject parseScanResult(ScanResult result) throws JSONException {
+    private JSONObject parseScanResult(
+            ScanResult result,
+            DavelyMeasurementPacket davelyPacket,
+            long nowMs,
+            String receivedAtIso
+    ) throws JSONException {
         JSONObject json = new JSONObject();
         BluetoothDevice device = result.getDevice();
         ScanRecord record = result.getScanRecord();
 
-        long nowMs = System.currentTimeMillis();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String receivedAtIso = sdf.format(new Date(nowMs));
-
-        // 1. Identificação do Dispositivo
+        // 1. Identificação do Dispositivo (Sem descartar se deviceName for nulo)
         String deviceName = null;
         try {
             if (device != null) deviceName = device.getName();
@@ -341,7 +529,7 @@ public class ScaleBleScanner {
         json.put("receivedAtEpochMs", nowMs);
         json.put("timestampNanos", result.getTimestampNanos());
 
-        // 3. Propriedades de Conectividade e Hardware (com verificações de versão)
+        // 3. Propriedades de Conectividade e Hardware
         if (Build.VERSION.SDK_INT >= 26) {
             json.put("isConnectable", result.isConnectable());
             int tx = result.getTxPower();
@@ -437,6 +625,19 @@ public class ScaleBleScanner {
             json.put("rawHex", "");
             json.put("rawHexNoSpaces", "");
             json.put("rawBytesLength", 0);
+        }
+
+        // 5. Integração com Decodificador Davely
+        if (davelyPacket != null && davelyPacket.isValid()) {
+            json.put("davely", davelyPacket.toJsonObject());
+            json.put("isDavely", true);
+            json.put("decodedWeight", davelyPacket.getWeightKg());
+            json.put("isStable", davelyPacket.isStable());
+            json.put("impedanceRaw", davelyPacket.getImpedanceRaw());
+            json.put("embeddedMac", davelyPacket.getEmbeddedMac());
+        } else {
+            json.put("davely", JSONObject.NULL);
+            json.put("isDavely", false);
         }
 
         return json;

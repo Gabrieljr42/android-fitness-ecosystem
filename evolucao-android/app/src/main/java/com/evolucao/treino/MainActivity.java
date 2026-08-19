@@ -145,15 +145,22 @@ public class MainActivity extends Activity {
         createChannel();
         requestNotifPermission();
 
-        // Inicializa o Scanner BLE de diagnóstico
+        // Inicializa o Scanner BLE de diagnóstico e medição
         bleScanner = new ScaleBleScanner(this, new ScaleBleScanner.BleScanListener() {
             @Override
             public void onScanStateChanged(final boolean scanning, final String statusMessage) {
                 try {
-                    final JSONObject json = new JSONObject();
-                    json.put("scanning", scanning);
-                    json.put("message", statusMessage);
-                    runOnJs("if (window.onBleScanStateChanged) window.onBleScanStateChanged(" + json.toString() + ");");
+                    final JSONObject diagJson = new JSONObject();
+                    diagJson.put("scanning", scanning);
+                    diagJson.put("message", statusMessage);
+
+                    final JSONObject scaleState = new JSONObject();
+                    scaleState.put("state", scanning ? "SCANNING" : "IDLE");
+                    scaleState.put("scanning", scanning);
+                    scaleState.put("message", statusMessage);
+
+                    runOnJs("if (window.onBleScanStateChanged) window.onBleScanStateChanged(" + diagJson.toString() + ");" +
+                            "if (window.onScaleStateChanged) window.onScaleStateChanged(" + scaleState.toString() + ");");
                 } catch (Exception e) { /* ignore */ }
             }
 
@@ -169,8 +176,25 @@ public class MainActivity extends Activity {
                     final JSONObject json = new JSONObject();
                     json.put("code", errorCode);
                     json.put("message", errorMessage);
-                    runOnJs("if (window.onBleScanError) window.onBleScanError(" + json.toString() + ");");
+                    final String jsonStr = json.toString();
+
+                    runOnJs("if (window.onBleScanError) window.onBleScanError(" + jsonStr + ");" +
+                            "if (window.onScaleError) window.onScaleError(" + jsonStr + ");");
                 } catch (Exception e) { /* ignore */ }
+            }
+
+            @Override
+            public void onScaleMeasurementPacket(final DavelyMeasurementPacket packet) {
+                if (packet == null || !packet.isValid()) return;
+                final String jsonStr = packet.toJsonString();
+                runOnJs("if (window.onScaleMeasurement) window.onScaleMeasurement(" + jsonStr + ");");
+            }
+
+            @Override
+            public void onScaleTelemetryUpdated(final JSONObject telemetry) {
+                if (telemetry == null) return;
+                final String jsonStr = telemetry.toString();
+                runOnJs("if (window.onScaleTelemetry) window.onScaleTelemetry(" + jsonStr + ");");
             }
         });
 
@@ -253,7 +277,7 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == BLE_PERMISSION_REQ_CODE) {
             boolean allGranted = true;
-            if (grantResults.length == 0) {
+            if (grantResults == null || grantResults.length == 0) {
                 allGranted = false;
             } else {
                 for (int res : grantResults) {
@@ -263,14 +287,20 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if (allGranted && bleScanner != null) {
-                bleScanner.startScan();
+            if (allGranted) {
+                runOnJs("if (window.onScalePermissionResult) window.onScalePermissionResult(true);");
+                if (bleScanner != null) {
+                    bleScanner.startScan();
+                }
             } else {
                 try {
                     JSONObject err = new JSONObject();
                     err.put("code", 103);
                     err.put("message", "Permissão necessária de Bluetooth não foi concedida.");
-                    runOnJs("if (window.onBleScanError) window.onBleScanError(" + err.toString() + ");");
+                    String errStr = err.toString();
+                    runOnJs("if (window.onScalePermissionResult) window.onScalePermissionResult(false);" +
+                            "if (window.onBleScanError) window.onBleScanError(" + errStr + ");" +
+                            "if (window.onScaleError) window.onScaleError(" + errStr + ");");
                 } catch (Exception e) { /* ignore */ }
             }
         } else {
@@ -445,11 +475,11 @@ public class MainActivity extends Activity {
         }
 
         // =========================================================================
-        // BLE DIAGNOSTIC BRIDGE METHODS
+        // BLE SCALE MEASUREMENT & DIAGNOSTIC BRIDGE METHODS (Milestone M3)
         // =========================================================================
 
         @JavascriptInterface
-        public void startBleScan() {
+        public void startScaleMeasurement() {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -466,7 +496,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void stopBleScan() {
+        public void stopScaleMeasurement() {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -475,6 +505,21 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+        }
+
+        @JavascriptInterface
+        public String getBleTelemetry() {
+            return bleScanner != null ? bleScanner.getTelemetryJson().toString() : "{}";
+        }
+
+        @JavascriptInterface
+        public void startBleScan() {
+            startScaleMeasurement();
+        }
+
+        @JavascriptInterface
+        public void stopBleScan() {
+            stopScaleMeasurement();
         }
 
         @JavascriptInterface
