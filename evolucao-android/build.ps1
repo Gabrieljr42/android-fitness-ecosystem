@@ -97,7 +97,7 @@ Say "Linkando (gerando APK base com manifest + assets)..."
 & $aapt2 link -o "build\app-unsigned.apk" -I "$androidJar" `
   --manifest "app\src\main\AndroidManifest.xml" `
   -A "app\src\main\assets" `
-  --min-sdk-version 24 --target-sdk-version 29 `
+  --min-sdk-version 24 --target-sdk-version 33 `
   "build\res.zip"
 if($LASTEXITCODE -ne 0){ throw "aapt2 link falhou." }
 

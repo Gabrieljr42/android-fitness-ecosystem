@@ -3015,3 +3015,107 @@ nav button.on::before {
   -webkit-user-select: all;
 }
 
+/* ==========================================================================
+   BLE SCALE MEASUREMENT UX STYLES (Milestone M4)
+   ========================================================================== */
+
+.ble-scale-card {
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 14px;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+
+.ble-scale-card.measuring {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ble-scale-card.stable {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.04);
+}
+
+.ble-scale-card.error {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.04);
+}
+
+.ble-scale-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ble-scale-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt);
+  letter-spacing: -0.01em;
+}
+
+.ble-scale-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--card3);
+  color: var(--txt2);
+}
+
+.ble-live-weight-wrap {
+  text-align: center;
+  padding: 12px 0 8px;
+}
+
+.ble-live-weight {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--txt);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ble-live-weight small {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--txt2);
+  margin-left: 4px;
+}
+
+.ble-scale-card.measuring .ble-live-weight {
+  animation: blePulse 1.2s infinite ease-in-out;
+}
+
+.ble-scale-status {
+  font-size: 12px;
+  color: var(--txt2);
+  margin-top: 6px;
+}
+
+.ble-scale-bio {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--txt2);
+  background: var(--card3);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  margin-top: 8px;
+}
+
+.ble-scale-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@keyframes blePulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(0.99); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
