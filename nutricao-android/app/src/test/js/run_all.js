@@ -25,6 +25,7 @@ const tests = [
   'r6_ai_item_ui.test.js',
   'r7_alim_kcal.test.js',
   'r7_strength_import.test.js',
+  'r7_meal_edit.test.js',
   'challenger_m3_1.test.js',
   'challenger_m3_stress_matrix.test.js',
   'challenger_r3_timezone_stress.test.js',

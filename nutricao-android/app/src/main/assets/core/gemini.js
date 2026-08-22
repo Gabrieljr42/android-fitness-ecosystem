@@ -882,6 +882,125 @@ window.confirmTexto = confirmTexto;
 window.apiBodyTexto = apiBodyTexto;
 window.consultarModeloTexto = consultarModeloTexto;
 
+/* ============ EDITOR ÚNICO DE REFEIÇÃO (IA + salvas) ============ */
+/* Um só editor para confirmar resultados de IA e editar refeições já salvas.
+   Edita uma CÓPIA profunda e só grava em Salvar — Cancelar não altera nada.
+   O id da refeição é preservado (nunca duplica). */
+let __editMealDraft = null;
+
+function openMealEditor(meal) {
+  if (!meal || typeof meal !== 'object') return;
+  __editMealDraft = {
+    id: meal.id,
+    date: meal.date,
+    origem: meal.origem || 'manual',
+    plano: meal.plano ?? null,
+    nome: String(meal.nome || 'Refeição'),
+    hour: String(meal.hour || horaNow()),
+    itens: (Array.isArray(meal.itens) ? meal.itens : []).map(i => ({
+      nome: String(i?.nome || ''),
+      porcao_g: Number(i?.porcao_g) || 0,
+      kcal: Number(i?.kcal) || 0,
+      proteina_g: Number(i?.proteina_g) || 0,
+      carbo_g: Number(i?.carbo_g) || 0,
+      gordura_g: Number(i?.gordura_g) || 0
+    }))
+  };
+  openModal(`
+    <h2>Editar refeição</h2>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1.6"><label>Nome</label><input id="mNome" value="${escapeHtml(__editMealDraft.nome)}" maxlength="80"/></div>
+      <div style="flex:1"><label>Hora</label><input id="mHour" type="time" value="${escapeHtml(__editMealDraft.hour)}"/></div>
+    </div>
+    <label style="margin-top:10px">Itens</label>
+    <div id="mItensBox"></div>
+    <button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addEditMealItem()">+ Adicionar item</button>
+    <div class="det-total mt8">Total: <span class="v" id="mTotal">0 kcal</span></div>
+    <div class="row mt12">
+      <button class="bigbtn secondary" onclick="cancelEditMeal()">Cancelar</button>
+      <button class="bigbtn primary" onclick="confirmEditMeal()">Salvar alterações</button>
+    </div>
+  `);
+  renderEditMealItems();
+}
+window.openMealEditor = openMealEditor;
+
+function renderEditMealItems() {
+  const box = $('#mItensBox');
+  const d = __editMealDraft;
+  if (!box || !d) return;
+  box.innerHTML = d.itens.map((it, i) => aiItemRowHtml(
+    i, it,
+    'updEditMealItem', 'rmEditMealItem', 'addEditMealItem', 'mItensBox', 'updEditMealTotais', 'm'
+  )).join('');
+  updEditMealTotais();
+}
+
+function updEditMealTotais() {
+  const d = __editMealDraft;
+  if (!d) return;
+  const k = d.itens.reduce((a, i) => a + (parseFloat(i.kcal) || 0), 0);
+  const el = $('#mTotal');
+  if (el) el.textContent = fmt(k) + ' kcal';
+}
+window.updEditMealTotais = updEditMealTotais;
+
+function updEditMealItem(idx, field, value) {
+  const it = __editMealDraft?.itens?.[idx];
+  if (!it) return;
+  it[field] = field === 'nome' ? String(value) : parseFloat(value) || 0;
+  updEditMealTotais();
+}
+window.updEditMealItem = updEditMealItem;
+
+function rmEditMealItem(idx) {
+  if (!__editMealDraft) return;
+  __editMealDraft.itens.splice(idx, 1);
+  renderEditMealItems();
+}
+window.rmEditMealItem = rmEditMealItem;
+
+function addEditMealItem() {
+  if (!__editMealDraft) return;
+  __editMealDraft.itens.push({ nome: '', porcao_g: 100, kcal: 0, proteina_g: 0, carbo_g: 0, gordura_g: 0 });
+  renderEditMealItems();
+}
+window.addEditMealItem = addEditMealItem;
+
+function cancelEditMeal() {
+  __editMealDraft = null; // descarta a cópia — nada foi gravado
+  closeModal();
+}
+window.cancelEditMeal = cancelEditMeal;
+
+function confirmEditMeal() {
+  const d = __editMealDraft;
+  if (!d) { closeModal(); return; }
+  const idx = meals.findIndex(m => m.id === d.id);
+  if (idx < 0) { toast('Refeição não encontrada'); cancelEditMeal(); return; }
+
+  const itens = d.itens.filter(i => (i.kcal || 0) > 0);
+  if (!itens.length) { toast('Nenhum item com calorias'); return; }
+
+  const nomeEl = $('#mNome'), horaEl = $('#mHour');
+  const anterior = JSON.parse(JSON.stringify(meals[idx]));
+  meals[idx] = {
+    ...meals[idx],
+    nome: (nomeEl?.value || d.nome).trim() || d.nome,
+    hour: horaEl?.value || d.hour,
+    itens
+  };
+  save(LS.m, meals);
+  __editMealDraft = null;
+  closeModal();
+  toast('Refeição atualizada', () => {
+    const i2 = meals.findIndex(m => m.id === anterior.id);
+    if (i2 >= 0) { meals[i2] = anterior; save(LS.m, meals); render(); }
+  });
+  render();
+}
+window.confirmEditMeal = confirmEditMeal;
+
 /* ============ REFEIÇÃO MANUAL ============ */
 function modalManual() {
   openModal(`
