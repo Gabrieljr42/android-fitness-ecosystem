@@ -70,7 +70,13 @@ public final class WorkoutProvider extends ContentProvider {
                 JSONArray strength = state.optJSONArray("sessions");
                 if (strength != null) for (int i = 0; i < strength.length(); i++) {
                     JSONObject source = strength.optJSONObject(i);
-                    if (source != null && date.equals(source.optString("date"))) candidates.add(new Candidate(normalizeStrength(source), orderOf(source, i)));
+                    if (source == null) continue;
+                    // Casa pela data do treino OU pela data real de conclusão
+                    // (rascunhos que atravessam a meia-noite ficam visíveis).
+                    if (date.equals(source.optString("date"))
+                            || date.equals(source.optString("finishedAt"))) {
+                        candidates.add(new Candidate(normalizeStrength(source), orderOf(source, i)));
+                    }
                 }
                 JSONArray runs = state.optJSONArray("corridas");
                 if (runs != null) for (int i = 0; i < runs.length(); i++) {
@@ -101,9 +107,14 @@ public final class WorkoutProvider extends ContentProvider {
         JSONObject out = new JSONObject();
         out.put("tipo", "musculacao");
         out.put("type", "musculacao");
-        out.put("nome", source.optString("name", source.optString("day", "Treino")));
-        out.put("name", source.optString("name", source.optString("day", "Treino")));
-        out.put("dia", source.optString("day", ""));
+        String day = source.optString("day", "");
+        String nome = source.optString("name", "");
+        if (nome == null || nome.trim().isEmpty()) {
+            nome = (day == null || day.trim().isEmpty()) ? "Treino" : ("Treino " + day);
+        }
+        out.put("nome", nome);
+        out.put("name", nome);
+        out.put("dia", day);
         if (source.has("duration") && !source.isNull("duration")) {
             out.put("duration", source.get("duration"));
             out.put("duracaoSeg", source.get("duration"));

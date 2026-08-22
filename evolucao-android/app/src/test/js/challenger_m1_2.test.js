@@ -558,7 +558,7 @@ function setupTreinoEnv() {
   assert.strictEqual(saved.mode, 'curto', 'Session mode must be saved as "curto"');
   assert(saved.entries[firstExName] && saved.entries[firstExName].length === 1, 'Entries must be preserved');
   assert(typeof saved.duration === 'number' && saved.duration > 0, 'Duration must be computed in seconds');
-  assert(typeof saved.notes === 'object', 'Notes dictionary must exist');
+  assert(typeof saved.notes === 'string', 'Notes must be serialized to string (provider-safe)');
 
   // Verify Draft Reset
   assert.strictEqual(state.draft.day, null, 'Draft day must be reset');
