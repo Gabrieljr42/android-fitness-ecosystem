@@ -69,14 +69,19 @@ function renderMaratona(){
 
   // ---- Status da semana ----
   var pctTxt = adh.pct == null ? '—' : adh.pct + '%';
-  h += '<div class="stat" style="margin-bottom:12px"><div>' +
-    '<div class="v">' + _msKg(actual) + '</div><div class="l">km realizados</div></div>' +
-    '<div><div class="v">' + _msKg(wk.targetKm) + '</div><div class="l">km planejados</div></div>' +
-    '<div><div class="v ' + (diff >= 0 ? 'pos' : 'neg') + '">' + (diff >= 0 ? '+' : '') + _msKg(diff) + '</div><div class="l">diferença</div></div></div>';
-  h += '<div class="mf-metarow"><span class="mf-metachip ' +
-    (adh.status === 'no plano' ? 'keep' : adh.status === 'abaixo' ? 'down' : adh.status === 'acima ⚠' ? 'up' : 'low') +
-    '" title="Aderência = 100 − |pct−100|; exagerar também reduz a nota">' +
-    pctTxt + ' da meta · aderência ' + (adh.score == null ? '—' : adh.score) + ' · ' + adh.status + '</span></div>';
+  // Semana futura/planejada: sem veredito de aderência (nada foi treinado ainda)
+  if (futurePlanned) {
+    h += '<div class="mf-metarow"><span class="mf-metachip keep">Planejado · ' + _msKg(wk.targetKm) + ' km · longão ' + _msKg(wk.longRunKm) + ' km</span></div>';
+  } else {
+    h += '<div class="stat" style="margin-bottom:12px"><div>' +
+      '<div class="v">' + _msKg(actual) + '</div><div class="l">km realizados</div></div>' +
+      '<div><div class="v">' + _msKg(wk.targetKm) + '</div><div class="l">km planejados</div></div>' +
+      '<div><div class="v ' + (diff >= 0 ? 'pos' : 'neg') + '">' + (diff >= 0 ? '+' : '') + _msKg(diff) + '</div><div class="l">diferença</div></div></div>';
+    h += '<div class="mf-metarow"><span class="mf-metachip ' +
+      (adh.status === 'no plano' ? 'keep' : adh.status === 'abaixo' ? 'down' : adh.status === 'acima ⚠' ? 'up' : 'low') +
+      '" title="Aderência = 100 − |pct−100|; exagerar também reduz a nota">' +
+      pctTxt + ' da meta · aderência ' + (adh.score == null ? '—' : adh.score) + ' · ' + adh.status + '</span></div>';
+  }
   h += '<div class="hint" style="margin:8px 0 0">Não compense km perdidos — semanas leves são parte do plano.</div>';
 
   // ---- Sessões planejadas ----
@@ -216,7 +221,7 @@ function renderMaratonaHistorico(){
 
   // Gráfico 4: tendência de aderência (somente semanas já ocorridas)
   h += '<h2 style="margin-top:14px">Aderência por semana</h2><div class="card">';
-  var past = MARATONA_PLAN.filter(function(w){ return !cur || w.week <= cur.week; });
+  var past = MARATONA_PLAN.filter(function(w){ return cur ? w.week <= cur.week : false; });
   if (!past.length) {
     h += '<div class="empty"><div class="t">O plano ainda não começou</div></div>';
   } else {
