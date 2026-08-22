@@ -5,6 +5,7 @@
    ========================================================================== */
 var corridaMode = 'continua'; // 'continua' | 'intervalada'
 var corridaChartTab = 'distancia'; // 'distancia' | 'pace'
+var corridaSection = 'correr'; // 'correr' | 'plano' | 'progresso' (subnav da aba unificada)
 var lastDeletedCorrida = null;
 
 // Rascunho / Valores padrão dos formulários
@@ -421,7 +422,33 @@ function renderCorrida(){
   h += '  <span class="mf-dashboard-mark"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ffffff;stroke-width:2.2;fill:none">' + NAV_ICONS.corrida + '</svg></span>';
   h += '</div>';
 
-  // 1b. Sessão planejada de hoje (Maratona) — banner leve, sem rediseñar
+  // 1b. Subnavegação da área de corrida (uma única aba Corrida)
+  var csec = [
+    ['correr', 'Correr'],
+    ['plano', 'Plano 42K'],
+    ['progresso', 'Progresso']
+  ];
+  h += '<div class="seg" style="margin-bottom:12px">';
+  h += csec.map(function(s){ return '<button data-csection="' + s[0] + '"' + (corridaSection === s[0] ? ' class="on"' : '') + '>' + s[1] + '</button>'; }).join('');
+  h += '</div>';
+
+  // ---- PLANO 42K (dashboard da maratona dentro de Corrida) ----
+  if (corridaSection === 'plano') {
+    h += (typeof renderMaratona === 'function')
+      ? renderMaratona()
+      : '<div class="empty"><div class="t">Plano indisponível</div></div>';
+    return h;
+  }
+
+  // ---- PROGRESSO (gráficos de evolução + histórico + aderência) ----
+  if (corridaSection === 'progresso') {
+    h += corridaProgressoHTML();
+    return h;
+  }
+
+  // ---- CORRER (padrão): banner planejado, meta e registro ----
+
+  // Sessão planejada de hoje — liga plano ↔ execução sem trocar de aba
   if (typeof maratonaWeekForDate === 'function' && typeof MARATONA_PLAN !== 'undefined') {
     var planWk = maratonaWeekForDate(todayISO());
     if (planWk) {
@@ -431,13 +458,13 @@ function renderCorrida(){
         h += '<div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between">';
         h += '  <div style="min-width:0"><div class="small" style="color:var(--mut)">Treino planejado hoje · Semana ' + planWk.week + '</div>';
         h += '  <b style="display:block;margin-top:2px">' + esc(planTxt) + '</b></div>';
-        h += '  <button class="rpill" id="goMaratonaBtn" style="flex-shrink:0">Maratona →</button>';
+        h += '  <button class="rpill" id="goMaratonaBtn" style="flex-shrink:0">Ver semana no plano →</button>';
         h += '</div>';
       }
     }
   }
 
-  // 2. Overlay do Live Interval Timer (quando ativo)
+  // Overlay do Live Interval Timer (visível em qualquer seção enquanto ativo)
   if(liveIntervalRunner.active){
     var curPhase = liveIntervalRunner.phases[liveIntervalRunner.currentPhaseIdx];
     h += '<div class="card" style="border:1px solid var(--border-focus);background:var(--card);padding:18px;margin-bottom:14px">';
@@ -667,7 +694,17 @@ function renderCorrida(){
     h += '</div>';
   }
 
-  // 6. Seção de Gráficos de Evolução (Pace e Distância)
+  return h;
+}
+
+/* ---- PROGRESSO: gráficos de evolução, histórico e aderência do plano ---- */
+function corridaProgressoHTML(){
+  var goalKm = Number(state.cardioGoalKm) || 15;
+  var corridas = sortedCorridas();
+  var historyDesc = corridas.slice().reverse();
+
+  var h = '';
+  // Seção de Gráficos de Evolução (Pace e Distância)
   h += '<h2>Evolução & Progresso de Corrida</h2>';
   h += '<div class="card">';
   h += '  <div class="seg" style="margin-bottom:12px">';
@@ -745,6 +782,12 @@ function renderCorrida(){
     h += '</div>';
   }
 
+  // Aderência/volume do plano 42K (mesma área de progresso da corrida)
+  if (typeof renderMaratonaHistorico === 'function') {
+    h += '<h2 style="margin-top:14px">Plano 42K — planejado × realizado</h2>';
+    h += renderMaratonaHistorico();
+  }
+
   return h;
 }
 
@@ -753,11 +796,20 @@ function renderCorrida(){
    ========================================================================== */
 
 function bindCorrida(){
-  // 1. Alternância de Modo (Contínua vs Intervalada)
-  // Banner Maratona: atalho para a aba do plano
-  var goMar = document.getElementById('goMaratonaBtn');
-  if (goMar) goMar.onclick = function(){ tab = 'maratona'; render(); };
+  // Subnavegação da área de corrida (Correr | Plano 42K | Progresso)
+  document.querySelectorAll('[data-csection]').forEach(function(btn){
+    btn.onclick = function(){
+      corridaSection = btn.getAttribute('data-csection');
+      if (typeof vibrate === 'function') vibrate(10);
+      render();
+    };
+  });
 
+  // Banner do treino planejado: abre a semana no plano (mesma aba)
+  var goMar = document.getElementById('goMaratonaBtn');
+  if (goMar) goMar.onclick = function(){ corridaSection = 'plano'; render(); };
+
+  // Alternância de Modo (Contínua vs Intervalada)
   document.querySelectorAll('[data-cmode]').forEach(function(btn){
     btn.onclick = function(){
       corridaMode = btn.getAttribute('data-cmode');

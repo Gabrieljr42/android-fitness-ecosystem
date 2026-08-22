@@ -37,7 +37,8 @@ const tests = [
   'challenger_m4_adversarial.test.js',
   'r6_rest_timer.test.js',
   'r6_peso_semanal.test.js',
-  'r6_maratona_plano.test.js'
+  'r6_maratona_plano.test.js',
+  'r7_nav_corrida.test.js'
 ];
 
 console.log('=== [EVOLUÇÃO] Executando Suíte de Testes Unitários ===\n');
