@@ -13,6 +13,14 @@ const LS = {
 };
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+/* Escapamento compartilhado. Nomes de refeições/alimentos/lembr vêm de IA,
+   digitação manual ou backup importado — SEMPRE passem por esta função antes
+   de entrar em template strings que viram innerHTML. */
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
 function localDateStr(d = new Date()) {
   if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
     return d;
@@ -36,7 +44,20 @@ function todayISO() { return localDateStr(); }
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch(e) { return d; } };
-const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+let __saveFailedShown = false;
+const save = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch (e) {
+    /* Única fronteira durável do app: falha (cota/storage cheio) precisa ser
+       visível. Aviso uma vez por sessão para não irritar em operação normal. */
+    try { console.warn('[nutritrack] falha ao salvar', k, e); } catch(_) {}
+    if (!__saveFailedShown && typeof toast === 'function') {
+      __saveFailedShown = true;
+      toast('⚠ Falha ao salvar dados localmente — exporte um backup!');
+    }
+  }
+};
 
 let state = { tab: 'hoje' };
 let profile = load(LS.p, {
@@ -195,6 +216,7 @@ function setWaterIntake(ml, date = today()) {
 // Global exports
 if (typeof window !== 'undefined') {
   window.LS = LS;
+  window.escapeHtml = escapeHtml;
   window.localDateStr = localDateStr;
   window.today = today;
   window.dateKey = dateKey;
@@ -217,6 +239,7 @@ if (typeof window !== 'undefined') {
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.localDateStr = localDateStr;
+  globalThis.escapeHtml = typeof escapeHtml === 'function' ? escapeHtml : globalThis.escapeHtml;
   globalThis.today = today;
   globalThis.dateKey = dateKey;
   globalThis.todayISO = todayISO;

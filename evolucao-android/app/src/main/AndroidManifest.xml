@@ -8,6 +8,15 @@
 
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Alarme exato do fim do descanso (funciona em Doze; o ticker antigo
+         era adiado e congelava a contagem em background) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+
+    <permission
+        android:name="com.evolucao.treino.permission.READ_WORKOUTS"
+        android:protectionLevel="normal"
+        android:label="Ler treinos concluídos" />
 
     <!-- Bluetooth Low Energy Features -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
@@ -38,5 +47,14 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <receiver
+            android:name=".RestAlarmReceiver"
+            android:exported="false" />
+        <provider
+            android:name=".WorkoutProvider"
+            android:authorities="com.evolucao.treino.workouts"
+            android:exported="true"
+            android:readPermission="com.evolucao.treino.permission.READ_WORKOUTS"
+            android:grantUriPermissions="false" />
     </application>
 </manifest>

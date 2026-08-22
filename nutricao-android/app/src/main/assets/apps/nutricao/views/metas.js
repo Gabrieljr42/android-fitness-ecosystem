@@ -97,16 +97,8 @@ function renderMetas(main) {
   };
 }
 
-function calcTDEE() {
-  const peso = Number(profile?.peso) || 75;
-  const alt = Number(profile?.altura) || 175;
-  const idade = Number(profile?.idade) || 30;
-  const bmr = profile?.sexo === 'f'
-    ? (10 * peso + 6.25 * alt - 5 * idade - 161)
-    : (10 * peso + 6.25 * alt - 5 * idade + 5);
-  const fator = Number(profile?.atividade) || 1.4;
-  return Math.round(bmr * fator);
-}
+/* calcTDEE/calcBMR canônicos vivem em estado.js. A duplicata que existia aqui
+   (sem parâmetro) sombreava a global ao final do load e fazia calcTDEE(p)
+   ignorar o perfil passado — detectado por challenger_m3_1. */
 
 window.renderMetas = renderMetas;
-window.calcTDEE = calcTDEE;

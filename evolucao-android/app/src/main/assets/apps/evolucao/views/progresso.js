@@ -530,7 +530,16 @@ function renderProgresso() {
     '<button class="cta sm" id="pesoAdd" style="flex:0 0 auto;width:auto;padding:12px 16px">Salvar hoje</button></div><div style="height:12px"></div>';
 
   var pp = pesoList.slice().sort(function(a, b) { return a.date < b.date ? -1 : 1; }).map(function(p) { return { x: p.date, y: p.kg }; });
-  if (pp.length < 2) {
+
+  // Diário | Semanal (tendência p/ bulking — média diária→semanal)
+  var viewMode = (typeof pesoViewMode !== 'undefined' && pesoViewMode === 'semanal') ? 'semanal' : 'diario';
+  h += '<div class="seg" style="margin-bottom:10px">' +
+    '<button data-pvm="diario" class="' + (viewMode === 'diario' ? 'on' : '') + '">Diário</button>' +
+    '<button data-pvm="semanal" class="' + (viewMode === 'semanal' ? 'on' : '') + '">Semanal</button></div>';
+
+  if (viewMode === 'semanal') {
+    h += renderPesoSemanal(pesoList);
+  } else if (pp.length < 2) {
     h += '<div class="empty"><svg viewBox="0 0 24 24"><path d="M6 3v18"/><circle cx="16" cy="16" r="5"/><line x1="16" y1="13" x2="16" y2="19"/></svg><div class="t">Nenhuma pesagem</div><div class="s">Registre seu peso hoje para acompanhar a tendência ao longo do tempo.</div></div>';
   } else {
     if (typeof chartSVG === 'function') h += chartSVG(pp, '#ffffff');
@@ -548,6 +557,56 @@ function renderProgresso() {
 }
 
 // -----------------------------------------------------------------------------
+// Tendência semanal de peso (usa apps/evolucao/peso.js — agregação canônica)
+// -----------------------------------------------------------------------------
+var pesoViewMode = 'diario';
+
+function renderPesoSemanal(pesoList) {
+  var series = (typeof pesoWeeklySeries === 'function') ? pesoWeeklySeries(pesoList) : [];
+  if (!series.length) {
+    return '<div class="empty"><svg viewBox="0 0 24 24"><path d="M6 3v18"/><circle cx="16" cy="16" r="5"/><line x1="16" y1="13" x2="16" y2="19"/></svg><div class="t">Sem dados semanais</div><div class="s">Registre pesagens para ver a média semanal.</div></div>';
+  }
+  var cur = series[series.length - 1];
+  var delta = (typeof pesoWeekDelta === 'function') ? pesoWeekDelta(series) : null;
+  var trend = (typeof pesoTrendLabel === 'function') ? pesoTrendLabel(delta ? delta.deltaKg : null) : '';
+  var recent = (typeof pesoRecentTrend === 'function') ? pesoRecentTrend(series, 4) : null;
+
+  var h = '';
+  // Semana atual
+  h += '<div class="stat" style="margin-bottom:12px"><div>' +
+    '<div class="v">' + (typeof nkg === 'function' ? nkg(cur.avg) : cur.avg) + '</div><div class="l">média da semana</div></div>' +
+    '<div><div class="v ' + (delta && delta.deltaKg >= 0 ? 'pos' : 'neg') + '">' +
+    (delta ? ((delta.deltaKg >= 0 ? '+' : '') + (typeof nkg === 'function' ? nkg(delta.deltaKg) : delta.deltaKg) + ' kg') : '—') +
+    '</div><div class="l">' + (delta && !delta.contiguous ? 'vs. semana anterior*' : 'vs. semana anterior') + '</div></div>' +
+    '<div><div class="v" style="font-size:14px">' + (trend ? trend : '—') + '</div><div class="l">tendência</div></div></div>';
+
+  if (delta && !delta.contiguous) {
+    h += '<div class="hint" style="margin:0 0 10px">*Semana anterior sem pesagens — comparação usa a última semana com dados.</div>';
+  }
+  if (delta && !delta.reliable) {
+    h += '<div class="hint" style="margin:0 0 10px">⚠ Poucas pesagens em uma das semanas — tendência menos confiável.</div>';
+  }
+
+  // Gráfico semanal
+  var pts = series.map(function(w) { return { x: w.weekStart, y: w.avg }; });
+  if (pts.length >= 2 && typeof chartSVG === 'function') {
+    h += chartSVG(pts, '#ffffff');
+  } else {
+    h += '<div class="hint" style="margin:8px 0">Mínimo de 2 semanas para o gráfico.</div>';
+  }
+
+  // Últimas 4 semanas
+  if (recent) {
+    var sign = recent.changeKg >= 0 ? '+' : '';
+    h += '<div class="sub" style="margin:10px 0 6px">Últimas ' + recent.weeks + ' semanas</div>';
+    h += '<div class="stat"><div><div class="v">' + (typeof nkg === 'function' ? nkg(recent.firstAvg) : recent.firstAvg) + '</div><div class="l">1ª média</div></div>' +
+      '<div><div class="v">' + (typeof nkg === 'function' ? nkg(recent.lastAvg) : recent.lastAvg) + '</div><div class="l">última média</div></div>' +
+      '<div><div class="v ' + (recent.changeKg >= 0 ? 'pos' : 'neg') + '">' + sign + (typeof nkg === 'function' ? nkg(recent.changeKg) : recent.changeKg) + ' kg</div><div class="l">variação</div></div></div>';
+  }
+  return h;
+}
+
+// -----------------------------------------------------------------------------
 // DOM Event Binding
 // -----------------------------------------------------------------------------
 function bindProgresso() {
@@ -557,6 +616,14 @@ function bindProgresso() {
 
   document.querySelectorAll('[data-m]').forEach(function(b) {
     b.onclick = function() { metric = b.getAttribute('data-m'); if (typeof render === 'function') render(); };
+  });
+
+  document.querySelectorAll('[data-pvm]').forEach(function(b) {
+    b.onclick = function() {
+      pesoViewMode = b.getAttribute('data-pvm');
+      if (typeof vibrate === 'function') vibrate(10);
+      if (typeof render === 'function') render();
+    };
   });
 
   var pMinus = document.getElementById('pMinus');

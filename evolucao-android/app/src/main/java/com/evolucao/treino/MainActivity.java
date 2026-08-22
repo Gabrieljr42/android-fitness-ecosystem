@@ -2,6 +2,7 @@ package com.evolucao.treino;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -41,26 +42,38 @@ public class MainActivity extends Activity {
     private WebView web;
     private static final String CH_TIMER = "descanso";
     private static final String CH_ALERT = "descanso_alerta";
-    private static final int REST_NOTIFICATION_ID = 1;
-    private static final int REST_DONE_NOTIFICATION_ID = 2;
+    static final int REST_NOTIFICATION_ID = 1;
+    static final int REST_DONE_NOTIFICATION_ID = 2;
     private static final int FILE_CHOOSER_CODE = 51;
     private static final int BLE_PERMISSION_REQ_CODE = 201;
 
     private ValueCallback<Uri[]> filePathCallback;
     private final Handler restHandler = new Handler(Looper.getMainLooper());
-    private boolean restActive;
-    private boolean restAlertEnabled = true;
-    private boolean restAlertPosted;
-    private boolean appInForeground;
+    /** Estado do descanso: autoridade é o deadline absoluto (elapsedRealtime-
+     *  independente; usamos currentTimeMillis pois a notificação/chronometer
+     *  e o AlarmManager trabalham em wall clock). */
+    private volatile boolean restActive;
+    private volatile boolean restAlertEnabled = true;
     private long restEndAt;
     private String restLabel = "";
+    private PendingIntent restAlarmPi;
+    private final Runnable restFallbackDone = new Runnable() {
+        @Override public void run() {
+            // Fallback se AlarmManager exato estiver indisponível:
+            // dispara o mesmo caminho de conclusão quando o prazo chegar.
+            if (!restActive) return;
+            if (System.currentTimeMillis() < restEndAt) {
+                restHandler.postDelayed(this, Math.min(10000L, Math.max(1000L, restEndAt - System.currentTimeMillis())));
+                return;
+            }
+            restActive = false;
+            deliverRestDone(getApplicationContext(), restLabel, restAlertEnabled);
+        }
+    };
+    private static volatile boolean appForeground;
+    static boolean isAppForeground() { return appForeground; }
 
     private ScaleBleScanner bleScanner;
-
-    private String restClock(long seconds) {
-        long safe = Math.max(0, seconds);
-        return (safe / 60) + ":" + String.format(java.util.Locale.US, "%02d", safe % 60);
-    }
 
     private PendingIntent appPendingIntent() {
         Intent intent = new Intent(this, MainActivity.class);
@@ -70,62 +83,116 @@ public class MainActivity extends Activity {
         return PendingIntent.getActivity(this, 0, intent, flags);
     }
 
-    private Notification restNotification(String title, String body, boolean ongoing, boolean alert) {
+    /** Notificação de contagem: chronometer regressivo do SISTEMA — atualiza
+     *  sozinha (sem repost por segundo) e espelha ao Wear OS. */
+    private Notification buildRestCountdownNotification(String label, long endAt) {
         Notification.Builder nb;
         if (Build.VERSION.SDK_INT >= 26) {
-            nb = new Notification.Builder(this, alert ? CH_ALERT : CH_TIMER);
-        }
-        else {
+            nb = new Notification.Builder(this, CH_TIMER);
+        } else {
             nb = new Notification.Builder(this);
-            if (alert) {
-                nb.setPriority(Notification.PRIORITY_HIGH);
-                nb.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
-                nb.setVibrate(new long[]{0, 250, 150, 250});
-            } else {
-                nb.setPriority(Notification.PRIORITY_LOW);
-                nb.setDefaults(0);
-                nb.setSound(null);
+            nb.setPriority(Notification.PRIORITY_LOW);
+            nb.setDefaults(0);
+        }
+        nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
+          .setContentTitle("Descanso")
+          .setContentText(label == null || label.isEmpty() ? "Contando…" : label)
+          .setContentIntent(appPendingIntent())
+          .setOngoing(true)
+          .setOnlyAlertOnce(true)
+          .setAutoCancel(false)
+          .setShowWhen(true)
+          .setWhen(endAt)
+          .setUsesChronometer(true);
+        if (Build.VERSION.SDK_INT >= 24) nb.setChronometerCountDown(true);
+        return nb.build();
+    }
+
+    /** Notificação de fim de descanso (canal de alerta). */
+    static Notification buildRestDoneNotification(Context context, String body) {
+        NotificationManager nm =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return null;
+        Notification.Builder nb;
+        if (Build.VERSION.SDK_INT >= 26) {
+            nb = new Notification.Builder(context, CH_ALERT);
+        } else {
+            nb = new Notification.Builder(context);
+            nb.setPriority(Notification.PRIORITY_HIGH);
+            nb.setDefaults(Notification.DEFAULT_ALL);
+        }
+        nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
+          .setContentTitle("Descanso")
+          .setContentText(body)
+          .setAutoCancel(true);
+        if (Build.VERSION.SDK_INT >= 21) nb.setVisibility(Notification.VISIBILITY_PUBLIC);
+        return nb.build();
+    }
+
+    /** Conclusão compartilhada (receiver em background OU fallback in-process). */
+    static void deliverRestDone(Context context, String label, boolean alertEnabled) {
+        NotificationManager nm =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(REST_NOTIFICATION_ID);
+        if (isAppForeground()) return;      // JS cuida do feedback visível
+        if (!alertEnabled) return;
+        String body = (label == null || label.isEmpty())
+                ? "Pronto! Próxima série."
+                : label + " — próxima série!";
+        Notification done = buildRestDoneNotification(context, body);
+        if (done != null && nm != null) nm.notify(REST_DONE_NOTIFICATION_ID, done);
+    }
+
+    private PendingIntent buildRestAlarmIntent(long endAt, String label, boolean alertEnabled) {
+        Intent intent = new Intent(this, RestAlarmReceiver.class);
+        intent.setAction(RestAlarmReceiver.ACTION_REST_DONE);
+        intent.putExtra("label", label == null ? "" : label);
+        intent.putExtra("alertEnabled", alertEnabled);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_CANCEL_CURRENT;
+        if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getBroadcast(this, REST_NOTIFICATION_ID, intent, flags);
+    }
+
+    private void scheduleRestCompletion(long endAt, String label, boolean alertEnabled) {
+        restAlarmPi = buildRestAlarmIntent(endAt, label, alertEnabled);
+        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        boolean scheduled = false;
+        if (am != null) {
+            try {
+                if (Build.VERSION.SDK_INT >= 23) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endAt, restAlarmPi);
+                } else {
+                    am.setExact(AlarmManager.RTC_WAKEUP, endAt, restAlarmPi);
+                }
+                scheduled = true;
+            } catch (Exception e) {
+                // Sem permissão de alarme exato: cai no fallback in-process abaixo.
             }
         }
-        return nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setContentIntent(appPendingIntent())
-                .setOngoing(ongoing)
-                .setOnlyAlertOnce(ongoing)
-                .setAutoCancel(!ongoing)
-                .build();
-    }
-
-    private void updateRestNotification(String body, boolean ongoing) {
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm != null) nm.notify(REST_NOTIFICATION_ID, restNotification("Descanso", body, ongoing, false));
-    }
-
-    private void postRestDoneNotification(String body, boolean alert) {
-        if (restAlertPosted) return;
-        restAlertPosted = true;
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-        nm.cancel(REST_NOTIFICATION_ID);
-        nm.notify(REST_DONE_NOTIFICATION_ID, restNotification("Descanso", body, false, alert));
-    }
-
-    private final Runnable restTicker = new Runnable() {
-        @Override public void run() {
-            if (!restActive) return;
-            long left = Math.max(0, (restEndAt - System.currentTimeMillis() + 999) / 1000);
-            if (left <= 0) {
-                restActive = false;
-                postRestDoneNotification(
-                        restLabel.isEmpty() ? "Pronto! Próxima série." : restLabel + " — próxima série!",
-                        restAlertEnabled && !appInForeground);
-                return;
-            }
-            updateRestNotification(restClock(left) + " restantes" + (restLabel.isEmpty() ? "" : " · " + restLabel), true);
-            restHandler.postDelayed(this, 1000L);
+        if (!scheduled) {
+            restHandler.removeCallbacks(restFallbackDone);
+            restHandler.postDelayed(restFallbackDone,
+                    Math.max(1000L, endAt - System.currentTimeMillis()));
         }
-    };
+    }
+
+    private void cancelRestNativeState() {
+        restActive = false;
+        restHandler.removeCallbacks(restFallbackDone);
+        try {
+            AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (am != null && restAlarmPi != null) {
+                am.cancel(restAlarmPi);
+                restAlarmPi.cancel();
+            }
+        } catch (Exception ignored) {}
+        restAlarmPi = null;
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.cancel(REST_NOTIFICATION_ID);
+            nm.cancel(REST_DONE_NOTIFICATION_ID);
+        }
+    }
 
     private void runOnJs(final String js) {
         if (web == null) return;
@@ -238,12 +305,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        appInForeground = true;
+        appForeground = true;
     }
 
     @Override
     protected void onPause() {
-        appInForeground = false;
+        appForeground = false;
         if (bleScanner != null) {
             bleScanner.stopScan();
         }
@@ -349,19 +416,76 @@ public class MainActivity extends Activity {
     }
 
     public class Bridge {
+        private static final int MAX_MIRRORED_ITEMS = 500;
+        private static final int MAX_MIRRORED_BYTES = 512 * 1024;
+
+        /** Mirrors only workout history; UI routine/settings/draft never cross the app boundary. */
+        @JavascriptInterface
+        public void syncWorkoutState(String json) {
+            if (json == null) return;
+            try {
+                JSONObject value = new JSONObject(json);
+                if (!value.has("sessions") || !value.has("corridas")) return;
+                JSONObject mirrored = new JSONObject();
+                mirrored.put("sessions", boundedHistory(value.optJSONArray("sessions")));
+                mirrored.put("corridas", boundedHistory(value.optJSONArray("corridas")));
+                trimMirroredTotal(mirrored);
+                getSharedPreferences(WorkoutProvider.PREFS, MODE_PRIVATE)
+                        .edit().putString(WorkoutProvider.STATE_KEY, mirrored.toString()).commit();
+            } catch (Exception ignored) { }
+        }
+
+        private JSONArray boundedHistory(JSONArray input) throws Exception {
+            JSONArray out = new JSONArray();
+            if (input == null) return out;
+            int start = Math.max(0, input.length() - MAX_MIRRORED_ITEMS);
+            for (int i = start; i < input.length(); i++) out.put(input.get(i));
+            while (out.length() > 0 && out.toString().getBytes("UTF-8").length > MAX_MIRRORED_BYTES) {
+                JSONArray newer = new JSONArray();
+                for (int i = 1; i < out.length(); i++) newer.put(out.get(i));
+                out = newer;
+            }
+            return out;
+        }
+
+        private void trimMirroredTotal(JSONObject mirrored) throws Exception {
+            JSONArray sessions = mirrored.getJSONArray("sessions");
+            JSONArray corridas = mirrored.getJSONArray("corridas");
+            while (mirrored.toString().getBytes("UTF-8").length > MAX_MIRRORED_BYTES &&
+                    (sessions.length() > 0 || corridas.length() > 0)) {
+                boolean removeRun = sessions.length() == 0;
+                if (!removeRun && corridas.length() > 0) {
+                    removeRun = recordOrder(corridas.optJSONObject(0)) < recordOrder(sessions.optJSONObject(0));
+                }
+                removeFirst(removeRun ? corridas : sessions);
+            }
+        }
+
+        private long recordOrder(JSONObject item) {
+            return item == null ? 0L : item.optLong("id", 0L);
+        }
+
+        private void removeFirst(JSONArray array) throws Exception {
+            JSONArray newer = new JSONArray();
+            for (int i = 1; i < array.length(); i++) newer.put(array.get(i));
+            while (array.length() > 0) array.remove(0);
+            for (int i = 0; i < newer.length(); i++) array.put(newer.get(i));
+        }
         @JavascriptInterface
         public void startRestNotification(final String label, final long endAt, final boolean alertEnabled) {
             restHandler.post(new Runnable() {
                 @Override public void run() {
+                    // Novo descanso substitui/cancela o anterior (alarme + notifs)
+                    cancelRestNativeState();
                     restLabel = label == null ? "" : label;
                     restEndAt = endAt;
-                    restActive = true;
                     restAlertEnabled = alertEnabled;
-                    restAlertPosted = false;
-                    restHandler.removeCallbacks(restTicker);
+                    restActive = true;
                     NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                     if (nm != null) nm.cancel(REST_DONE_NOTIFICATION_ID);
-                    restTicker.run();
+                    Notification countdown = buildRestCountdownNotification(restLabel, endAt);
+                    if (nm != null) nm.notify(REST_NOTIFICATION_ID, countdown);
+                    scheduleRestCompletion(endAt, restLabel, alertEnabled);
                 }
             });
         }
@@ -370,14 +494,7 @@ public class MainActivity extends Activity {
         public void stopRestNotification() {
             restHandler.post(new Runnable() {
                 @Override public void run() {
-                    restActive = false;
-                    restHandler.removeCallbacks(restTicker);
-                    NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    restAlertPosted = false;
-                    if (nm != null) {
-                        nm.cancel(REST_NOTIFICATION_ID);
-                        nm.cancel(REST_DONE_NOTIFICATION_ID);
-                    }
+                    cancelRestNativeState();
                 }
             });
         }
@@ -387,12 +504,13 @@ public class MainActivity extends Activity {
             restHandler.post(new Runnable() {
                 @Override public void run() {
                     restActive = false;
-                    restHandler.removeCallbacks(restTicker);
-                    restLabel = label == null ? "" : label;
-                    restAlertEnabled = alertEnabled;
-                    postRestDoneNotification(
-                            restLabel.isEmpty() ? "Pronto! Próxima série." : restLabel + " — próxima série!",
-                            restAlertEnabled && !appInForeground);
+                    restHandler.removeCallbacks(restFallbackDone);
+                    try {
+                        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                        if (am != null && restAlarmPi != null) { am.cancel(restAlarmPi); restAlarmPi.cancel(); }
+                    } catch (Exception ignored) {}
+                    restAlarmPi = null;
+                    deliverRestDone(getApplicationContext(), label, alertEnabled);
                 }
             });
         }

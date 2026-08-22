@@ -191,10 +191,10 @@ async function consultarModelo(model, data, analysisIndex, attempt, key, legenda
   };
   try {
     if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
-    const url = GEMINI_API_BASE + model.id + ':generateContent?key=' + encodeURIComponent(key);
+    const url = GEMINI_API_BASE + model.id + ':generateContent';
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify(apiBody(data, model, legenda)),
       signal: run?.controller?.signal
     });
@@ -229,10 +229,10 @@ async function consultarModeloTexto(model, texto, analysisIndex, attempt, key, r
   };
   try {
     if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
-    const url = GEMINI_API_BASE + model.id + ':generateContent?key=' + encodeURIComponent(key);
+    const url = GEMINI_API_BASE + model.id + ':generateContent';
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify(apiBodyTexto(texto, model)),
       signal: run?.controller?.signal
     });
@@ -477,26 +477,46 @@ async function processarFoto(file) {
 }
 window.iniciarAnaliseFoto = () => { if (typeof window.__fotoContinue === 'function') window.__fotoContinue(); };
 
+/* Linha de item da IA: nome sempre visível em linha própria; quantidade e
+   kcal com rótulos explícitos (antes virava "260 g 122" sem contexto). */
+function aiItemRowHtml(i, it, updFn, rmFn, addFn, boxId, totaisFn, prefixId) {
+  return `
+    <div class="det-item" style="display:block;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input value="${escapeHtml(it.nome || 'Item')}" style="flex:1;font-weight:700;font-size:14px" placeholder="Alimento" oninput="${updFn}(${i},'nome',this.value)"/>
+        <button class="det-del" onclick="${rmFn}(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <span style="display:inline-flex;align-items:center;gap:4px">
+          <label class="small" style="color:var(--txt-secondary)">Qtd</label>
+          <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" style="width:74px" oninput="${updFn}(${i},'porcao_g',this.value)"/>
+          <span class="small" style="color:var(--txt3)">g</span>
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:4px">
+          <label class="small" style="color:var(--txt-secondary)">kcal</label>
+          <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" style="width:80px;color:#ffffff;font-weight:700" oninput="${updFn}(${i},'kcal',this.value)"/>
+        </span>
+        ${Number(it.proteina_g) ? `<span class="small" style="color:var(--txt3)">P ${it.proteina_g}g</span>` : ''}
+        ${Number(it.carbo_g) ? `<span class="small" style="color:var(--txt3)">C ${it.carbo_g}g</span>` : ''}
+        ${Number(it.gordura_g) ? `<span class="small" style="color:var(--txt3)">G ${it.gordura_g}g</span>` : ''}
+      </div>
+    </div>`;
+}
+
 function renderFotoItens() {
   const box = $('#itensBox');
   if (!box) return;
   const its = window.__fotoItens || [];
   const p = $('#cP')?.value ?? 0, c = $('#cC')?.value ?? 0, g = $('#cG')?.value ?? 0;
-  box.innerHTML = its.map((it, i) => `
-    <div class="det-item">
-      <input value="${escapeHtml(it.nome || 'Item')}" style="flex:1.5" oninput="updItem(${i},'nome',this.value)"/>
-      <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" oninput="updItem(${i},'porcao_g',this.value)"/>
-      <span class="small" style="color:var(--txt3)">g</span>
-      <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" oninput="updItem(${i},'kcal',this.value)"/>
-      <button class="det-del" onclick="rmItem(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-    </div>
-  `).join('') +
-  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemFoto()">+ Adicionar item</button>
-   <div class="formrow three mt8">
-     <div><label>P (g)</label><input id="cP" type="number" value="${p}" oninput="updTotais()"/></div>
-     <div><label>C (g)</label><input id="cC" type="number" value="${c}" oninput="updTotais()"/></div>
-     <div><label>G (g)</label><input id="cG" type="number" value="${g}" oninput="updTotais()"/></div>
-   </div>`;
+  box.innerHTML =
+    `<div class="small" style="color:var(--txt-secondary);margin-bottom:4px">Itens identificados — ajuste quantidade e kcal se precisar</div>` +
+    its.map((it, i) => aiItemRowHtml(i, it, 'updItem', 'rmItem', 'addItemFoto', 'itensBox', 'updTotais', 'cP')).join('') +
+    `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemFoto()">+ Adicionar item</button>
+     <div class="formrow three mt8">
+       <div><label>P (g)</label><input id="cP" type="number" value="${p}" oninput="updTotais()"/></div>
+       <div><label>C (g)</label><input id="cC" type="number" value="${c}" oninput="updTotais()"/></div>
+       <div><label>G (g)</label><input id="cG" type="number" value="${g}" oninput="updTotais()"/></div>
+     </div>`;
   updTotais();
 }
 
@@ -760,22 +780,16 @@ function renderTextoItens() {
   const p = $('#cPT')?.value ?? (window.__textoMacroDefaults?.p ?? 0);
   const c = $('#cCT')?.value ?? (window.__textoMacroDefaults?.c ?? 0);
   const g = $('#cGT')?.value ?? (window.__textoMacroDefaults?.g ?? 0);
-  
-  box.innerHTML = its.map((it, i) => `
-    <div class="det-item">
-      <input value="${escapeHtml(it.nome || 'Item')}" style="flex:1.5" oninput="updItemTexto(${i},'nome',this.value)"/>
-      <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" oninput="updItemTexto(${i},'porcao_g',this.value)"/>
-      <span class="small" style="color:var(--txt3)">g</span>
-      <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" oninput="updItemTexto(${i},'kcal',this.value)"/>
-      <button class="det-del" onclick="rmItemTexto(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-    </div>
-  `).join('') +
-  `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemTexto()">+ Adicionar item</button>
-   <div class="formrow three mt8">
-     <div><label>P (g)</label><input id="cPT" type="number" value="${p}" oninput="updTotaisTexto()"/></div>
-     <div><label>C (g)</label><input id="cCT" type="number" value="${c}" oninput="updTotaisTexto()"/></div>
-     <div><label>G (g)</label><input id="cGT" type="number" value="${g}" oninput="updTotaisTexto()"/></div>
-   </div>`;
+
+  box.innerHTML =
+    `<div class="small" style="color:var(--txt-secondary);margin-bottom:4px">Itens identificados — ajuste quantidade e kcal se precisar</div>` +
+    its.map((it, i) => aiItemRowHtml(i, it, 'updItemTexto', 'rmItemTexto', 'addItemTexto', 'itensBoxTexto', 'updTotaisTexto', 'cPT')).join('') +
+    `<button class="bigbtn secondary mt8" style="font-size:13px;min-height:42px;padding:8px" onclick="addItemTexto()">+ Adicionar item</button>
+     <div class="formrow three mt8">
+       <div><label>P (g)</label><input id="cPT" type="number" value="${p}" oninput="updTotaisTexto()"/></div>
+       <div><label>C (g)</label><input id="cCT" type="number" value="${c}" oninput="updTotaisTexto()"/></div>
+       <div><label>G (g)</label><input id="cGT" type="number" value="${g}" oninput="updTotaisTexto()"/></div>
+     </div>`;
   updTotaisTexto();
 }
 
@@ -931,7 +945,7 @@ window.updFTotal = updFTotal;
 window.confirmManual = confirmManual;
 
 /* ============ ATIVIDADE / GASTO COM IA ============ */
-function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undefined' ? profile : {})) {
+function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undefined' ? profile : {}), workout = null) {
   const descricao = String(texto || '').trim().slice(0, 1000);
   const peso = Number(userProfile?.peso) > 0 ? Number(userProfile.peso) : 75;
   const altura = Number(userProfile?.altura) > 0 ? Number(userProfile.altura) : 175;
@@ -940,11 +954,13 @@ function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undef
 
   const contextoBiometrico = `[Dados Biométricos do Usuário]\n- Peso: ${peso} kg\n- Altura: ${altura} cm\n- Idade: ${idade} anos\n- Sexo: ${sexo}`;
 
+  const treinoImportado = workout && Array.isArray(workout.sessions) && workout.sessions.length > 0
+    ? `\n\n[Treino importado do Evolução — somente dados registrados]\nUse só estas sessões (duracaoSeg, cargaKg/repeticoes); não crie exercícios. Observação é complemento. Musculação sem duração: conservador, confianca baixa.\n${JSON.stringify(workout)}` : '';
   return {
     contents: [
       {
         parts: [
-          { text: `${ACTIVITY_PROMPT}\n\n${contextoBiometrico}\n\n[Descrição da Atividade]\n${descricao}` }
+          { text: `${ACTIVITY_PROMPT}\n\n${contextoBiometrico}${treinoImportado}\n\n[Descrição/observação do usuário]\n${descricao}` }
         ]
       }
     ],
@@ -957,18 +973,18 @@ function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undef
   };
 }
 
-async function consultarModeloAtividade(model, texto, analysisIndex, attempt, key, run = null, userProfile = null) {
+async function consultarModeloAtividade(model, texto, analysisIndex, attempt, key, run = null, userProfile = null, workout = null) {
   const trace = {
     ok: false, analysisIndex, attempt, modelId: model.id, modelLabel: model.label,
     status: null, body: '', modelText: '', error: '', retryable: false, result: null, cancelled: false
   };
   try {
     if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
-    const url = GEMINI_API_BASE + model.id + ':generateContent?key=' + encodeURIComponent(key);
+    const url = GEMINI_API_BASE + model.id + ':generateContent';
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiBodyAtividade(texto, model, userProfile || (typeof profile !== 'undefined' ? profile : {}))),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(apiBodyAtividade(texto, model, userProfile || (typeof profile !== 'undefined' ? profile : {}), workout)),
       signal: run?.controller?.signal
     });
     trace.status = resp.status;
@@ -1027,12 +1043,136 @@ function mergeActivityAnalisys(res) {
   return out;
 }
 
+const EVOLUCAO_MAX_RAW = 65536;
+const EVOLUCAO_MAX_NORMALIZED = 32768;
+const EVOLUCAO_MAX_SESSIONS = 30;
+const EVOLUCAO_MAX_ITEMS = 100;
+function evolucaoSafeString(value, max = 300) {
+  return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, max).trim();
+}
+function evolucaoSafeNumber(value, min = -1000000, max = 1000000) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : undefined;
+}
+function evolucaoPick(obj, keys) {
+  const out = {};
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+  keys.forEach(k => {
+    if (obj[k] == null) return;
+    if (typeof obj[k] === 'string') out[k] = evolucaoSafeString(obj[k]);
+    else if (typeof obj[k] === 'boolean') out[k] = obj[k];
+    else if (typeof obj[k] === 'number') { const n = evolucaoSafeNumber(obj[k]); if (n !== undefined) out[k] = n; }
+  });
+  return out;
+}
+function evolucaoPickIntervals(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  // Formato persistido atualmente pelo Evolução (campos planos).
+  [
+    'tiroMin', 'tiroSec', 'tiroKmh',
+    'recupMin', 'recupSec', 'recupKmh',
+    'ciclos',
+    'warmupMin', 'warmupSec', 'warmupKmh',
+    'cooldownMin', 'cooldownSec', 'cooldownKmh'
+  ].forEach(key => {
+    const n = evolucaoSafeNumber(value[key], 0, 1000000);
+    if (n !== undefined) out[key] = n;
+  });
+  // Aceita também o formato aninhado para compatibilidade futura.
+  ['tiro', 'recuperacao', 'warmup', 'cooldown'].forEach(key => {
+    if (value[key] && typeof value[key] === 'object') {
+      out[key] = evolucaoPick(value[key], ['duracaoSeg', 'distanciaM', 'ritmoMedioSegKm', 'paceMinKm', 'velocidadeMediaKmh', 'concluida']);
+    } else if (value[key] != null) {
+      if (typeof value[key] === 'boolean') out[key] = value[key];
+      else { const n = evolucaoSafeNumber(value[key], 0, 1000000); if (n !== undefined) out[key] = n; }
+    }
+  });
+  const ciclos = evolucaoSafeNumber(value.ciclos, 0, 10000);
+  if (ciclos !== undefined) out.ciclos = ciclos;
+  return out;
+}
+function evolucaoNormalizeWorkout(payload, requestedDate) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)
+      || payload.schemaVersion !== 1 || payload.source !== 'com.evolucao.treino'
+      || payload.date !== requestedDate || !Array.isArray(payload.sessions)) {
+    return { ok: false, error: { code: 'INCOMPATIBLE_PAYLOAD', message: 'Treino do Evolução incompatível com o contrato' } };
+  }
+  if (payload.sessions.length > EVOLUCAO_MAX_SESSIONS) return { ok: false, error: { code: 'PAYLOAD_TOO_LARGE', message: 'Treino possui sessões demais' } };
+  const sessionKeys = ['id', 'nome', 'tipo', 'duracaoSeg', 'distanciaM', 'distanciaKm', 'velocidadeMediaKmh', 'ritmoMedioSegKm', 'paceMinKm', 'calorias', 'modo', 'notas', 'observacao', 'aquecimento', 'concluida'];
+  const exerciseKeys = ['id', 'nome', 'tipo', 'duracaoSeg', 'notas', 'observacao', 'aquecimento', 'concluida'];
+  const seriesKeys = ['id', 'nome', 'cargaKg', 'repeticoes', 'parciais', 'rir', 'RIR', 'aquecimento', 'concluida'];
+  const sessions = payload.sessions.map(session => {
+    const out = evolucaoPick(session, sessionKeys);
+    if (Array.isArray(session?.exercicios)) {
+      if (session.exercicios.length > EVOLUCAO_MAX_ITEMS) throw new Error('PAYLOAD_TOO_LARGE');
+      out.exercicios = session.exercicios.map(exercise => {
+        const normalizedExercise = evolucaoPick(exercise, exerciseKeys);
+        if (Array.isArray(exercise?.series)) {
+          if (exercise.series.length > EVOLUCAO_MAX_ITEMS) throw new Error('PAYLOAD_TOO_LARGE');
+          normalizedExercise.series = exercise.series.map(series => evolucaoPick(series, seriesKeys));
+        }
+        return normalizedExercise;
+      });
+    }
+    if (session?.intervalos && typeof session.intervalos === 'object' && !Array.isArray(session.intervalos)) {
+      out.intervalos = evolucaoPickIntervals(session.intervalos);
+    }
+    return out;
+  });
+  const normalized = { schemaVersion: 1, source: 'com.evolucao.treino', date: requestedDate,
+    generatedAt: evolucaoSafeString(payload.generatedAt, 80), sessions };
+  if (JSON.stringify(normalized).length > EVOLUCAO_MAX_NORMALIZED) return { ok: false, error: { code: 'PAYLOAD_TOO_LARGE', message: 'Dados do treino excedem o limite seguro' } };
+  return { ok: true, payload: normalized };
+}
+
+function getEvolucaoWorkout(date = (typeof today === 'function' ? today() : localDateStr())) {
+  const d = String(date || '').match(/^\d{4}-\d{2}-\d{2}$/) ? String(date) : localDateStr();
+  try {
+    const bridge = typeof window !== 'undefined' ? window.AndroidBridge : null;
+    if (!bridge || typeof bridge.getEvolucaoWorkout !== 'function') return { ok: false, error: { code: 'APP_UNAVAILABLE', message: 'Evolução não está disponível neste aparelho' } };
+    const raw = bridge.getEvolucaoWorkout(d);
+    if (typeof raw === 'string' && raw.length > EVOLUCAO_MAX_RAW) return { ok: false, error: { code: 'PAYLOAD_TOO_LARGE', message: 'Resposta do Evolução excede o limite seguro' } };
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!parsed || typeof parsed !== 'object') throw new Error('Resposta inválida');
+    if (parsed.error) return { ok: false, error: parsed.error };
+    const normalized = evolucaoNormalizeWorkout(parsed, d);
+    if (!normalized.ok) return normalized;
+    if (normalized.payload.sessions.length === 0) {
+      return { ok: false, error: { code: 'EMPTY_WORKOUT', message: 'Nenhuma sessão registrada no treino do Evolução' } };
+    }
+    return normalized;
+  } catch (e) {
+    if (e && e.message === 'PAYLOAD_TOO_LARGE') return { ok: false, error: { code: 'PAYLOAD_TOO_LARGE', message: 'Dados do treino excedem o limite seguro' } };
+    return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Não foi possível consultar o treino do Evolução' } };
+  }
+}
+
+function evolucaoWorkoutSummary(result) {
+  if (!result?.ok || !result.payload) return `<div class="small" style="color:var(--txt-secondary)">${escapeHtml(result?.error?.message || 'Nenhum treino importado.')}</div>`;
+  const sessions = Array.isArray(result.payload.sessions) ? result.payload.sessions : [];
+  if (!sessions.length) return '<div class="small">Treino importado, mas sem sessões registradas.</div>';
+  const labels = sessions.slice(0, 5).map(s => escapeHtml(String(s.nome || s.tipo || s.name || s.title || s.exercise || s.type || 'Sessão'))).join(' · ');
+  return `<div class="small" style="color:var(--status-ok)"><b>Treino importado do Evolução:</b> ${labels}${sessions.length > 5 ? ` · +${sessions.length - 5}` : ''}</div>`;
+}
+
+function carregarTreinoEvolucao() {
+  const result = getEvolucaoWorkout(today());
+  window.__evolucaoWorkoutResult = result;
+  const box = $('#evolucaoWorkoutStatus');
+  if (box) box.innerHTML = evolucaoWorkoutSummary(result);
+  return result;
+}
+
 function abrirAtividadeIA() {
+  window.__evolucaoWorkoutResult = null;
   openModal(`
     <h2>⚡ Estimar gasto com IA</h2>
-    <p class="small mb8">Descreva a atividade física praticada. A IA estimará a duração, METs e calorias com base na sua biometria.</p>
+    <p class="small mb8">Busque o treino registrado hoje no Evolução e, se quiser, complemente com sua observação. A IA estimará duração, METs e calorias sem inventar sessões.</p>
+    <button class="bigbtn secondary" onclick="carregarTreinoEvolucao()">↻ Buscar treino do dia (${today()})</button>
+    <div id="evolucaoWorkoutStatus" class="formcard mt8">Treino do Evolução ainda não consultado.</div>
     <label for="textoAtividade">Descrição do exercício / treino</label>
-    <textarea id="textoAtividade" rows="4" maxlength="1000" placeholder="Ex.: Corri alternando corrida a 9 km/h e caminhada a 3 km/h de 1 em 1 minuto por 20 minutos"></textarea>
+    <textarea id="textoAtividade" rows="4" maxlength="1000" placeholder="Opcional: complemente com ritmo, duração ou observações do treino"></textarea>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
       <button class="bigbtn primary" onclick="iniciarAnaliseAtividade()">Estimar gasto</button>
@@ -1053,8 +1193,9 @@ function encerrarAnaliseAtividade() {
 
 async function iniciarAnaliseAtividade() {
   const texto = ($('#textoAtividade')?.value || '').trim();
-  if (!texto) {
-    toast('Digite a descrição do exercício para estimar');
+  const workout = window.__evolucaoWorkoutResult?.ok ? window.__evolucaoWorkoutResult.payload : null;
+  if (!texto && !workout) {
+    toast('Busque um treino do Evolução ou descreva a atividade');
     return;
   }
   if (!apikey) {
@@ -1062,10 +1203,10 @@ async function iniciarAnaliseAtividade() {
     setTimeout(() => { state.tab = 'ajustes'; render(); }, 300);
     return;
   }
-  await processarAtividade(texto);
+  await processarAtividade(texto, workout);
 }
 
-async function processarAtividade(texto) {
+async function processarAtividade(texto, workout = null) {
   const run = {
     cancelled: false,
     controller: typeof AbortController === 'function' ? new AbortController() : null,
@@ -1073,10 +1214,12 @@ async function processarAtividade(texto) {
   };
   window.__ativRun = run;
   window.__ativDescricao = texto;
+  window.__ativWorkout = workout;
 
   openModal(`
     <h2>Estimando gasto calórico…</h2>
-    <div class="small mb8"><b>Descrição:</b> ${escapeHtml(texto)}</div>
+    ${workout ? evolucaoWorkoutSummary({ ok: true, payload: workout }) : ''}
+    ${texto ? `<div class="small mb8"><b>Observação enviada:</b> ${escapeHtml(texto)}</div>` : ''}
     <div id="aiStepsAtiv"></div>
     <button id="aiCancelAtiv" class="bigbtn secondary mt12" onclick="encerrarAnaliseAtividade()">Encerrar agora e usar respostas recebidas</button>
   `);
@@ -1092,7 +1235,7 @@ async function processarAtividade(texto) {
     for (let modelIndex = 0; modelIndex < GEMINI_MODELS.length && !result; modelIndex++) {
       const model = GEMINI_MODELS[modelIndex];
       setAnalysisStep(steps, i, progressHtml(i, n, model, 1, `Estimativa ${i + 1} de ${n}…`));
-      let trace = await consultarModeloAtividade(model, texto, i, 1, apikey, run);
+      let trace = await consultarModeloAtividade(model, texto, i, 1, apikey, run, null, workout);
       apiReturns.push(trace);
       selectedTrace = trace;
       if (trace.ok) { result = trace.result; break; }
@@ -1102,7 +1245,7 @@ async function processarAtividade(texto) {
         await waitMs(RETRY_DELAY_MS, run);
         if (run.cancelled) break;
         setAnalysisStep(steps, i, progressHtml(i, n, model, 2, `Estimativa ${i + 1} de ${n}…`));
-        trace = await consultarModeloAtividade(model, texto, i, 2, apikey, run);
+        trace = await consultarModeloAtividade(model, texto, i, 2, apikey, run, null, workout);
         apiReturns.push(trace);
         selectedTrace = trace;
         if (trace.ok) { result = trace.result; break; }
@@ -1399,6 +1542,8 @@ function confirmManualExercicio() {
 // Activity exports
 window.ACTIVITY_SCHEMA = ACTIVITY_SCHEMA;
 window.ACTIVITY_PROMPT = ACTIVITY_PROMPT;
+window.getEvolucaoWorkout = getEvolucaoWorkout;
+window.carregarTreinoEvolucao = carregarTreinoEvolucao;
 window.apiBodyAtividade = apiBodyAtividade;
 window.consultarModeloAtividade = consultarModeloAtividade;
 window.mergeActivityAnalisys = mergeActivityAnalisys;

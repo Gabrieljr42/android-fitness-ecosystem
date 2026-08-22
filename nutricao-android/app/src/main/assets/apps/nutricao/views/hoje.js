@@ -216,6 +216,15 @@ function renderHoje(main) {
   if ($('#btnAtivIA')) $('#btnAtivIA').onclick = (typeof abrirAtividadeIA === 'function' ? abrirAtividadeIA : null);
   if ($('#btnMan')) $('#btnMan').onclick = abrirManual;
   if ($('#btnManExercicio')) $('#btnManExercicio').onclick = (typeof abrirManualExercicio === 'function' ? abrirManualExercicio : null);
+
+  // Delegação para botões de exclusão (sem inline handlers — ids podem vir
+  // de backup importado e nunca devem virar código)
+  main.querySelectorAll('[data-del-meal]').forEach(btn => {
+    btn.onclick = () => delMeal(btn.getAttribute('data-del-meal'));
+  });
+  main.querySelectorAll('[data-del-activity]').forEach(btn => {
+    btn.onclick = () => handleDelActivity(btn.getAttribute('data-del-activity'));
+  });
 }
 
 function renderListaMeals(lista) {
@@ -225,7 +234,7 @@ function renderListaMeals(lista) {
     const pTotal = +((m.itens || []).reduce((a, i) => a + (i.proteina_g || 0), 0)).toFixed(1);
     const cTotal = +((m.itens || []).reduce((a, i) => a + (i.carbo_g || 0), 0)).toFixed(1);
     const gTotal = +((m.itens || []).reduce((a, i) => a + (i.gordura_g || 0), 0)).toFixed(1);
-    
+
     let badge = '';
     if (m.origem === 'ia_texto') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA TEXTO</span>';
     else if (m.origem === 'foto') badge = '<span style="font-size:10px;background:var(--status-ok-dim);color:var(--status-ok);border:1px solid rgba(74,222,128,0.25);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">FOTO</span>';
@@ -235,16 +244,16 @@ function renderListaMeals(lista) {
     <div class="meal">
       <div class="dot"></div>
       <div class="info">
-        <div class="nome" style="display:flex;align-items:center">${m.nome}${badge}</div>
-        <div class="det">${(m.itens || []).map(i => i.nome).join(' · ')} · ${m.hour || ''}</div>
+        <div class="nome" style="display:flex;align-items:center">${escapeHtml(m.nome)}${badge}</div>
+        <div class="det">${(m.itens || []).map(i => escapeHtml(i && i.nome)).join(' · ')} · ${escapeHtml(m.hour || '')}</div>
         <div class="small" style="margin-top:2px;font-size:11px;color:var(--txt-secondary)">
-          <span>P ${pTotal}g</span> · 
-          <span>C ${cTotal}g</span> · 
+          <span>P ${pTotal}g</span> ·
+          <span>C ${cTotal}g</span> ·
           <span>G ${gTotal}g</span>
         </div>
       </div>
       <div class="k">${fmt(kTotal)} kcal</div>
-      <button class="del" onclick="delMeal('${m.id}')" title="Excluir refeição">
+      <button class="del" data-del-meal="${escapeHtml(m.id)}" title="Excluir refeição">
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
@@ -281,7 +290,7 @@ function renderListaActivities(lista) {
         ${segs}
       </div>
       <div class="k" style="color:#ffffff">-${fmt(kGasto)} kcal</div>
-      <button class="del" onclick="handleDelActivity('${a.id}')" title="Remover atividade">
+      <button class="del" data-del-activity="${escapeHtml(a.id)}" title="Remover atividade">
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>

@@ -1,5 +1,15 @@
 /* kernel/db.js — carga, migração e persistência local */
 var KEY = 'evolucao_treino_state';
+/* O gerador canônico de IDs é exercicios/nomes.js (carregado ANTES deste
+   arquivo no index.html): alias-aware, prefixo "ex_". NÃO redefinimos aqui —
+   o bug histórico era views/treino.js sombreá-lo depois do load, trocando o
+   gerador para um formato simples. Fallback abaixo só existe para sandboxes
+   de teste que não carregam nomes.js. */
+if (typeof exerciseIdFor === 'undefined') {
+  function exerciseIdFor(name){
+    return String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'exercicio';
+  }
+}
 function EX(n,rest,sets,reps){
   var t=typeof targetFor === 'function' ? targetFor(n) : {sets:4, reps:'8-12'};
   var eq=typeof Progression !== 'undefined' && Progression.inferEq ? Progression.inferEq(n) : 'maquina';
@@ -19,6 +29,7 @@ var DEFAULT_STATE={
   cardioGoalKm:15,
   draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null},
   draftCorrida:null,
+  marathonState:{assoc:{},pain:{},notes:{},checkpoints:{}},
   settings:{restAuto:true, alarm:true, autoAdvance:true, progressao:{enabled:true, stallSessions:3, deloadPct:10, targetRir:2, expandRepRange:true, weightMatch:true}}
 };
 
@@ -102,6 +113,14 @@ function migrate(s){
   if(s.draft.sessionMode!=='curto') s.draft.sessionMode='normal';
   if(s.draft.unilateralPending===undefined) s.draft.unilateralPending=null;
   if(s.draftCorrida===undefined) s.draftCorrida=null;
+  /* Maratona: estado do usuário (associações/dor/notas/checkpoints).
+     Idempotente e aditivo — estados antigos ganham o objeto vazio. */
+  if(!s.marathonState || typeof s.marathonState!=='object'){
+    s.marathonState={assoc:{},pain:{},notes:{},checkpoints:{}};
+  }
+  ['assoc','pain','notes','checkpoints'].forEach(function(k){
+    if(!s.marathonState[k] || typeof s.marathonState[k]!=='object') s.marathonState[k]={};
+  });
   if(!s.ficha) s.ficha=JSON.parse(JSON.stringify(d.ficha));
   if(isLegacyDefaultRoutine(s.ficha)) s.ficha=JSON.parse(JSON.stringify(d.ficha));
   migrateEntryFlags(s.draft.entries);
@@ -113,7 +132,12 @@ function migrate(s){
       var t=typeof targetFor === 'function' ? targetFor(e.n||'') : {sets:4, reps:'8-12'};
       var out={}; Object.keys(e).forEach(function(key){ out[key]=e[key]; });
       var eq=(typeof Progression !== 'undefined' && Progression.INC_BY_EQ && Progression.INC_BY_EQ[e.eq]!==undefined) ? e.eq : (typeof Progression !== 'undefined' && Progression.inferEq ? Progression.inferEq(e.n||'') : 'maquina');
-      out.n=e.n; out.id=String(e.id||(typeof exerciseIdFor === 'function' ? exerciseIdFor(e.n||'') : String(e.n||'').toLowerCase().replace(/\s+/g,'_')));
+      out.n=e.n;
+      /* Normaliza IDs desviados (ex.: exercícios criados enquanto o gerador
+         canônico estava sombreado) de volta ao formato canônico. Idempotente:
+         IDs saudáveis geram a si mesmos. Seguro porque histórico/entries são
+         indexados por nome, nunca por ID. */
+      out.id=String(typeof exerciseIdFor === 'function' ? exerciseIdFor(e.n||'') : e.id||e.n);
       out.aliases=typeof uniqueStrings === 'function' ? uniqueStrings((e.aliases||[]).concat(typeof aliasesForExercise === 'function' ? aliasesForExercise(e.n||'') : [])) : (e.aliases||[]);
       out.rest=(e.rest==null?(typeof restFor === 'function' ? restFor(e.n||'') : 90):e.rest); 
       out.sets=(e.sets==null?t.sets:e.sets); 
@@ -134,7 +158,26 @@ function migrate(s){
   });
   return s;
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function syncNative(){
+  try{ if(typeof AndroidBridge!=='undefined' && AndroidBridge.syncWorkoutState) AndroidBridge.syncWorkoutState(JSON.stringify({sessions:state.sessions||[],corridas:state.corridas||[]})); }catch(e){}
+}
+var _saveFailedShown = false; // avisa uma única vez por sessão
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }catch(e){
+    /* Falha de gravação (cota cheia, storage bloqueado) NÃO pode passar em
+       silêncio: é a única fronteira durável do app. */
+    try{ console.warn('[evolucao] falha ao salvar estado local:', e); }catch(_){}
+    if(!_saveFailedShown){
+      _saveFailedShown = true;
+      if(typeof toast === 'function') toast('⚠ Não foi possível salvar seus dados localmente — faça um backup!');
+    }
+  }
+  syncNative();
+}
+// Espelha o estado já carregado, inclusive após reinício antes da primeira edição.
+syncNative();
 
 /* ---------- Merge de backup (nunca sobrescreve, só combina) ---------- */
 function sessionSig(s){ return s.date+'|'+s.day+'|'+(s.mode||'normal')+'|'+JSON.stringify(s.entries); }
@@ -183,6 +226,8 @@ function mergeState(cur, inc){
       cardioGoalKm:cur.cardioGoalKm || inc.cardioGoalKm || 15,
       draft:cur.draft,
       draftCorrida:cur.draftCorrida || null,
+      /* Estado da maratona nunca vem do backup (dados cur vencem) */
+      marathonState:(typeof migrate==='function') ? migrate({marathonState:cur.marathonState||{}}).marathonState : (cur.marathonState||{assoc:{},pain:{},notes:{},checkpoints:{}}),
       settings:cur.settings
     },
     addedSessions:addedSessions,

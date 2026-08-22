@@ -370,8 +370,10 @@ class NotificationReminderManager {
   const toggledList = bridgeSyncLogs[bridgeSyncLogs.length - 1].parsed;
   assert.strictEqual(toggledList[0].ativo, false);
 
-  // Test window.wipeAll triggers cancelAllAlarms
-  context.wipeAll();
+// Test window.wipeAll triggers cancelAllAlarms
+// (contrato novo: wipeAll abre modal; confirmWipeAll executa a limpeza)
+context.wipeAll();
+context.confirmWipeAll();
   assert.strictEqual(bridgeCancelAllCalls, 1, 'wipeAll deve chamar cancelAllAlarms');
 }
 

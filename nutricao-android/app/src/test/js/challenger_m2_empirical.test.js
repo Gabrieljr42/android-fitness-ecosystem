@@ -522,8 +522,9 @@ console.log('\n--- SECTION 4: State Mutations, High-Volume Stress, Undo & Backup
     exportadoEm: new Date().toISOString()
   });
 
-  // 3. Wipe All
-  wipeAll();
+// 3. Wipe All
+wipeAll();
+context.confirmWipeAll(); // contrato novo: modal + confirmacao
   assert.strictEqual(getLiveMeals().length, 0, 'Meals must be empty after wipeAll');
   assert.strictEqual(getLiveActivities().length, 0, 'Activities must be empty after wipeAll');
   assert.strictEqual(mockLocalStorage.getItem('nt_activities'), null, 'localStorage nt_activities must be removed');

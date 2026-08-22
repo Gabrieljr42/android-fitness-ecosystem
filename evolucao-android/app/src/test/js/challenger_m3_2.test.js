@@ -517,7 +517,7 @@ console.log('\n--- TEST SUITE 4: Tab Switching & Routing Behavior ---');
   assert(appEl.innerHTML.includes('FICHA'), 'Ficha tab should render Ficha view');
 
   // Verify Navigation Bar rendering
-  assert.strictEqual(ctx.TABS.length, 5, 'TABS array must contain exactly 5 tabs');
+  assert.strictEqual(ctx.TABS.length, 6, 'TABS array must contain exactly 6 tabs');
   const navHtml = navEl.innerHTML;
   assert(navHtml.includes('data-tab="treino"'));
   assert(navHtml.includes('data-tab="corrida"'));

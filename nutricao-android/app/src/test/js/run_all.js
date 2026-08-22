@@ -12,6 +12,7 @@ const tests = [
   'notifications.test.js',
   'activity_tdee.test.js',
   'gemini_activity.test.js',
+  'evolucao_workout_bridge.test.js',
   'challenger_m1_1_stress.test.js',
   'adversarial_m2_stress.test.js',
   'challenger_m2_empirical.test.js',
@@ -19,7 +20,14 @@ const tests = [
   'challenger_m3_2_adversarial.test.js',
   'r4_nutricao_regression.test.js',
   'challenger_preview_m1_m2_2_nutricao.test.js',
-  'custom_reminders_positive_messages.test.js'
+  'custom_reminders_positive_messages.test.js',
+  'r5_nt_security.test.js',
+  'r6_ai_item_ui.test.js',
+  'challenger_m3_1.test.js',
+  'challenger_m3_stress_matrix.test.js',
+  'challenger_r3_timezone_stress.test.js',
+  'empirical_m3_adversarial.test.js',
+  'meal_plan_habits.test.js'
 ];
 
 console.log('=== [NUTRITRACK] Executando Suíte de Testes Unitários ===\n');

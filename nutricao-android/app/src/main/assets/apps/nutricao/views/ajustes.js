@@ -72,10 +72,10 @@ function renderLembretesHtml(list) {
   return list.map((lembrete, index) => `
     <div class="remind-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-subtle);gap:8px">
       <div style="flex:1;min-width:0">
-        <input type="text" value="${(lembrete.nome || '').replace(/"/g, '&quot;')}" style="font-weight:700;font-size:14px;color:var(--txt-primary);background:transparent;border:0;padding:2px 0;width:100%;font-family:inherit" onchange="atualizarNomeLembrete(${index}, this.value)" placeholder="Nome do lembrete"/>
+        <input type="text" value="${escapeHtml(lembrete.nome || '')}" style="font-weight:700;font-size:14px;color:var(--txt-primary);background:transparent;border:0;padding:2px 0;width:100%;font-family:inherit" onchange="atualizarNomeLembrete(${index}, this.value)" placeholder="Nome do lembrete"/>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-        <input type="time" value="${lembrete.hora}" style="padding:6px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt-primary);border:1px solid var(--border-subtle);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
+        <input type="time" value="${escapeHtml(lembrete.hora)}" style="padding:6px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt-primary);border:1px solid var(--border-subtle);font-family:inherit;width:auto;font-size:13px" onchange="atualizarHoraLembrete(${index}, this.value)"/>
         <label class="switch">
           <input type="checkbox" ${lembrete.ativo ? 'checked' : ''} onchange="toggleLembrete(${index}, this.checked)"/>
           <span class="slider"></span>
@@ -259,7 +259,7 @@ function salvarNovoLembrete() {
 
   saveLembretes(list);
   if (typeof closeModal === 'function') closeModal();
-  toast(`Lembrete de ${nome} adicionado! ✨`);
+  toast(`Lembrete de ${escapeHtml(nome)} adicionado! ✨`);
   render();
 }
 
@@ -269,7 +269,7 @@ function removerLembrete(index) {
     const nome = list[index].nome;
     list.splice(index, 1);
     saveLembretes(list);
-    toast(`Lembrete "${nome}" removido`);
+    toast(`Lembrete "${escapeHtml(nome)}" removido`);
     render();
   }
 }
@@ -296,7 +296,7 @@ function toggleLembrete(index, ativo) {
   if (list[index]) {
     list[index].ativo = ativo;
     saveLembretes(list);
-    toast(ativo ? `Lembrete de ${list[index].nome} ativado` : `Lembrete desativado`);
+    toast(ativo ? `Lembrete de ${escapeHtml(list[index].nome)} ativado` : `Lembrete desativado`);
   }
 }
 
@@ -310,17 +310,19 @@ function testarNotificacao() {
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.sendNotification === 'function') {
     AndroidBridge.sendNotification(titulo, msg);
     if (typeof AndroidBridge.vibrate === 'function') AndroidBridge.vibrate(150);
-    toast(`Notificação: "${msg}"`);
+    toast(`Notificação: "${escapeHtml(msg)}"`);
   } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     new Notification(titulo, { body: msg });
-    toast(`Notificação: "${msg}"`);
+    toast(`Notificação: "${escapeHtml(msg)}"`);
   } else {
-    toast(`Preview: ${titulo} — "${msg}"`);
+    toast(`Preview: ${escapeHtml(titulo)} — "${escapeHtml(msg)}"`);
   }
 }
 
-function doBackup() {
-  const json = JSON.stringify({
+/* Monta o objeto de backup. A chave da API NUNCA é exportada: o arquivo vai
+   para Downloads/ e pode ser compartilhado por engano. */
+function collectBackupData() {
+  return {
     meals,
     activities: load(LS.act, []),
     profile,
@@ -328,10 +330,73 @@ function doBackup() {
     reminders: loadLembretes(),
     habits: load(LS.habits, {}),
     water: load(LS.water, {}),
-    apikey,
     pref,
     exportadoEm: new Date().toISOString()
-  }, null, 1);
+  };
+}
+
+/* Aplica um backup importado com validação leve de forma (compatível com
+   backups antigos; campos desconhecidos são ignorados, não rejeitados).
+   A chave da API é deliberadamente IGNORADA na importação. */
+function isPlainObj(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+function applyBackupData(d) {
+  const imported = [];
+  if (!isPlainObj(d)) return imported;
+
+  if (Array.isArray(d.meals)) {
+    save(LS.m, d.meals.filter(m => isPlainObj(m)));
+    meals = load(LS.m, []);
+    imported.push('refeições');
+  }
+  if (Array.isArray(d.activities)) {
+    save(LS.act, d.activities.filter(a => isPlainObj(a)));
+    activities = load(LS.act, []);
+    imported.push('atividades');
+  }
+  if (isPlainObj(d.profile)) {
+    save(LS.p, d.profile);
+    profile = load(LS.p, profile);
+    imported.push('metas');
+  }
+  if (Array.isArray(d.alims)) {
+    save('nt_alims', d.alims.filter(a => isPlainObj(a)));
+    imported.push('alimentos');
+  }
+  if (Array.isArray(d.reminders)) {
+    const limpos = d.reminders
+      .filter(r => isPlainObj(r))
+      .map(r => ({
+        id: String(r.id ?? ('lembrete_' + Math.random().toString(36).slice(2))),
+        nome: String(r.nome ?? 'Refeição'),
+        hora: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(r.hora || '')) ? String(r.hora) : '08:00',
+        ativo: !!r.ativo
+      }));
+    saveLembretes(limpos);
+    imported.push('lembretes');
+  }
+  if (isPlainObj(d.habits)) {
+    save(LS.habits, d.habits);
+    habits = load(LS.habits, {});
+    imported.push('hábitos');
+  }
+  if (isPlainObj(d.water)) {
+    save(LS.water, d.water);
+    water = load(LS.water, {});
+    imported.push('água');
+  }
+  // d.apikey: intencionalmente ignorado (segurança)
+  if (isPlainObj(d.pref)) {
+    pref = { ...pref, ...d.pref, paralelo: !!d.pref.paralelo };
+    save(LS.pref, pref);
+    imported.push('preferências');
+  }
+  return imported;
+}
+
+function doBackup() {
+  const json = JSON.stringify(collectBackupData(), null, 1);
 
   if (typeof AndroidBridge !== 'undefined' && AndroidBridge.saveBackup) {
     AndroidBridge.saveBackup(json, 'nutritrack-backup.json');
@@ -350,26 +415,31 @@ function doRestore(f) {
   r.onload = () => {
     try {
       const d = JSON.parse(r.result);
-      if (d.meals) { save(LS.m, d.meals); meals = load(LS.m, []); }
-      if (d.activities) { save(LS.act, d.activities); activities = load(LS.act, []); }
-      if (d.profile) { save(LS.p, d.profile); profile = load(LS.p, profile); }
-      if (d.alims) save('nt_alims', d.alims);
-      if (d.reminders) {
-        saveLembretes(d.reminders);
-      }
-      if (d.habits) { save(LS.habits, d.habits); habits = load(LS.habits, {}); }
-      if (d.water) { save(LS.water, d.water); water = load(LS.water, {}); }
-      if (d.apikey !== undefined) { apikey = d.apikey; localStorage.setItem(LS.k, apikey); }
-      if (d.pref) { pref = { ...pref, ...d.pref, paralelo: !!d.pref.paralelo }; save(LS.pref, pref); }
-      toast('Backup restaurado!');
+      const imported = applyBackupData(d);
+      if (!imported.length) { toast('Arquivo sem dados reconhecidos'); return; }
+      toast(`Backup restaurado (${imported.join(', ')})!`);
       render();
     } catch(e) { toast('Arquivo inválido'); }
   };
   r.readAsText(f);
 }
 
+/* Confirmação via modal do app: window.confirm() NÃO funciona dentro da
+   WebView (WebChromeClient padrão cancela o diálogo silenciosamente), o que
+   deixava este botão morto no APK instalado. */
 function wipeAll() {
-  if (typeof confirm === 'function' && !confirm('Apagar TODOS os registros, metas, hábitos e alimentos? Esta ação não pode ser desfeita.')) return;
+  if (typeof openModal !== 'function') return;
+  openModal(`
+    <h2>Apagar todos os dados?</h2>
+    <p class="small mb8">Registros, metas, hábitos, lembretes e alimentos serão removidos. Esta ação não pode ser desfeita.</p>
+    <div class="row mt12">
+      <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
+      <button class="bigbtn primary" style="background:var(--status-danger)" onclick="confirmWipeAll()">Apagar tudo</button>
+    </div>
+  `);
+}
+
+function confirmWipeAll() {
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.cancelAllAlarms === 'function') {
     AndroidBridge.cancelAllAlarms();
   }
@@ -385,6 +455,7 @@ function wipeAll() {
   habits = {};
   water = {};
   profile = load(LS.p, { kcal: 2200, p: 120, c: 250, g: 70, peso: 75, altura: 175, idade: 30, sexo: 'm', atividade: 1.4, metaMetodo: 'manual', metaAgua: 3000 });
+  if (typeof closeModal === 'function') closeModal();
   toast('Dados apagados');
   render();
 }
@@ -402,8 +473,11 @@ window.salvarNovoLembrete = salvarNovoLembrete;
 window.removerLembrete = removerLembrete;
 window.testarNotificacao = testarNotificacao;
 window.doBackup = doBackup;
+window.collectBackupData = collectBackupData;
+window.applyBackupData = applyBackupData;
 window.doRestore = doRestore;
 window.wipeAll = wipeAll;
+window.confirmWipeAll = confirmWipeAll;
 window.renderAjustes = renderAjustes;
 
 // Inicialização e sincronização de lembretes nativos

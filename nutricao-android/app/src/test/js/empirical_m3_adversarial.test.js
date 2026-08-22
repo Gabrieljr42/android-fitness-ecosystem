@@ -462,9 +462,10 @@ test('3.5: Full Backup, Wipe, and Restore serialization roundtrip', () => {
   assert(backupEntry, 'doBackup deve invocar AndroidBridge.saveBackup');
   const backupJson = backupEntry.json;
 
-  // Wipe
-  context.wipeAll();
-  assert.strictEqual(vm.runInContext('meals.length', context), 0);
+// Wipe
+context.wipeAll();
+context.confirmWipeAll(); // contrato novo: modal + confirmacao
+assert.strictEqual(vm.runInContext('meals.length', context), 0);
   assert.strictEqual(vm.runInContext('activities.length', context), 0);
 
   // Restore

@@ -337,9 +337,9 @@ console.log('--- 6. Navegação e Roteamento de Abas ---');
 {
   const { TABS, NAV_ICONS } = context;
 
-  // Teste 6.1: Array TABS possui 5 abas na ordem exata especificada
-  assert.strictEqual(TABS.length, 5, 'Deve conter exatamente 5 abas');
-  const expectedTabs = ['treino', 'corrida', 'progresso', 'historico', 'ficha'];
+// Teste 6.1: Array TABS possui 6 abas na ordem exata especificada
+assert.strictEqual(TABS.length, 6, 'Deve conter exatamente 6 abas');
+const expectedTabs = ['treino', 'corrida', 'maratona', 'progresso', 'historico', 'ficha'];
   expectedTabs.forEach((tabId, idx) => {
     assert.strictEqual(TABS[idx].id, tabId, `Aba na posição ${idx} deve ser ${tabId}`);
   });

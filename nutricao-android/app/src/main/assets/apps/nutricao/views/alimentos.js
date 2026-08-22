@@ -386,7 +386,7 @@ function abrirModalRefPlano(dia, refIndex) {
       ${m.itens.map(item => `
         <div class="det-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle);background:transparent;border-radius:0">
           <div style="flex:1;min-width:0;padding-right:8px">
-            <div style="font-weight:700;font-size:14px;color:var(--txt-primary)">${item.nome}</div>
+            <div style="font-weight:700;font-size:14px;color:var(--txt-primary)">${escapeHtml(item.nome)}</div>
             <div class="small" style="color:var(--txt-secondary);margin-top:2px">
               ${item.porcao_g}g · <span>P ${item.proteina_g}g</span> · <span>C ${item.carbo_g}g</span> · <span>G ${item.gordura_g}g</span>
             </div>
@@ -550,20 +550,29 @@ function renderCustomAlimsList() {
     const porc = a.porcao_g || 100;
     return `
       <div class="alim" style="justify-content:space-between">
-        <div class="nm" style="cursor:pointer" onclick="modalEditarAlimento(${idx})">
+        <div class="nm" style="cursor:pointer" data-edit-alim="${idx}">
           <b style="display:flex;align-items:center;gap:6px">
-            ${a.nome} 
+            ${escapeHtml(a.nome)}
             <span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
           </b>
           <small>${fmt(a.kcal)} kcal · P ${p}g · C ${c}g · G ${g}g (${porc}g)</small>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" onclick="modalEditarAlimento(${idx})">✏️</button>
-          <button class="plus" style="width:34px;height:34px" title="Adicionar ao diário" onclick="addRef('${a.nome.replace(/'/g, "\\'")}')">+</button>
+          <button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" data-edit-alim="${idx}">✏️</button>
+          <button class="plus" style="width:34px;height:34px" title="Adicionar ao diário" data-add-alim="${idx}">+</button>
         </div>
       </div>
     `;
   }).join('');
+
+  // Delegação index-based (nomes de alimentos podem conter aspas/tags —
+  // nunca são interpolados em handlers inline)
+  container.querySelectorAll('[data-edit-alim]').forEach(el => {
+    el.onclick = () => modalEditarAlimento(+el.getAttribute('data-edit-alim'));
+  });
+  container.querySelectorAll('[data-add-alim]').forEach(el => {
+    el.onclick = () => { const item = userAlims()[+el.getAttribute('data-add-alim')]; if (item) addRef(item.nome); };
+  });
 }
 
 function modalEditarAlimento(index) {
@@ -705,7 +714,9 @@ function filtrarRef() {
   const all = [...customList, ...refMap];
   const list = q ? all.filter(a => a.nome.toLowerCase().includes(q)).slice(0, 40) : all.slice(0, 25);
 
-  $('#refList').innerHTML = list.map(a => {
+  // Cada linha guarda o índice no array `all`; cliques resolvem o objeto
+  // real (nunca o nome) — imune a aspas/tags em nomes.
+  $('#refList').innerHTML = list.map((a, i) => {
     const isCust = !!a.custom;
     const p = a.proteina_g !== undefined ? a.proteina_g : (a.p || 0);
     const c = a.carbo_g !== undefined ? a.carbo_g : (a.c || 0);
@@ -713,20 +724,37 @@ function filtrarRef() {
     const porcDesc = isCust && a.porcao_g ? ` (${a.porcao_g}g)` : ' (100g)';
 
     return `
-      <div class="alim" onclick="addRef('${a.nome.replace(/'/g, "\\'")}')">
+      <div class="alim" data-pick-alim="${i}">
         <div class="nm">
           <b style="display:flex;align-items:center;gap:6px">
-            ${a.nome} 
+            ${escapeHtml(a.nome)}
             ${isCust ? '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>' : ''}
           </b>
           <small>${fmt(a.kcal)} kcal · P ${p} · C ${c} · G ${g}${porcDesc}</small>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          ${isCust ? `<button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" onclick="event.stopPropagation();modalEditarAlimento(${a.customIndex})">✏️</button>` : ''}
-          <button class="plus" onclick="event.stopPropagation();addRef('${a.nome.replace(/'/g, "\\'")}')">+</button>
+          ${isCust ? `<button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" data-edit-alim="${a.customIndex}">✏️</button>` : ''}
+          <button class="plus" title="Adicionar ao diário" data-add-alim="${i}">+</button>
         </div>
       </div>`;
   }).join('') || '<div class="empty"><p>Nenhum alimento encontrado.</p></div>';
+
+  window.__alimPickList = all;
+  $('#refList').querySelectorAll('[data-pick-alim]').forEach(el => {
+    el.onclick = () => { const item = all[+el.getAttribute('data-pick-alim')]; if (item) addRef(item.nome); };
+  });
+  $('#refList').querySelectorAll('[data-edit-alim]').forEach(el => {
+    el.onclick = (ev) => { ev.stopPropagation(); modalEditarAlimento(+el.getAttribute('data-edit-alim')); };
+  });
+  $('#refList').querySelectorAll('[data-add-alim]').forEach(el => {
+    el.onclick = (ev) => {
+      ev.stopPropagation();
+      const item = all[+el.getAttribute('data-add-alim')];
+      if (!item) return;
+      if (item.custom) addRef(item.nome);
+      else addRef(item.nome);
+    };
+  });
 }
 window.filtrarRef = filtrarRef;
 
@@ -734,7 +762,7 @@ function addRef(nome) {
   const a = userAlims().find(x => x.nome === nome) || refMap.find(x => x.nome === nome);
   if (!a) return;
   openModal(`
-    <h2>${a.nome}</h2>
+    <h2>${escapeHtml(a.nome)}</h2>
     <label>Porção (g)</label>
     <input id="pPorc" type="number" value="${a.porcao_g || 100}" oninput="calcPrev()"/>
     <div class="formcard mt12" id="prevBox"></div>

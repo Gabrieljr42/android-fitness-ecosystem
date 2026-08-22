@@ -478,6 +478,7 @@ console.log('\n--- Seção 4: Persistência de Lembretes, Backup e Sincronizaç�
 {
   console.log('Teste 4.4: wipeAll limpa todas as chaves do storage e estado em memória');
   context.window.wipeAll();
+context.window.confirmWipeAll();
 
   assert.strictEqual(mockLocalStorage.getItem('nt_meals'), null);
   assert.strictEqual(mockLocalStorage.getItem('nt_profile'), null);

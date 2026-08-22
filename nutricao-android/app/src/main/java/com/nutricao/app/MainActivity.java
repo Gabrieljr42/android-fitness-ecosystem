@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -44,6 +45,17 @@ public class MainActivity extends Activity {
     public static final String CHANNEL_ID = "nutricao_lembretes";
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraOutputUri;
+
+    /** Remove da MediaStore a entrada pendente de foto não utilizada (usuário
+     *  cancelou a captura ou o lançamento falhou). Sem isto, linhas vazias de
+     *  imagem acumulam na galeria. */
+    private void discardCameraOutput() {
+        if (cameraOutputUri == null) return;
+        try {
+            getContentResolver().delete(cameraOutputUri, null, null);
+        } catch (Exception ignored) {}
+        cameraOutputUri = null;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,7 +125,7 @@ public class MainActivity extends Activity {
                             try { filePathCallback.onReceiveValue(null); } catch (Exception ignored) {}
                             filePathCallback = null;
                         }
-                        cameraOutputUri = null;
+                        discardCameraOutput();
                         return false;
                     }
                 } else {
@@ -146,22 +158,28 @@ public class MainActivity extends Activity {
         if (requestCode == FILE_CHOOSER_CODE) {
             if (filePathCallback == null) return;
             Uri[] results = null;
-            if (resultCode == Activity.RESULT_OK) {
-                Uri picked = null;
-                if (data != null && data.getData() != null) {
-                    picked = data.getData();
-                } else if (cameraOutputUri != null) {
-                    // foto tirada com a camera: usar o Uri proprio (data.getData() é null nesse caso)
-                    picked = cameraOutputUri;
+                if (resultCode == Activity.RESULT_OK) {
+                    Uri picked = null;
+                    if (data != null && data.getData() != null) {
+                        picked = data.getData();
+                    } else if (cameraOutputUri != null) {
+                        // foto tirada com a camera: usar o Uri proprio (data.getData() é null nesse caso)
+                        picked = cameraOutputUri;
+                    }
+                    if (picked != null) {
+                        results = new Uri[]{ picked };
+                    }
                 }
-                if (picked != null) {
-                    results = new Uri[]{ picked };
+                // Foto cancelada ou substituída por pick da galeria: descarta a
+                // entrada pendente da câmera para não acumular lixo na galeria.
+                if (cameraOutputUri != null && (results == null || results[0] != cameraOutputUri)) {
+                    discardCameraOutput();
+                } else {
+                    cameraOutputUri = null; // URI consumida pelo JS
                 }
-            }
-            // se results == null, o JS recebe nada e mostra o fallback "nenhuma foto"
-            filePathCallback.onReceiveValue(results);
-            filePathCallback = null;
-            cameraOutputUri = null;
+                // se results == null, o JS recebe nada e mostra o fallback "nenhuma foto"
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null;
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
@@ -217,6 +235,49 @@ public class MainActivity extends Activity {
 
     /** Bridge chamada do JS para notificacoes, vibracao, agendamento de alarmes e backup. */
     public class Bridge {
+        /** Consulta o treino diário publicado pelo Evolução. Nunca propaga exceções ao WebView. */
+        @JavascriptInterface
+        public String getEvolucaoWorkout(final String date) {
+            JSONObject error = new JSONObject();
+            try {
+                if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    error.put("ok", false).put("error", new JSONObject()
+                            .put("code", "INVALID_DATE").put("message", "Data deve estar no formato YYYY-MM-DD"));
+                    return error.toString();
+                }
+                Uri uri = Uri.parse("content://com.evolucao.treino.workouts/workouts")
+                        .buildUpon().appendQueryParameter("date", date).build();
+                Cursor cursor = null;
+                try {
+                    cursor = getContentResolver().query(uri, new String[]{"_id", "payload"},
+                            null, null, "_id DESC");
+                    if (cursor == null || !cursor.moveToFirst()) {
+                        error.put("ok", false).put("error", new JSONObject()
+                                .put("code", "NO_DATA").put("message", "Nenhum treino encontrado para esta data"));
+                        return error.toString();
+                    }
+                    int payloadIndex = cursor.getColumnIndex("payload");
+                    String raw = payloadIndex >= 0 ? cursor.getString(payloadIndex) : null;
+                    if (raw == null || raw.trim().isEmpty()) {
+                        error.put("ok", false).put("error", new JSONObject()
+                                .put("code", "EMPTY_PAYLOAD").put("message", "O treino publicado não possui dados"));
+                        return error.toString();
+                    }
+                    // Validar e devolver JSON do contrato, sem embrulhar nem alterar o payload.
+                    return new JSONObject(raw).toString();
+                } finally {
+                    if (cursor != null) cursor.close();
+                }
+            } catch (Exception e) {
+                try {
+                    error.put("ok", false).put("error", new JSONObject()
+                            .put("code", "PROVIDER_UNAVAILABLE")
+                            .put("message", "Evolução indisponível ou incompatível"));
+                } catch (Exception ignored) {}
+                return error.toString();
+            }
+        }
+
         @JavascriptInterface
         public void sendNotification(final String title, final String message) {
             try {
