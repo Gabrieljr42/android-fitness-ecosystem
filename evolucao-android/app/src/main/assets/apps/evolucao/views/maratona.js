@@ -3,7 +3,6 @@
    usuário em state.marathonState (associações/dor/notas) — nunca duplica
    histórico de corridas nem cálculo de peso (usa apps/evolucao/peso.js). */
 
-var marView = 'semana';           // 'semana' | 'historico'
 var marWeekNum = null;            // null = semana atual pela data
 
 function _msEsc(s){ return typeof esc === 'function' ? esc(s) : String(s == null ? '' : s); }
@@ -65,11 +64,8 @@ function renderMaratona(){
     '<button class="mf-tool" id="marToday"' + (isCurrent ? ' disabled' : '') + '>Ir para hoje</button>' +
     '<button class="mf-tool" id="marNext" ' + (wk.week >= MARATONA_PLAN.length ? 'disabled' : '') + '>Próxima ›</button></div>';
 
-  h += '<div class="seg" style="margin-bottom:12px">' +
-    '<button data-marview="semana" class="' + (marView === 'semana' ? 'on' : '') + '">Semana</button>' +
-    '<button data-marview="historico" class="' + (marView === 'historico' ? 'on' : '') + '">Histórico</button></div>';
-
-  if (marView === 'historico') return h + renderMaratonaHistorico();
+  /* Histórico/aderência do plano vive na seção Progresso da aba Corrida;
+     este render fica exclusivo da visão "Semana". */
 
   // ---- Status da semana ----
   var pctTxt = adh.pct == null ? '—' : adh.pct + '%';
@@ -248,10 +244,6 @@ function bindMaratona(){
   if (next) next.onclick = function(){ if (marWeekNum == null) { var c = maratonaWeekForDate(todayISO()); marWeekNum = c ? c.week : 1; } if (marWeekNum < MARATONA_PLAN.length) { marWeekNum++; render(); } };
   var todayBtn = document.getElementById('marToday');
   if (todayBtn) todayBtn.onclick = function(){ marWeekNum = null; render(); };
-
-  document.querySelectorAll('[data-marview]').forEach(function(b){
-    b.onclick = function(){ marView = b.getAttribute('data-marview'); render(); };
-  });
 
   var d = state.draft;
   document.querySelectorAll('[data-marassoc]').forEach(function(sel){

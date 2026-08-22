@@ -66,6 +66,7 @@ function makeCtx(seedMeals) {
     window: win,
     $: sel => (typeof sel === 'string' && sel.startsWith('#')) ? (byId[sel.slice(1)] || null) : null,
     $$: () => [],
+    navigator: { serviceWorker: { register() { return Promise.reject(new Error('no-sw')); } } },
     openModal(html) { byId.modal.innerHTML = html; },
     closeModal() { byId.modal.innerHTML = ''; },
     fmt: n => Math.round(Number(n) || 0).toLocaleString('pt-BR'),
