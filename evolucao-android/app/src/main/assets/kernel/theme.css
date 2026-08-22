@@ -177,6 +177,17 @@ h3 {
   margin: 0 0 6px;
 }
 
+.small {
+  font-size: 11px;
+  color: var(--mut);
+}
+
+/* Toggle da barra de RIR no teclado (treino.js aplica a classe na própria barra) */
+.mf-rirbar.mf-rirbar-off { display: none; }
+
+/* Animação de entrada do teclado numérico */
+@keyframes kbdin-up { from { transform: translateY(18%); opacity: 0; } to { transform: none; opacity: 1; } }
+.mf-kbd.mf-kbdin { animation: kbdin-up .16s ease-out; }
 .sub {
   color: var(--txt-secondary);
   font-size: 12.5px;

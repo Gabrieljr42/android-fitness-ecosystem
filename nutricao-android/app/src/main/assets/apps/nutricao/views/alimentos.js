@@ -593,12 +593,12 @@ function renderCustomAlimsList() {
     const porc = a.porcao_g || 100;
     return `
       <div class="alim" style="justify-content:space-between">
-        <div class="nm" style="cursor:pointer" data-edit-alim="${idx}">
+        <div class="nm">
           <b style="display:flex;align-items:center;gap:6px">
             ${escapeHtml(a.nome)}
             <span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
           </b>
-          <small>${fmt(a.kcal)} kcal · P ${p}g · C ${c}g · G ${g}g (${porc}g)</small>
+          <small>${fmt(a.kcal)} kcal · P ${p}g · C ${c}g · G ${g}g — porção de ${porc} g</small>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" data-edit-alim="${idx}">✏️</button>
@@ -608,11 +608,7 @@ function renderCustomAlimsList() {
     `;
   }).join('');
 
-  // Delegação index-based (nomes de alimentos podem conter aspas/tags —
-  // nunca são interpolados em handlers inline)
-  container.querySelectorAll('[data-edit-alim]').forEach(el => {
-    el.onclick = () => modalEditarAlimento(+el.getAttribute('data-edit-alim'));
-  });
+  // Semântica única: tocar no alimento = ADICIONAR; editar só pelo ✏️.
   container.querySelectorAll('[data-add-alim]').forEach(el => {
     el.onclick = () => { const item = userAlims()[+el.getAttribute('data-add-alim')]; if (item) addRef(item.nome); };
   });
