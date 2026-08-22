@@ -361,7 +361,10 @@ function applyBackupData(d) {
     imported.push('metas');
   }
   if (Array.isArray(d.alims)) {
-    save('nt_alims', d.alims.filter(a => isPlainObj(a)));
+    const norm = typeof normalizeAlimEntry === 'function'
+      ? d.alims.filter(a => isPlainObj(a)).map(normalizeAlimEntry)
+      : d.alims.filter(a => isPlainObj(a));
+    save('nt_alims', norm);
     imported.push('alimentos');
   }
   if (Array.isArray(d.reminders)) {

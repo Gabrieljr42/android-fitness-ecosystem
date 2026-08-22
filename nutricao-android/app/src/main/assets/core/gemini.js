@@ -955,7 +955,10 @@ function apiBodyAtividade(texto, model, userProfile = (typeof profile !== 'undef
   const contextoBiometrico = `[Dados Biométricos do Usuário]\n- Peso: ${peso} kg\n- Altura: ${altura} cm\n- Idade: ${idade} anos\n- Sexo: ${sexo}`;
 
   const treinoImportado = workout && Array.isArray(workout.sessions) && workout.sessions.length > 0
-    ? `\n\n[Treino importado do Evolução — somente dados registrados]\nUse só estas sessões (duracaoSeg, cargaKg/repeticoes); não crie exercícios. Observação é complemento. Musculação sem duração: conservador, confianca baixa.\n${JSON.stringify(workout)}` : '';
+    ? `\n\n[Treino importado do Evolução — somente dados registrados]\nUse só estas sessões; não crie exercícios. Observação é complemento.\n` +
+      `Para sessões tipo "musculacao": estime o gasto pelo volume (séries × repetições × cargaKg), tempo aproximado somando séries e descansos típicos (60–180 s) quando duracaoSeg estiver ausente, e popule segmentos por exercício (descricao=nome, duracao_minutos estimado, met compatível com treino de força 3–6).\n` +
+      `Quando duracaoSeg ESTIVER presente, use-o como duração real — nesse caso NÃO seja excessivamente conservador.\n` +
+      `Para sessões tipo "corrida": use distanciaKm/duracaoSeg/velocidadeMediaKmh diretamente.\n${JSON.stringify(workout)}` : '';
   return {
     contents: [
       {
@@ -1152,7 +1155,17 @@ function evolucaoWorkoutSummary(result) {
   if (!result?.ok || !result.payload) return `<div class="small" style="color:var(--txt-secondary)">${escapeHtml(result?.error?.message || 'Nenhum treino importado.')}</div>`;
   const sessions = Array.isArray(result.payload.sessions) ? result.payload.sessions : [];
   if (!sessions.length) return '<div class="small">Treino importado, mas sem sessões registradas.</div>';
-  const labels = sessions.slice(0, 5).map(s => escapeHtml(String(s.nome || s.tipo || s.name || s.title || s.exercise || s.type || 'Sessão'))).join(' · ');
+  const labels = sessions.slice(0, 5).map(s => {
+    let label = escapeHtml(String(s.nome || s.tipo || s.name || 'Sessão'));
+    // Sessão de musculação: deixa a força visível em vez de uma letra ("A")
+    if ((s.tipo === 'musculacao' || s.type === 'musculacao') && Array.isArray(s.exercicios) && s.exercicios.length) {
+      const totalSets = s.exercicios.reduce((acc, ex) => acc + (Array.isArray(ex.series) ? ex.series.filter(x => x && x.concluida !== false).length : 0), 0);
+      label += ` · ${s.exercicios.length} exercício(s)` + (totalSets ? ` · ${totalSets} séries` : '');
+    }
+    const dur = Number(s.duracaoSeg);
+    if (dur > 0) label += ` · ${Math.round(dur / 60)} min`;
+    return label;
+  }).join(' · ');
   return `<div class="small" style="color:var(--status-ok)"><b>Treino importado do Evolução:</b> ${labels}${sessions.length > 5 ? ` · +${sessions.length - 5}` : ''}</div>`;
 }
 

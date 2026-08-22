@@ -527,14 +527,28 @@ function promptFinishSession(){
     onOk: function(selected){
       var mode = (selected === 'Treino Curto' || selected === 'curto') ? 'curto' : 'normal';
       var durFinal = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+      var notesStr = (function(){
+        try {
+          if (mfNotes == null) return '';
+          if (typeof mfNotes === 'string') return mfNotes;
+          return Object.keys(mfNotes)
+            .filter(function(k){ return mfNotes[k]; })
+            .map(function(k){ return k + ': ' + mfNotes[k]; })
+            .join('\n');
+        } catch(e) { return ''; }
+      })();
       var savedSession = {
         id: Date.now(),
         date: d.date,
+        /* Data real de conclusão: o rascunho pode ter sido aberto em outro dia
+           (ex.: treino que passou da meia-noite). A importação do NutriTrack
+           casa por date OU finishedAt — sem quebrar backdating manual. */
+        finishedAt: todayISO(),
         day: d.day,
         mode: mode,
         entries: d.entries,
         duration: durFinal,
-        notes: mfNotes
+        notes: notesStr
       };
       state.sessions.push(savedSession);
       lastSummary = { day: d.day, date: d.date, mode: mode };

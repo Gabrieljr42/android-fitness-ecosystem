@@ -176,8 +176,31 @@ const PLANO_SEMANAL = [
 ];
 
 /* ============ REGISTRO DE ALIMENTOS & MEUS ALIMENTOS (HELPERS) ============ */
+/* MODELO CANÔNICO: todo item em nt_alims tem kcal/macros POR PORÇÃO SALVA
+   (totais para porcao_g gramas) e custom:true é invariante garantido aqui.
+   A base de referência (refMap) continua por 100 g e nunca entra em nt_alims.
+   Assim "valor da lista" == "valor ao tocar" — sem escala dupla. */
+function normalizeAlimEntry(a) {
+  if (!a || typeof a !== 'object') return a;
+  const rawP = Number(a.porcao_g);
+  const porcao = Number.isFinite(rawP) && rawP > 0 ? rawP : 100;
+  const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  return {
+    ...a,
+    custom: true,
+    porcao_g: porcao,
+    kcal: num(a.kcal),
+    proteina_g: num(a.proteina_g),
+    carbo_g: num(a.carbo_g),
+    gordura_g: num(a.gordura_g)
+  };
+}
+
 function userAlims() {
-  return typeof load === 'function' ? load('nt_alims', []) : [];
+  const list = typeof load === 'function' ? load('nt_alims', []) : [];
+  // Cura na leitura: entradas legadas/de IA sem custom/porcao_g ficam
+  // consistentes com a base "porção salva" sem precisar migrar storage.
+  return Array.isArray(list) ? list.map(normalizeAlimEntry) : [];
 }
 
 function saveUserAlims(list) {
@@ -188,8 +211,30 @@ function saveUserAlims(list) {
 
 function saveAlim(a) {
   const l = userAlims();
-  l.unshift(a);
+  l.unshift(normalizeAlimEntry(a));
   saveUserAlims(l);
+}
+
+/** Base de cálculo de um alimento: gramas de referência + valores nessa base. */
+function alimBasis(ref) {
+  if (!ref) return { baseG: 100, kcal: 0, p: 0, c: 0, g: 0 };
+  if (ref.custom) {
+    return {
+      baseG: Math.max(1, Number(ref.porcao_g) || 100),
+      kcal: Number(ref.kcal) || 0,
+      p: Number(ref.proteina_g ?? ref.p) || 0,
+      c: Number(ref.carbo_g ?? ref.c) || 0,
+      g: Number(ref.gordura_g ?? ref.g) || 0
+    };
+  }
+  // Base de referência: sempre por 100 g
+  return {
+    baseG: 100,
+    kcal: Number(ref.kcal) || 0,
+    p: Number(ref.p ?? ref.proteina_g) || 0,
+    c: Number(ref.c ?? ref.carbo_g) || 0,
+    g: Number(ref.g ?? ref.gordura_g) || 0
+  };
 }
 
 function updateCustomFood(index, updatedObj) {
@@ -226,21 +271,19 @@ function enrichPlanItem(item) {
               (typeof refMap !== 'undefined' ? refMap.find(x => x.nome === item.nome) : null);
 
   const porcao = item.porcao_g || 100;
-  const factor = porcao / 100;
 
   if (ref) {
-    const p100 = ref.p ?? ref.proteina_g ?? 0;
-    const c100 = ref.c ?? ref.carbo_g ?? 0;
-    const g100 = ref.g ?? ref.gordura_g ?? 0;
-    const k100 = ref.kcal ?? 0;
+    // Base correta por tipo: custom = porção salva; referência = 100 g
+    const b = alimBasis(ref);
+    const factor = b.baseG > 0 ? (porcao / b.baseG) : 1;
 
     return {
       nome: item.nome,
       porcao_g: porcao,
-      kcal: item.kcal !== undefined ? item.kcal : Math.round(k100 * factor),
-      proteina_g: +((p100 * factor).toFixed(1)),
-      carbo_g: +((c100 * factor).toFixed(1)),
-      gordura_g: +((g100 * factor).toFixed(1))
+      kcal: item.kcal !== undefined ? item.kcal : Math.round(b.kcal * factor),
+      proteina_g: +((b.p * factor).toFixed(1)),
+      carbo_g: +((b.c * factor).toFixed(1)),
+      gordura_g: +((b.g * factor).toFixed(1))
     };
   }
 
@@ -721,7 +764,7 @@ function filtrarRef() {
     const p = a.proteina_g !== undefined ? a.proteina_g : (a.p || 0);
     const c = a.carbo_g !== undefined ? a.carbo_g : (a.c || 0);
     const g = a.gordura_g !== undefined ? a.gordura_g : (a.g || 0);
-    const porcDesc = isCust && a.porcao_g ? ` (${a.porcao_g}g)` : ' (100g)';
+    const porcDesc = isCust && a.porcao_g ? ` (porção de ${a.porcao_g} g)` : ' (por 100 g)';
 
     return `
       <div class="alim" data-pick-alim="${i}">
@@ -778,19 +821,14 @@ window.calcPrev = () => {
   const a = window.__ref;
   if (!a) return;
   const porcao = parseFloat($('#pPorc').value) || 0;
-  const basePorcao = a.custom ? (a.porcao_g || 100) : 100;
-  const f = basePorcao > 0 ? (porcao / basePorcao) : (porcao / 100);
-
-  const baseKcal = a.kcal || 0;
-  const baseP = (a.proteina_g !== undefined ? a.proteina_g : a.p) || 0;
-  const baseC = (a.carbo_g !== undefined ? a.carbo_g : a.c) || 0;
-  const baseG = (a.gordura_g !== undefined ? a.gordura_g : a.g) || 0;
+  const b = alimBasis(a);
+  const f = b.baseG > 0 ? (porcao / b.baseG) : 0;
 
   $('#prevBox').innerHTML = `
-    <div class="det-item"><span class="d-qty">${porcanoLabel(porcao)}</span><span style="flex:1;color:var(--txt-primary)">Calorias</span><span class="d-kcal">${fmt(baseKcal * f)} kcal</span></div>
-    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Proteína</span><span class="d-kcal">${(baseP * f).toFixed(1)} g</span></div>
-    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Carboidrato</span><span class="d-kcal">${(baseC * f).toFixed(1)} g</span></div>
-    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Gordura</span><span class="d-kcal">${(baseG * f).toFixed(1)} g</span></div>`;
+    <div class="det-item"><span class="d-qty">${porcanoLabel(porcao)}</span><span style="flex:1;color:var(--txt-primary)">Calorias</span><span class="d-kcal">${fmt(b.kcal * f)} kcal</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Proteína</span><span class="d-kcal">${(b.p * f).toFixed(1)} g</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Carboidrato</span><span class="d-kcal">${(b.c * f).toFixed(1)} g</span></div>
+    <div class="det-item"><span></span><span style="flex:1;color:var(--txt-secondary)">Gordura</span><span class="d-kcal">${(b.g * f).toFixed(1)} g</span></div>`;
 };
 
 function porcanoLabel(g) {
@@ -801,21 +839,16 @@ window.confirmRef = () => {
   const a = window.__ref;
   if (!a) return;
   const porcao = parseFloat($('#pPorc').value) || 0;
-  const basePorcao = a.custom ? (a.porcao_g || 100) : 100;
-  const f = basePorcao > 0 ? (porcao / basePorcao) : (porcao / 100);
-
-  const baseKcal = a.kcal || 0;
-  const baseP = (a.proteina_g !== undefined ? a.proteina_g : a.p) || 0;
-  const baseC = (a.carbo_g !== undefined ? a.carbo_g : a.c) || 0;
-  const baseG = (a.gordura_g !== undefined ? a.gordura_g : a.g) || 0;
+  const b = alimBasis(a);
+  const f = b.baseG > 0 ? (porcao / b.baseG) : 0;
 
   const item = {
     nome: a.nome,
     porcao_g: porcao,
-    kcal: Math.round(baseKcal * f),
-    proteina_g: +(baseP * f).toFixed(1),
-    carbo_g: +(baseC * f).toFixed(1),
-    gordura_g: +(baseG * f).toFixed(1)
+    kcal: Math.round(b.kcal * f),
+    proteina_g: +(b.p * f).toFixed(1),
+    carbo_g: +(b.c * f).toFixed(1),
+    gordura_g: +(b.g * f).toFixed(1)
   };
 
   meals.push({
@@ -836,6 +869,8 @@ window.confirmRef = () => {
 window.addRef = addRef;
 window.userAlims = userAlims;
 window.saveAlim = saveAlim;
+window.normalizeAlimEntry = normalizeAlimEntry;
+window.alimBasis = alimBasis;
 window.updateCustomFood = updateCustomFood;
 window.deleteCustomFood = deleteCustomFood;
 window.enrichPlanItem = enrichPlanItem;
