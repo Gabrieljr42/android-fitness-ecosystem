@@ -14,6 +14,22 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="com.evolucao.treino.permission.READ_WORKOUTS"/>
+
+    <permission
+        android:name="com.nutricao.app.permission.TRIGGER_REMINDERS"
+        android:protectionLevel="signature"
+        android:label="Disparar lembretes internos do NutriTrack" />
+
+    <queries>
+        <provider android:authorities="com.evolucao.treino.workouts" />
+        <!-- Visibilidade do app de câmera no Android 11+ (package visibility):
+             sem isto, resolveActivity(IMAGE_CAPTURE) retorna null e a captura
+             direta degrada para galeria silenciosamente. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:label="NutriTrack"
@@ -33,7 +49,8 @@
         <receiver
             android:name=".NotificationReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:permission="com.nutricao.app.permission.TRIGGER_REMINDERS">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>

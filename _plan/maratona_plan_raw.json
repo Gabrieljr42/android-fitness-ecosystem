@@ -1,0 +1,3537 @@
+{
+ "Visão Geral": [
+  null,
+  {
+   "row": 2,
+   "cells": [
+    "PROJETO 42K — MARATONA BH 2027",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 3,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    "Semana",
+    "Volume km",
+    "Longão km"
+   ]
+  },
+  {
+   "row": 4,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    1,
+    5,
+    2.5
+   ]
+  },
+  {
+   "row": 5,
+   "cells": [
+    "Campo",
+    "Valor",
+    null,
+    "CHECKPOINTS",
+    null,
+    null,
+    null,
+    null,
+    null,
+    2,
+    6,
+    3
+   ]
+  },
+  {
+   "row": 6,
+   "cells": [
+    "Data-alvo",
+    46523,
+    null,
+    "Semana 12",
+    "5 km fácil, sem dor relevante",
+    null,
+    null,
+    null,
+    null,
+    3,
+    7,
+    3.5
+   ]
+  },
+  {
+   "row": 7,
+   "cells": [
+    "Início do plano",
+    46258,
+    null,
+    "Semana 20",
+    "10 km fácil e controlado",
+    null,
+    null,
+    null,
+    null,
+    4,
+    5,
+    2.5
+   ]
+  },
+  {
+   "row": 8,
+   "cells": [
+    "Semanas",
+    38,
+    null,
+    "Semana 27",
+    "21,1 km fácil / simulado",
+    null,
+    null,
+    null,
+    null,
+    5,
+    8,
+    4
+   ]
+  },
+  {
+   "row": 9,
+   "cells": [
+    "Objetivo",
+    "Completar 42,195 km saudável e controlado",
+    null,
+    "Semana 35",
+    "30 km — ensaio geral",
+    null,
+    null,
+    null,
+    null,
+    6,
+    10,
+    5
+   ]
+  },
+  {
+   "row": 10,
+   "cells": [
+    "Volume planejado total (km)",
+    943.2,
+    null,
+    "Semana 38",
+    "MARATONA 42,195 km",
+    null,
+    null,
+    null,
+    null,
+    7,
+    12,
+    6
+   ]
+  },
+  {
+   "row": 11,
+   "cells": [
+    "Pico semanal pré-prova (km)",
+    52,
+    null,
+    "Regra",
+    "Se um checkpoint não estiver sólido, repita base em vez de acelerar.",
+    null,
+    null,
+    null,
+    null,
+    8,
+    9,
+    4
+   ]
+  },
+  {
+   "row": 12,
+   "cells": [
+    "Maior longão pré-prova (km)",
+    30,
+    null,
+    "Prioridade",
+    "Consistência > velocidade > ego.",
+    null,
+    null,
+    null,
+    null,
+    9,
+    13,
+    7
+   ]
+  },
+  {
+   "row": 13,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    10,
+    15,
+    8
+   ]
+  },
+  {
+   "row": 14,
+   "cells": [
+    "Como interpretar o plano",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    11,
+    17,
+    9
+   ]
+  },
+  {
+   "row": 15,
+   "cells": [
+    "RPE 2–3 = fácil, conversa em frases completas. RPE 4–5 = moderado e controlado. Nos primeiros meses, caminhar faz parte do treino. Não recupere km perdidos. Semanas leves são obrigatórias. Dor que altera a passada, piora progressivamente ou persiste = reduza/pare e avalie.",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    12,
+    12,
+    6
+   ]
+  },
+  {
+   "row": 16,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    13,
+    18,
+    10
+   ]
+  },
+  {
+   "row": 17,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    14,
+    20,
+    11
+   ]
+  },
+  {
+   "row": 18,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    15,
+    22,
+    12
+   ]
+  },
+  {
+   "row": 19,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    16,
+    16,
+    8
+   ]
+  },
+  {
+   "row": 20,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    17,
+    23,
+    13
+   ]
+  },
+  {
+   "row": 21,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    18,
+    25,
+    14
+   ]
+  },
+  {
+   "row": 22,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    19,
+    27,
+    15
+   ]
+  },
+  {
+   "row": 23,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    20,
+    20,
+    10
+   ]
+  },
+  {
+   "row": 24,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    21,
+    28,
+    16
+   ]
+  },
+  {
+   "row": 25,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    22,
+    30,
+    17
+   ]
+  },
+  {
+   "row": 26,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    23,
+    32,
+    18
+   ]
+  },
+  {
+   "row": 27,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    24,
+    24,
+    12
+   ]
+  },
+  {
+   "row": 28,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    25,
+    33,
+    19
+   ]
+  },
+  {
+   "row": 29,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    26,
+    35,
+    20
+   ]
+  },
+  {
+   "row": 30,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    27,
+    37,
+    21.1
+   ]
+  },
+  {
+   "row": 31,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    28,
+    28,
+    14
+   ]
+  },
+  {
+   "row": 32,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    29,
+    38,
+    22
+   ]
+  },
+  {
+   "row": 33,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    30,
+    40,
+    24
+   ]
+  },
+  {
+   "row": 34,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    31,
+    42,
+    26
+   ]
+  },
+  {
+   "row": 35,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    32,
+    32,
+    18
+   ]
+  },
+  {
+   "row": 36,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    33,
+    44,
+    27
+   ]
+  },
+  {
+   "row": 37,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    34,
+    48,
+    28
+   ]
+  },
+  {
+   "row": 38,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    35,
+    52,
+    30
+   ]
+  },
+  {
+   "row": 39,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    36,
+    36,
+    20
+   ]
+  },
+  {
+   "row": 40,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    37,
+    24,
+    12
+   ]
+  },
+  {
+   "row": 41,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    38,
+    50.2,
+    42.2
+   ]
+  }
+ ],
+ "Plano Semanal": [
+  null,
+  {
+   "row": 2,
+   "cells": [
+    "Semana",
+    "Início",
+    "Fim",
+    "Fase",
+    "Volume alvo (km)",
+    "Longão (km)",
+    "Corridas/sem",
+    "Terça",
+    "Quinta",
+    "Sábado",
+    "Domingo / Longão",
+    "Foco da semana",
+    "Força sugerida",
+    "Realizado (km)",
+    "Peso médio (kg)",
+    "Dor máx. 0–10",
+    "Status",
+    "Observações"
+   ]
+  },
+  {
+   "row": 3,
+   "cells": [
+    1,
+    46258,
+    46264,
+    "Adaptação corrida/caminhada",
+    5,
+    2.5,
+    2,
+    "20 min — 2' correr / 1' andar",
+    null,
+    "25 min — 2' correr / 1' andar",
+    "Descanso",
+    "Adapte músculos, tendões e articulações. Ritmo conversável.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 4,
+   "cells": [
+    2,
+    46265,
+    46271,
+    "Adaptação corrida/caminhada",
+    6,
+    3,
+    2,
+    "24 min — 2' correr / 1' andar",
+    null,
+    "28 min — 2' correr / 1' andar",
+    "Descanso",
+    "Adapte músculos, tendões e articulações. Ritmo conversável.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 5,
+   "cells": [
+    3,
+    46272,
+    46278,
+    "Adaptação corrida/caminhada",
+    7,
+    3.5,
+    2,
+    "28 min — 3' correr / 1' andar",
+    null,
+    "32 min — 3' correr / 1' andar",
+    "Descanso",
+    "Adapte músculos, tendões e articulações. Ritmo conversável.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 6,
+   "cells": [
+    4,
+    46279,
+    46285,
+    "Adaptação corrida/caminhada",
+    5,
+    2.5,
+    2,
+    "20–22 min — 2' correr / 1' andar",
+    null,
+    "25 min bem fácil",
+    "Descanso",
+    "Semana leve: termine com sensação de sobra.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 7,
+   "cells": [
+    5,
+    46286,
+    46292,
+    "Base I",
+    8,
+    4,
+    3,
+    "1.9 km fácil — RPE 2–3",
+    "2.1 km fácil",
+    "Descanso / caminhada leve",
+    "4 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 8,
+   "cells": [
+    6,
+    46293,
+    46299,
+    "Base I",
+    10,
+    5,
+    3,
+    "2.4 km fácil — RPE 2–3",
+    "2.6 km fácil",
+    "Descanso / caminhada leve",
+    "5 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 9,
+   "cells": [
+    7,
+    46300,
+    46306,
+    "Base I",
+    12,
+    6,
+    3,
+    "2.9 km fácil — RPE 2–3",
+    "3.1 km fácil",
+    "Descanso / caminhada leve",
+    "6 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 10,
+   "cells": [
+    8,
+    46307,
+    46313,
+    "Base I",
+    9,
+    4,
+    3,
+    "2.4 km fácil — RPE 2–3",
+    "2.6 km fácil",
+    "Descanso / caminhada leve",
+    "4 km longão fácil — corrida/caminhada permitida",
+    "Semana leve: consolide a rotina.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 11,
+   "cells": [
+    9,
+    46314,
+    46320,
+    "Base I",
+    13,
+    7,
+    3,
+    "2.9 km fácil — RPE 2–3",
+    "3.1 km fácil",
+    "Descanso / caminhada leve",
+    "7 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 12,
+   "cells": [
+    10,
+    46321,
+    46327,
+    "Base I",
+    15,
+    8,
+    3,
+    "3.4 km fácil — RPE 2–3",
+    "3.6 km fácil",
+    "Descanso / caminhada leve",
+    "8 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 13,
+   "cells": [
+    11,
+    46328,
+    46334,
+    "Base I",
+    17,
+    9,
+    3,
+    "3.8 km fácil — RPE 2–3",
+    "4.2 km fácil",
+    "Descanso / caminhada leve",
+    "9 km longão fácil — corrida/caminhada permitida",
+    "Construir consistência; corrida/caminhada continua válida.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 14,
+   "cells": [
+    12,
+    46335,
+    46341,
+    "Base I",
+    12,
+    6,
+    3,
+    "2.9 km fácil — RPE 2–3",
+    "3.1 km fácil",
+    "Descanso / caminhada leve",
+    "6 km longão fácil — corrida/caminhada permitida",
+    "CHECKPOINT: 5 km fácil e sem dor relevante. Se não, repita 3–4 semanas de base.",
+    "3x/sem; pernas 1–2x, sem falha",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 15,
+   "cells": [
+    13,
+    46342,
+    46348,
+    "Base II",
+    18,
+    10,
+    3,
+    "3.8 km fácil — RPE 2–3",
+    "4.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "10 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 16,
+   "cells": [
+    14,
+    46349,
+    46355,
+    "Base II",
+    20,
+    11,
+    3,
+    "4.3 km fácil — RPE 2–3",
+    "4.7 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "11 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 17,
+   "cells": [
+    15,
+    46356,
+    46362,
+    "Base II",
+    22,
+    12,
+    3,
+    "4.8 km fácil — RPE 2–3",
+    "5.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "12 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 18,
+   "cells": [
+    16,
+    46363,
+    46369,
+    "Base II",
+    16,
+    8,
+    3,
+    "3.8 km fácil — RPE 2–3",
+    "4.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "8 km longão fácil — corrida/caminhada permitida",
+    "Semana leve: recuperação de tendões e articulações.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 19,
+   "cells": [
+    17,
+    46370,
+    46376,
+    "Base II",
+    23,
+    13,
+    3,
+    "4.8 km fácil — RPE 2–3",
+    "5.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "13 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 20,
+   "cells": [
+    18,
+    46377,
+    46383,
+    "Base II",
+    25,
+    14,
+    3,
+    "5.3 km fácil — RPE 2–3",
+    "5.7 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "14 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 21,
+   "cells": [
+    19,
+    46384,
+    46390,
+    "Base II",
+    27,
+    15,
+    3,
+    "5.8 km fácil — RPE 2–3",
+    "6.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "15 km longão fácil — corrida/caminhada permitida",
+    "Aumentar resistência sem perseguir velocidade.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 22,
+   "cells": [
+    20,
+    46391,
+    46397,
+    "Base II",
+    20,
+    10,
+    3,
+    "4.8 km fácil — RPE 2–3",
+    "5.2 km fácil + 4×20s strides",
+    "Descanso / caminhada leve",
+    "10 km longão fácil — corrida/caminhada permitida",
+    "CHECKPOINT: 10 km fácil e controlado. Só avance se recuperar bem.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 23,
+   "cells": [
+    21,
+    46398,
+    46404,
+    "Resistência / Meia",
+    28,
+    16,
+    4,
+    "3.8 km fácil — RPE 2–3",
+    "4.8 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.4 km regenerativo — muito fácil",
+    "16 km longão fácil — pratique hidratação/carbo",
+    "Longões maiores; blocos moderados curtos e controlados.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 24,
+   "cells": [
+    22,
+    46405,
+    46411,
+    "Resistência / Meia",
+    30,
+    17,
+    4,
+    "4.2 km fácil — RPE 2–3",
+    "5.2 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.6 km regenerativo — muito fácil",
+    "17 km longão fácil — pratique hidratação/carbo",
+    "Longões maiores; blocos moderados curtos e controlados.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 25,
+   "cells": [
+    23,
+    46412,
+    46418,
+    "Resistência / Meia",
+    32,
+    18,
+    4,
+    "4.5 km fácil — RPE 2–3",
+    "5.6 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.9 km regenerativo — muito fácil",
+    "18 km longão fácil — pratique hidratação/carbo",
+    "Longões maiores; blocos moderados curtos e controlados.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 26,
+   "cells": [
+    24,
+    46419,
+    46425,
+    "Resistência / Meia",
+    24,
+    12,
+    4,
+    "3.8 km fácil — RPE 2–3",
+    "4.8 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.4 km regenerativo — muito fácil",
+    "12 km longão fácil — pratique hidratação/carbo",
+    "Semana leve antes do bloco de meia.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 27,
+   "cells": [
+    25,
+    46426,
+    46432,
+    "Resistência / Meia",
+    33,
+    19,
+    4,
+    "4.5 km fácil — RPE 2–3",
+    "5.6 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.9 km regenerativo — muito fácil",
+    "19 km longão fácil — pratique hidratação/carbo",
+    "Longões maiores; blocos moderados curtos e controlados.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 28,
+   "cells": [
+    26,
+    46433,
+    46439,
+    "Resistência / Meia",
+    35,
+    20,
+    4,
+    "4.8 km fácil — RPE 2–3",
+    "6 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.2 km regenerativo — muito fácil",
+    "20 km longão fácil — pratique hidratação/carbo",
+    "Longões maiores; blocos moderados curtos e controlados.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 29,
+   "cells": [
+    27,
+    46440,
+    46446,
+    "Resistência / Meia",
+    37,
+    21.1,
+    4,
+    "5.1 km fácil — RPE 2–3",
+    "6.4 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.4 km regenerativo — muito fácil",
+    "21.1 km longão fácil — pratique hidratação/carbo",
+    "CHECKPOINT: 21,1 km em esforço fácil; caminhada é permitida.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 30,
+   "cells": [
+    28,
+    46447,
+    46453,
+    "Resistência / Meia",
+    28,
+    14,
+    4,
+    "4.5 km fácil — RPE 2–3",
+    "5.6 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.9 km regenerativo — muito fácil",
+    "14 km longão fácil — pratique hidratação/carbo",
+    "Recuperação após a meia/simulado.",
+    "2–3x/sem; pernas 1x principal + 1x leve",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 31,
+   "cells": [
+    29,
+    46454,
+    46460,
+    "Específico Maratona",
+    38,
+    22,
+    4,
+    "5.1 km fácil — RPE 2–3",
+    "6.4 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.5 km regenerativo — muito fácil",
+    "22 km longão fácil — pratique hidratação/carbo",
+    "Tempo em pé, alimentação e controle de esforço.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 32,
+   "cells": [
+    30,
+    46461,
+    46467,
+    "Específico Maratona",
+    40,
+    24,
+    4,
+    "5.1 km fácil — RPE 2–3",
+    "6.4 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.5 km regenerativo — muito fácil",
+    "24 km longão fácil — pratique hidratação/carbo",
+    "Tempo em pé, alimentação e controle de esforço.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 33,
+   "cells": [
+    31,
+    46468,
+    46474,
+    "Específico Maratona",
+    42,
+    26,
+    4,
+    "5.1 km fácil — RPE 2–3",
+    "6.4 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.5 km regenerativo — muito fácil",
+    "26 km longão fácil — pratique hidratação/carbo",
+    "Tempo em pé, alimentação e controle de esforço.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 34,
+   "cells": [
+    32,
+    46475,
+    46481,
+    "Específico Maratona",
+    32,
+    18,
+    4,
+    "4.5 km fácil — RPE 2–3",
+    "5.6 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "3.9 km regenerativo — muito fácil",
+    "18 km longão fácil — pratique hidratação/carbo",
+    "Semana leve dentro do bloco específico.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 35,
+   "cells": [
+    33,
+    46482,
+    46488,
+    "Específico Maratona",
+    44,
+    27,
+    4,
+    "5.4 km fácil — RPE 2–3",
+    "6.8 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "4.8 km regenerativo — muito fácil",
+    "27 km longão fácil — pratique hidratação/carbo",
+    "Tempo em pé, alimentação e controle de esforço.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 36,
+   "cells": [
+    34,
+    46489,
+    46495,
+    "Específico Maratona",
+    48,
+    28,
+    4,
+    "6.4 km fácil — RPE 2–3",
+    "8 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "5.6 km regenerativo — muito fácil",
+    "28 km longão fácil — pratique hidratação/carbo",
+    "Tempo em pé, alimentação e controle de esforço.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 37,
+   "cells": [
+    35,
+    46496,
+    46502,
+    "Específico Maratona",
+    52,
+    30,
+    4,
+    "7 km fácil — RPE 2–3",
+    "8.8 km: fácil + 10–20 min moderado (RPE 4–5)",
+    "6.2 km regenerativo — muito fácil",
+    "30 km longão fácil — pratique hidratação/carbo",
+    "Pico: 30 km fácil. Teste roupa, tênis, hidratação e carboidrato.",
+    "2x/sem; reduzir volume de pernas 20–40%",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 38,
+   "cells": [
+    36,
+    46503,
+    46509,
+    "Taper + Prova",
+    36,
+    20,
+    4,
+    "5.1 km fácil — RPE 2–3",
+    "6.4 km fácil",
+    "4.5 km regenerativo — muito fácil",
+    "20 km longão fácil — pratique hidratação/carbo",
+    "Taper: reduza volume e mantenha frequência.",
+    "1–2x leve; nada pesado perto da prova",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 39,
+   "cells": [
+    37,
+    46510,
+    46516,
+    "Taper + Prova",
+    24,
+    12,
+    4,
+    "3.8 km fácil — RPE 2–3",
+    "4.8 km fácil",
+    "3.4 km regenerativo — muito fácil",
+    "12 km longão fácil — pratique hidratação/carbo",
+    "Taper: tudo fácil; objetivo é chegar descansado.",
+    "1–2x leve; nada pesado perto da prova",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  },
+  {
+   "row": 40,
+   "cells": [
+    38,
+    46517,
+    46523,
+    "Taper + Prova",
+    50.2,
+    42.2,
+    4,
+    "3 km muito fácil + 4 acelerações de 15s",
+    "3 km muito fácil",
+    "2 km soltura OU descanso",
+    "PROVA 42,195 km — esforço conservador",
+    "SEMANA DA PROVA: 42,195 km. Comece conservador.",
+    "1–2x leve; nada pesado perto da prova",
+    null,
+    null,
+    null,
+    "Não preenchido",
+    null
+   ]
+  }
+ ],
+ "Registro Corridas": [
+  null,
+  {
+   "row": 2,
+   "cells": [
+    "Data",
+    "Semana",
+    "Tipo",
+    "Planejado (km)",
+    "Realizado (km)",
+    "Duração (min)",
+    "RPE 1–10",
+    "Dor 0–10",
+    "Tênis",
+    "Carbo/hidratação testados?",
+    "Como me senti",
+    "Observações"
+   ]
+  },
+  {
+   "row": 3,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 4,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 5,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 6,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 7,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 8,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 9,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 10,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 11,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 12,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 13,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 14,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 15,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 16,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 17,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 18,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 19,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 20,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 21,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 22,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 23,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 24,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 25,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 26,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 27,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 28,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 29,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 30,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 31,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 32,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 33,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 34,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 35,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 36,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 37,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 38,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 39,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 40,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 41,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 42,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 43,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 44,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 45,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 46,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 47,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 48,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 49,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 50,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 51,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 52,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 53,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 54,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 55,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 56,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 57,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 58,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 59,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 60,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 61,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 62,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 63,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 64,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 65,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 66,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 67,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 68,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 69,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 70,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 71,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 72,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 73,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 74,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 75,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 76,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 77,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 78,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 79,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 80,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 81,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 82,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 83,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 84,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 85,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 86,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 87,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 88,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 89,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 90,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 91,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 92,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 93,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 94,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 95,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 96,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 97,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 98,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 99,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 100,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 101,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 102,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ ],
+ "Guia": [
+  null,
+  {
+   "row": 2,
+   "cells": [
+    "REGRAS DO PROJETO 42K",
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 3,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  null,
+  {
+   "row": 5,
+   "cells": [
+    "Tema",
+    "Regra prática",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 6,
+   "cells": [
+    "Ritmo fácil",
+    "RPE 2–3; deve dar para conversar em frases completas.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 7,
+   "cells": [
+    "Corrida/caminhada",
+    "Pode ser usada em qualquer fase. Caminhar cedo é melhor do que quebrar tarde.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 8,
+   "cells": [
+    "Progressão",
+    "Evite aumentar volume e intensidade agressivamente na mesma semana.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 9,
+   "cells": [
+    "Semanas leves",
+    "São parte do plano. Não 'pague' os km que deixou de fazer.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 10,
+   "cells": [
+    "Longão",
+    "É treino de tempo em pé, não teste de velocidade.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 11,
+   "cells": [
+    "Carboidrato",
+    "A partir de ~75–90 min, pratique ingestão durante o treino; teste tudo antes da prova.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 12,
+   "cells": [
+    "Hidratação",
+    "Treine a estratégia em longões; ajuste por clima e suor.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 13,
+   "cells": [
+    "Musculação",
+    "Mantenha, mas reduza o volume de pernas à medida que o longão cresce.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 14,
+   "cells": [
+    "Perna pesada",
+    "Evite treino pesado de pernas nas 24–48 h antes do longão.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 15,
+   "cells": [
+    "Dor",
+    "Dor que muda a passada, aumenta durante a corrida ou persiste: reduza/pare e avalie.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 16,
+   "cells": [
+    "Fadiga",
+    "Queda de desempenho por vários treinos, sono ruim e pernas sempre pesadas = reduza carga.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 17,
+   "cells": [
+    "Bulk",
+    "Não tente 'comer de volta' cada caloria do relógio; acompanhe a tendência semanal do peso.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 18,
+   "cells": [
+    "Checkpoint",
+    "Se 5K/10K/21K não estiverem confortáveis nas semanas-alvo, repita base.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 19,
+   "cells": [
+    "Objetivo real",
+    "Chegar saudável à linha de largada vale mais do que cumprir 100% da planilha.",
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  null,
+  {
+   "row": 21,
+   "cells": [
+    "IMPORTANTE: plano orientativo para progressão. Sair do início da corrida para uma maratona em ~9 meses é uma meta ambiciosa. Se aparecer dor persistente, limitação de movimento, sintomas cardiovasculares incomuns ou qualquer problema médico, interrompa a progressão e procure avaliação profissional.",
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 22,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 23,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  {
+   "row": 24,
+   "cells": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ ]
+}

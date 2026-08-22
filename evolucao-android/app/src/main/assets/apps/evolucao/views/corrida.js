@@ -421,6 +421,22 @@ function renderCorrida(){
   h += '  <span class="mf-dashboard-mark"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ffffff;stroke-width:2.2;fill:none">' + NAV_ICONS.corrida + '</svg></span>';
   h += '</div>';
 
+  // 1b. Sessão planejada de hoje (Maratona) — banner leve, sem rediseñar
+  if (typeof maratonaWeekForDate === 'function' && typeof MARATONA_PLAN !== 'undefined') {
+    var planWk = maratonaWeekForDate(todayISO());
+    if (planWk) {
+      var dayKey = ({2:'ter',4:'qui',6:'sab',0:'dom'})[new Date(todayISO() + 'T00:00:00').getDay()];
+      var planTxt = dayKey ? planWk.sessions[dayKey] : '';
+      if (planTxt) {
+        h += '<div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between">';
+        h += '  <div style="min-width:0"><div class="small" style="color:var(--mut)">Treino planejado hoje · Semana ' + planWk.week + '</div>';
+        h += '  <b style="display:block;margin-top:2px">' + esc(planTxt) + '</b></div>';
+        h += '  <button class="rpill" id="goMaratonaBtn" style="flex-shrink:0">Maratona →</button>';
+        h += '</div>';
+      }
+    }
+  }
+
   // 2. Overlay do Live Interval Timer (quando ativo)
   if(liveIntervalRunner.active){
     var curPhase = liveIntervalRunner.phases[liveIntervalRunner.currentPhaseIdx];
@@ -738,6 +754,10 @@ function renderCorrida(){
 
 function bindCorrida(){
   // 1. Alternância de Modo (Contínua vs Intervalada)
+  // Banner Maratona: atalho para a aba do plano
+  var goMar = document.getElementById('goMaratonaBtn');
+  if (goMar) goMar.onclick = function(){ tab = 'maratona'; render(); };
+
   document.querySelectorAll('[data-cmode]').forEach(function(btn){
     btn.onclick = function(){
       corridaMode = btn.getAttribute('data-cmode');

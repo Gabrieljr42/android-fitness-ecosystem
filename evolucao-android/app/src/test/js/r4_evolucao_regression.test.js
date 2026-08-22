@@ -443,6 +443,30 @@ console.log('--- SUITE 1: Keypad Numeric Typing & Cell Switching Buffer Retentio
 // -----------------------------------------------------------------------------
 console.log('\n--- SUITE 2: Committing Load & Reps via Checkmark and Keypad ✓ ---');
 
+// Test 1.5: Decimal load entry through the real keypad, cell switch, commit and persistence
+{
+  console.log('Test 1.5: Decimal load (12,5) survives keypad input, reps switch and save');
+  setupDayA();
+  const { state } = context;
+  const exName = state.ficha['A'].ex[0].n;
+  context.kbdOpenFor('w', 0);
+  ['1', '2', ',', '5'].forEach((key) => {
+    const button = appContainer.querySelector('[data-key="' + key + '"]');
+    assert(button !== null, 'Tecla decimal deve estar disponível no teclado');
+    button.click();
+  });
+  assert.strictEqual(context.kbdW, '12.5', 'Entrada com vírgula deve normalizar para 12.5');
+  context.kbdOpenFor('r', 0);
+  context.kbdR = '8';
+  context.kbdFresh = false;
+  assert.strictEqual(context.kbdW, '12.5', 'Troca para reps não pode apagar carga decimal');
+  context.kbdCommit();
+  assert.strictEqual(state.draft.entries[exName][0].w, 12.5, 'Carga decimal deve ser confirmada como número');
+  assert.strictEqual(state.draft.entries[exName][0].r, 8, 'Reps devem permanecer intactas');
+  const persisted = JSON.parse(mockLocalStorage.getItem('evolucao_treino_state'));
+  assert.strictEqual(persisted.draft.entries[exName][0].w, 12.5, 'Carga decimal deve persistir no armazenamento');
+}
+
 // Test 2.1: Keypad ✓ (kbdCommit) on phantom set saves typed values into state.draft.entries
 {
   console.log('Test 2.1: Keypad ✓ (kbdCommit) commits typed load and reps into draft');

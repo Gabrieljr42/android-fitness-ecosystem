@@ -501,13 +501,20 @@ test('3.6: Full Backup and Restore roundtrip data integrity across all app domai
   const testHabits = { '2026-08-16': { creatina: true } };
   const testWater = { '2026-08-16': 2250 };
 
-  mockLocalStorage.setItem('nt_meals', JSON.stringify(testMeals));
-  mockLocalStorage.setItem('nt_activities', JSON.stringify(testActs));
-  mockLocalStorage.setItem('nt_alims', JSON.stringify(testAlims));
-  mockLocalStorage.setItem('nt_reminders', JSON.stringify(testReminders));
-  mockLocalStorage.setItem('nt_habits', JSON.stringify(testHabits));
-  mockLocalStorage.setItem('nt_water', JSON.stringify(testWater));
-  mockLocalStorage.setItem('nt_apikey', 'AIzaFakeKey123');
+mockLocalStorage.setItem('nt_meals', JSON.stringify(testMeals));
+mockLocalStorage.setItem('nt_activities', JSON.stringify(testActs));
+mockLocalStorage.setItem('nt_alims', JSON.stringify(testAlims));
+mockLocalStorage.setItem('nt_reminders', JSON.stringify(testReminders));
+mockLocalStorage.setItem('nt_habits', JSON.stringify(testHabits));
+mockLocalStorage.setItem('nt_water', JSON.stringify(testWater));
+mockLocalStorage.setItem('nt_apikey', 'AIzaFakeKey123');
+
+// Sincroniza os globals lexicais (meals/activities) usados por doBackup —
+// na arquitetura atual o estado em memória é fonte da verdade do export.
+vm.runInContext(`
+  meals = ${JSON.stringify(testMeals)};
+  activities = ${JSON.stringify(testActs)};
+`, context);
 
   // Trigger backup
   context.doBackup();

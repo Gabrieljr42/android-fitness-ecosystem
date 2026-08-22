@@ -71,6 +71,24 @@ Ambos os projetos dispensam a instalação do Android Studio ou do Gradle no com
 
 ---
 
+## 🔄 Integração Evolução → NutriTrack
+
+O Evolução publica um resumo somente-leitura dos treinos concluídos, e o NutriTrack consulta apenas as sessões da data local solicitada. O contrato inclui musculação (exercícios, séries, carga decimal, repetições, RIR, aquecimento, duração e notas) e corrida (distância, ritmo, velocidade, intervalos e duração).
+
+Fluxo de uso:
+
+1. Instale ou atualize primeiro o `Evolucao.apk` e depois o `NutriTrack.apk`.
+2. Conclua e salve o treino do dia no Evolução.
+3. No NutriTrack, abra **Hoje → Estimar gasto c/ IA → Buscar treino do dia**.
+4. Opcionalmente descreva como se sentiu ou complemente o treino e toque em **Estimar gasto**.
+5. Confira a estimativa de METs/calorias e confirme para registrá-la no balanço energético do dia.
+
+A estimativa por IA exige internet, chave Gemini configurada e biometria atualizada no NutriTrack. Se o Evolução não estiver instalado ou não houver sessão na data, o fluxo manual continua disponível. O provider rejeita escrita e restringe a leitura ao pacote do NutriTrack; os payloads também são versionados, saneados e limitados antes de chegar à IA.
+
+O teclado de cargas do Evolução aceita separador decimal por vírgula e persiste o valor numericamente, por exemplo `12,5` → `12.5 kg`.
+
+---
+
 ## 🛠️ Como Compilar os Projetos
 
 ### 1. Evolução Treino
@@ -91,9 +109,18 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 ## 🧪 Testes Automatizados
 
-Para executar os testes unitários do motor de progressão:
+Para executar a bateria completa de testes de cada app (todos os arquivos
+registrados em `run_all.js`):
+
 ```bash
-node evolucao-android/app/src/test/js/progressao.test.js
+node evolucao-android/app/src/test/js/run_all.js
+node nutricao-android/app/src/test/js/run_all.js
+```
+
+Ou tudo de uma vez, no Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File test.ps1
 ```
 
 ---

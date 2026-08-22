@@ -28,7 +28,16 @@ const tests = [
   'm3_challenger2_concurrency_lifecycle.test.js',
   'challenger_m3_1_bridge_adversarial.test.js',
   'challenger_m4_1_empirical_stress.test.js',
-  'm4_challenger2_ux_empirical_stress.test.js'
+  'm4_challenger2_ux_empirical_stress.test.js',
+  'r5_id_canonicalization.test.js',
+  'r5_kbd_state_regression.test.js',
+  'challenger_m1_stress.test.js',
+  'challenger_m2_2_ble_adversarial.test.js',
+  'challenger_r1_r2_stress.test.js',
+  'challenger_m4_adversarial.test.js',
+  'r6_rest_timer.test.js',
+  'r6_peso_semanal.test.js',
+  'r6_maratona_plano.test.js'
 ];
 
 console.log('=== [EVOLUÇÃO] Executando Suíte de Testes Unitários ===\n');

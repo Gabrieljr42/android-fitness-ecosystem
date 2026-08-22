@@ -106,9 +106,12 @@ function isUnilateralEx(exo){
 }
 
 function mfGetBufferValues(current, exo){
-  var w = parseFloat(kbdW);
+  var w = parseFloat(String(kbdW == null ? '' : kbdW).replace(',', '.'));
   var r = parseInt(kbdR, 10);
-  var p = (kbdP && kbdP !== '0') ? (parseInt(kbdP, 10) || 0) : (current && current.p ? current.p : 0);
+  /* kbdP usa sentinela null = "parciais não tocadas nesta edição". Zerar
+     as parciais (kbdP='0') remove o campo; editar sem tocar em P preserva
+     o valor antigo; atribuição programática segue funcionando (r4 T3.3). */
+  var p = kbdP == null ? (current && current.p ? current.p : 0) : (parseInt(kbdP, 10) || 0);
   var sets = state.draft && exo ? (state.draft.entries[exo.n] || []) : [];
   var last = workSets(sets)[workSets(sets).length - 1];
   var defW = last ? last.w : (exo && exo.lastW != null ? exo.lastW : 20);
@@ -237,7 +240,7 @@ function kbdHTML(ex){
     '<div class="mf-khead"><span>'+ctx+'</span><div style="display:flex;align-items:center">'+delBtn+closeBtn+'</div></div>'+
     rirBarHTML(ex)+
     '<div class="mf-kgrid">'+
-      ['1','2','3','\u21c6','4','5','6','RIR','7','8','9','P','\u232b','0','\u2713'].map(function(k){
+      ['1','2','3','\u21c6','4','5','6','RIR','7','8','9','P','\u232b','0',',','\u2713'].map(function(k){
         var cls='mf-key';
         if(k==='\u2713'||k==='P') cls+=' ok'; if(k==='\u232b'||k==='RIR'||k==='\u21c6') cls+=' fn';
         return '<button class="'+cls+'" data-key="'+k+'">'+k+'</button>';
@@ -248,7 +251,10 @@ function setLabelIdx(si){
   var d=state.draft, exo=state.ficha[d.day].ex[mfEx], row=mfSetRows(exo.n)[si];
   return row&&row.__workIndex!=null?row.__workIndex:0;
 }
-function kbdClose(){ kbdOpen=false; kbdEdit=null; render(); }
+/* Fechar via ✕ cancela a edição: o buffer inteiro é descartado, inclusive
+   um RIR selecionado manualmente — sem isto, o kbdRir "vazava" para a
+   próxima série concluída (marcando-a com rirManual de outra série). */
+function kbdClose(){ kbdReset(); render(); }
 var kbdFresh=false; // buffer espelha série existente: próximo dígito substitui o valor
 function kbdOpenFor(mode, si){
   var isSameSet = kbdOpen && kbdEdit != null && si != null && kbdEdit.si === si;
@@ -293,7 +299,7 @@ function kbdOpenFor(mode, si){
 function mfKbdBuffer(){
   return {w: kbdW, r: kbdR, p: kbdP};
 }
-var kbdW='', kbdR='', kbdP='0';
+var kbdW='', kbdR='', kbdP=null; // null = parciais intocadas nesta edição
 function mfRirSel(){
   if(kbdRir!=null) return kbdRir;
   var d=state&&state.draft, exo=d&&d.day&&state.ficha[d.day]&&state.ficha[d.day].ex[mfEx];
@@ -374,7 +380,7 @@ function bestTotal(ex,exo){
   var b=allTimeBest(ex);
   return b.w==null ? 'Sem séries registradas' : 'Total: '+nkg(b.w*b.r)+' kg numa série';
 }
-function exerciseIdFor(name){ return name.toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
+/* exerciseIdFor canônico vive em apps/evolucao/exercicios/nomes.js */
 
 /* ---------- decorate ---------- */
 function metaCss(status){ return status==='subir'?'up':status==='travado'?'stall':status==='volume-baixo'?'low':status==='reduzir'?'down':status==='manter'?'keep':'initial'; }
@@ -472,7 +478,12 @@ function handleSetCompletion(exo, rowIndex, setObj, currentIsPhantom){
   if(state.settings.restAuto){
     initAudio();
     if(state.settings.alarm) askNotify();
-    startRest(exo.rest || 90, exo.n);
+    /* Aquecimento descansa metade do tempo configurado do exercício
+       (180→90, 120→60, 150→75). Séries de trabalho usam o descanso cheio. */
+    var baseRest = exo.rest || 90;
+    var isWarmupSet = isWarmup(setObj) || !!setObj.wu || !!setObj.warmup;
+    var restSec = isWarmupSet ? Math.round(baseRest / 2) : baseRest;
+    startRest(restSec, exo.n);
   }
 
   if(state.settings.autoAdvance !== false && todosConcluidos(mfEx) && mfEx < state.ficha[d.day].ex.length - 1){
@@ -787,11 +798,15 @@ function bindTreino(){
       if(kbdMode==='w') kbdW=''; else if(kbdMode==='r') kbdR=''; else kbdP='0';
     }
     var target = kbdMode==='w'?kbdW:kbdMode==='r'?kbdR:kbdP;
-    var next = (target||'') + (k==='.25'?k:k);
+    if(kbdMode==='w' && (k==='.' || k===',')){
+      if(String(kbdW).indexOf('.') < 0 && String(kbdW).indexOf(',') < 0) kbdW=(kbdW||'')+'.';
+      kbdFresh=false; syncKbdUI(); return;
+    }
+    var next = (target||'') + k;
     if(kbdMode==='w'){
       if(k==='.' ) return;
       var num = parseFloat(next);
-      if(isFinite(num)) kbdW=String(num);
+      if(isFinite(num)) kbdW=next.replace(',', '.');
     } else if(kbdMode==='r'){
       var num2 = parseInt(next,10);
       if(isFinite(num2)) kbdR=String(num2);
@@ -825,7 +840,7 @@ function bindTreino(){
   var saveEarlyBtn = document.getElementById('saveSessEarly');
   if(saveEarlyBtn) saveEarlyBtn.onclick = promptFinishSession;
 }
-function kbdReset(){ kbdW=''; kbdR=''; kbdP='0'; kbdRir=null; kbdOpen=false; kbdEdit=null; }
+function kbdReset(){ kbdW=''; kbdR=''; kbdP=null; kbdRir=null; kbdOpen=false; kbdEdit=null; }
 function findNextPhantom(ex,start){
   var rows=mfSetRows(ex);
   for(var i=start||0;i<rows.length;i++) if(rows[i].phantom&&!isWarmup(rows[i])) return i;
