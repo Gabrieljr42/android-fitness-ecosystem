@@ -222,6 +222,15 @@ function renderHoje(main) {
   main.querySelectorAll('[data-del-meal]').forEach(btn => {
     btn.onclick = () => delMeal(btn.getAttribute('data-del-meal'));
   });
+  // Editar refeição salva: toque no corpo do card OU no botão ✎
+  if (typeof openMealEditor === 'function') {
+    main.querySelectorAll('[data-edit-meal]').forEach(el => {
+      el.onclick = () => {
+        const m = meals.find(x => x.id === el.getAttribute('data-edit-meal'));
+        if (m) openMealEditor(m);
+      };
+    });
+  }
   main.querySelectorAll('[data-del-activity]').forEach(btn => {
     btn.onclick = () => handleDelActivity(btn.getAttribute('data-del-activity'));
   });
@@ -243,7 +252,7 @@ function renderListaMeals(lista) {
     return `
     <div class="meal">
       <div class="dot"></div>
-      <div class="info">
+      <div class="info" data-edit-meal="${escapeHtml(m.id)}" role="button" aria-label="Editar ${escapeHtml(m.nome)}" style="cursor:pointer">
         <div class="nome" style="display:flex;align-items:center">${escapeHtml(m.nome)}${badge}</div>
         <div class="det">${(m.itens || []).map(i => escapeHtml(i && i.nome)).join(' · ')} · ${escapeHtml(m.hour || '')}</div>
         <div class="small" style="margin-top:2px;font-size:11px;color:var(--txt-secondary)">
@@ -253,6 +262,7 @@ function renderListaMeals(lista) {
         </div>
       </div>
       <div class="k">${fmt(kTotal)} kcal</div>
+      <button class="meal-edit" data-edit-meal="${escapeHtml(m.id)}" title="Editar refeição" aria-label="Editar refeição">✎</button>
       <button class="del" data-del-meal="${escapeHtml(m.id)}" title="Excluir refeição">
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>

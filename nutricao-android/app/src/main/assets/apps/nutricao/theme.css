@@ -973,6 +973,27 @@ input:checked + .slider:before {
   font-variant-numeric: tabular-nums;
 }
 
+.meal .meal-edit {
+  background: var(--bg-input, #1f1f23);
+  border: 1px solid var(--border-subtle, #2a2a2e);
+  color: var(--txt-secondary, #a1a1aa);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: background .12s ease, color .12s ease;
+}
+
+.meal .meal-edit:active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
 .meal .del {
   background: var(--status-danger-dim);
   border: 1px solid rgba(248, 113, 113, 0.25);
