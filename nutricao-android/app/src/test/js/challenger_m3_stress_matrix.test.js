@@ -283,7 +283,8 @@ test('2.1: 7-day date window generation and rolling average calculation', () => 
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    ds.push(d.toISOString().slice(0, 10));
+    // data LOCAL (mesma convenção de localDateStr/estado.js) — toISOString() é UTC e descarrila a janela quando o fuso atravessa a meia-noite
+    ds.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
   }
   assert.strictEqual(ds.length, 7);
 

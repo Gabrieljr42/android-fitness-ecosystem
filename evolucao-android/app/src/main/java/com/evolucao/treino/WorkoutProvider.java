@@ -71,10 +71,11 @@ public final class WorkoutProvider extends ContentProvider {
                 if (strength != null) for (int i = 0; i < strength.length(); i++) {
                     JSONObject source = strength.optJSONObject(i);
                     if (source == null) continue;
-                    // Casa pela data do treino OU pela data real de conclusão
-                    // (rascunhos que atravessam a meia-noite ficam visíveis).
-                    if (date.equals(source.optString("date"))
-                            || date.equals(source.optString("finishedAt"))) {
+                    // Casamento SOMENTE pela data lógica do treino (session.date).
+                    // O dia efetivo é resolvido no Evolução: data escolhida pelo
+                    // usuário (backdating) vence; default automático vencido
+                    // avança para o dia da conclusão. Um treino = um dia.
+                    if (date.equals(source.optString("date"))) {
                         candidates.add(new Candidate(normalizeStrength(source), orderOf(source, i)));
                     }
                 }

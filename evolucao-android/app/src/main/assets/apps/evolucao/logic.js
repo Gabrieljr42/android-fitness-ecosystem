@@ -42,8 +42,9 @@ function weekCount(){
   return state.sessions.filter(function(s){ return new Date(s.date+'T00:00:00')>=mon; }).length;
 }
 function ensureDraft(){
-  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null};
+  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), dateExplicit:false, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null};
   if(!state.draft.date) state.draft.date=todayISO();
+  if(state.draft.dateExplicit===undefined) state.draft.dateExplicit=false;
   if(!state.draft.warmupMode) state.draft.warmupMode={};
   if(state.draft.sessionMode!=='curto') state.draft.sessionMode='normal';
   if(state.draft.unilateralPending===undefined) state.draft.unilateralPending=null;

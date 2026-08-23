@@ -506,6 +506,7 @@ function setupTreinoEnv() {
   state.draft = {
     day: 'A',
     date: '2026-08-15',
+    dateExplicit: true, // data escolhida deliberadamente: preservada na conclusão
     entries: {},
     warmupMode: {},
     startedAt: null,
@@ -531,6 +532,7 @@ function setupTreinoEnv() {
   state.draft = {
     day: 'A',
     date: '2026-08-15',
+    dateExplicit: true, // data escolhida deliberadamente: preservada na conclusão
     entries: {
       [firstExName]: [{ w: 80, r: 10, done: true, rir: 2 }]
     },
@@ -583,6 +585,7 @@ function setupTreinoEnv() {
   state.draft = {
     day: 'A',
     date: '2026-08-15',
+    dateExplicit: true, // data escolhida deliberadamente: preservada na conclusão
     entries: entries,
     warmupMode: {},
     startedAt: Date.now() - 3600000,
@@ -616,6 +619,7 @@ function setupTreinoEnv() {
   state.draft = {
     day: 'A',
     date: '2026-08-15',
+    dateExplicit: true, // data escolhida deliberadamente: preservada na conclusão
     entries: {
       [firstExName]: [{ w: 80, r: 10, done: true, rir: 2 }]
     },
