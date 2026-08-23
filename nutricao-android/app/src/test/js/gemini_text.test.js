@@ -132,9 +132,9 @@ console.log('Executando testes de gemini_text.test.js...');
 // 5. Validação da Hierarquia de Modelos e Fallbacks
 {
   assert(Array.isArray(GEMINI_MODELS) && GEMINI_MODELS.length >= 3, 'Deve haver ao menos 3 modelos para fallback');
-  assert.strictEqual(GEMINI_MODELS[0].id, 'gemini-3.7-flash');
-  assert.strictEqual(GEMINI_MODELS[1].id, 'gemini-3.6-flash');
-  assert.strictEqual(GEMINI_MODELS[2].id, 'gemini-3.5-flash');
+assert.strictEqual(GEMINI_MODELS[0].id, 'gemini-3.7-flash');
+assert.strictEqual(GEMINI_MODELS[1].id, 'gemini-3.6-flash');
+assert.strictEqual(GEMINI_MODELS[2].id, 'gemini-3.5-flash');
 }
 
 // 6. Teste de Tratamento de Erros e Retentativas

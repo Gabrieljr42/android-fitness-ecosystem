@@ -537,13 +537,17 @@ function promptFinishSession(){
             .join('\n');
         } catch(e) { return ''; }
       })();
+      /* Data efetiva do treino: se o usuário ESCOLHEU uma data no calendário
+         (dateExplicit), ela é respeitada — backdating manual continua valendo.
+         Se a data era só o default automático do rascunho e ficou velha
+         (treino iniciado ontem, concluído hoje), ela avança para o dia da
+         conclusão: um treino concluído conta no dia em que terminou. */
+      var effectiveDate = (!d.dateExplicit && d.date !== todayISO()) ? todayISO() : d.date;
       var savedSession = {
         id: Date.now(),
-        date: d.date,
-        /* Data real de conclusão: o rascunho pode ter sido aberto em outro dia
-           (ex.: treino que passou da meia-noite). A importação do NutriTrack
-           casa por date OU finishedAt — sem quebrar backdating manual. */
-        finishedAt: todayISO(),
+        date: effectiveDate,
+        /* Data de conclusão (metadado; NÃO participa do casamento por data) */
+        finishedDate: todayISO(),
         day: d.day,
         mode: mode,
         entries: d.entries,
@@ -551,11 +555,11 @@ function promptFinishSession(){
         notes: notesStr
       };
       state.sessions.push(savedSession);
-      lastSummary = { day: d.day, date: d.date, mode: mode };
+      lastSummary = { day: d.day, date: effectiveDate, mode: mode };
       mfCompleteSession = savedSession;
       mfComplete = true;
       mfKeepPlan = false;
-      state.draft = { day: null, date: null, entries: {}, warmupMode: {}, startedAt: null, sessionMode: 'normal', unilateralPending: null };
+      state.draft = { day: null, date: null, dateExplicit: false, entries: {}, warmupMode: {}, startedAt: null, sessionMode: 'normal', unilateralPending: null };
       mfNotes = {};
       kbdReset();
       save();
@@ -579,11 +583,11 @@ function bindTreino(){
     var k=b.getAttribute('data-day'); if(k===d.day) return;
     if(Object.keys(d.entries).length){
       dlg({title:'Trocar de dia', sub:'As séries não salvas serão descartadas. Continuar?', dangerous:true, ok:'Trocar', onOk:function(){
-        d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
+        d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
       }});
       return;
     }
-    d.day=k; d.entries={}; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
+    d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
   };});
   var dateBtn=document.getElementById('dateBtn');
   if(dateBtn) dateBtn.onclick=function(){ if(calOpen){ calOpen=false; } else { openCal(d.date); } render(); };
@@ -592,8 +596,8 @@ function bindTreino(){
   if(calOpen){
     document.getElementById('calPrev').onclick=function(){ calMonth.m--; if(calMonth.m<0){calMonth.m=11; calMonth.y--;} render(); };
     document.getElementById('calNext').onclick=function(){ calMonth.m++; if(calMonth.m>11){calMonth.m=0; calMonth.y++;} render(); };
-    document.getElementById('calToday').onclick=function(){ d.date=todayISO(); calOpen=false; save(); render(); };
-    document.querySelectorAll('.calcell[data-iso]').forEach(function(c){ c.onclick=function(){ d.date=c.getAttribute('data-iso'); calOpen=false; save(); render(); }; });
+    document.getElementById('calToday').onclick=function(){ d.date=todayISO(); d.dateExplicit=true; calOpen=false; save(); render(); };
+    document.querySelectorAll('.calcell[data-iso]').forEach(function(c){ c.onclick=function(){ d.date=c.getAttribute('data-iso'); d.dateExplicit=true; calOpen=false; save(); render(); }; });
   }
   /* carrossel */
   document.querySelectorAll('[data-mfex]').forEach(function(b){ b.onclick=function(){

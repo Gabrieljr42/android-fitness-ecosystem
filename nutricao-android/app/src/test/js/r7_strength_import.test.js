@@ -181,26 +181,45 @@ console.log('\n--- SUITE 4: sem atividade → erro honesto ---');
 }
 
 // -----------------------------------------------------------------------------
-console.log('\n--- SUITE 5: cross-midnight — finishedAt resgata treino ---');
+console.log('\n--- SUITE 5: UM treino = UM dia (nunca duplica entre datas) ---');
 {
-  // Rascunho aberto em 21/08 e finalizado após meia-noite:
-  // session.date=2026-08-21, finishedAt=2026-08-22.
-  const s = javaStrength('2026-08-21', { day: 'C' });
-  s.date = '2026-08-21';
-  s.finishedAt = '2026-08-22';
-  const payloadOld = providerPayload('2026-08-21', [s]);
-  const h = makeCtx(JSON.stringify(payloadOld), '2026-08-22'); // consulta HOJE
-  let r = h.ctx.getEvolucaoWorkout(h.ctx.today());
-  assert(!r.ok, 'provider antigo filtra só por date → invisível (motiva o fix)');
-  // Provider NOVO casa por date OU finishedAt (replicando o fix Java):
-  const payloadNew = { schemaVersion: 1, source: 'com.evolucao.treino', date: '2026-08-22',
-    generatedAt: 'x', sessions: [Object.assign({}, s)] };
-  const h2 = makeCtx(JSON.stringify(payloadNew), '2026-08-22');
-  r = h2.ctx.getEvolucaoWorkout(h2.ctx.today());
-  assert(r.ok, 'finishedAt faz o treino aparecer hoje');
-  assert.strictEqual(r.payload.sessions[0].tipo, 'musculacao');
-  console.log('✅ finishedAt resolve o caso "treino que passou da meia-noite".');
-  passed += 4;
+  // Regra do Evolução: data lógica escolhida vence; default automático
+  // vencido avança para o dia da conclusão ANTES de salvar. O provider casa
+  // SOMENTE por session.date → impossível o mesmo treino sair em dois dias.
+  const mk = (date, finishedDate) => {
+    const s = javaStrength(date, { day: 'C' });
+    s.date = date;
+    if (finishedDate) s.finishedDate = finishedDate;
+    return providerPayload(date, [s]);
+  };
+
+  // MESMO DIA: inicia e conclui 22/08 → presente em 22, ausente em 21 e 23
+  const sameDay = makeCtx(JSON.stringify(mk('2026-08-22', '2026-08-22')), '2026-08-22');
+  assert(sameDay.ctx.getEvolucaoWorkout('2026-08-22').ok, '22/08: presente');
+  assert(!sameDay.ctx.getEvolucaoWorkout('2026-08-21').ok, '21/08: ausente');
+  assert(!sameDay.ctx.getEvolucaoWorkout('2026-08-23').ok, '23/08: ausente');
+
+  // CROSS-MIDNIGHT: iniciado 22/08, concluído 23/08 — a regra do Evolução
+  // (default automático avança) salva com date=23/08. finishedDate é só
+  // metadado: NÃO participa do casamento.
+  const cross = makeCtx(JSON.stringify(mk('2026-08-23', '2026-08-23')), '2026-08-23');
+  assert(cross.ctx.getEvolucaoWorkout('2026-08-23').ok, 'cross-midnight: presente no dia da CONCLUSÃO');
+  assert(!cross.ctx.getEvolucaoWorkout('2026-08-22').ok, 'cross-midnight: NÃO aparece no dia de início');
+
+  // BACKDATING EXPLÍCITO: usuário escolheu 20/08 (dateExplicit) e concluiu
+  // em 22/08 → continua valendo 20/08, um dia só.
+  const back = makeCtx(JSON.stringify(mk('2026-08-20', '2026-08-22')), '2026-08-22');
+  assert(back.ctx.getEvolucaoWorkout('2026-08-20').ok, 'backdating: presente na data lógica');
+  assert(!back.ctx.getEvolucaoWorkout('2026-08-22').ok, 'backdating: NÃO aparece na data de conclusão');
+  assert(!back.ctx.getEvolucaoWorkout('2026-08-21').ok, 'backdating: não vaza para dias vizinhos');
+
+  // Payload com finishedAt legado (build intermediário): ignorado sem erro
+  const legacyShape = javaStrength('2026-08-22', { day: 'A' });
+  legacyShape.finishedAt = '2026-08-23';
+  const hLegacy = makeCtx(JSON.stringify(providerPayload('2026-08-22', [legacyShape])), '2026-08-23');
+  assert(!hLegacy.ctx.getEvolucaoWorkout('2026-08-23').ok, 'finishedAt legado não é casado');
+  console.log('✅ Um treino pertence a exatamente um dia; finishedDate é metadado.');
+  passed += 9;
 }
 
 // -----------------------------------------------------------------------------
