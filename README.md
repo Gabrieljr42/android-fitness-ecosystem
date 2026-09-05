@@ -1,154 +1,82 @@
-# 📱 Workspace de Aplicativos Android: Evolução & NutriTrack
+# Android Fitness Ecosystem: Evolução, NutriTrack, Coach
 
-Este repositório reúne dois aplicativos Android integrados e complementares voltados para alta performance física e saúde: **Evolução** (rastreamento de treino com autorregulação) e **NutriTrack** (rastreamento de nutrição com análise visual por Inteligência Artificial).
+Three local-first Android WebView apps for strength training, nutrition, and daily coaching. No backend. Data stays on device except for direct Google Gemini calls made with the user's own API key.
 
-Ambos os projetos compartilham uma arquitetura moderna, leve e desacoplada: **frontend modular de alto desempenho (Vanilla JS/CSS)** encapsulado em uma camada nativa **Android WebView** com ponte bidirecional (**JavaScript Interface Bridge**) e pipeline de build totalmente automatizado por linha de comando.
+| App | Package | Folder | What it does |
+| --- | --- | --- | --- |
+| **Evolução** | `com.evolucao.treino` | `evolucao-android/` | Strength/cardio logging, RIR double-progression engine, rest timer, Strava import, Wear OS companion, BLE scale support |
+| **NutriTrack** | `com.nutricao.app` | `nutricao-android/` | Meal logging, Gemini photo/text/audio food analysis, TDEE calculator, Brazilian food database, reminders |
+| **Coach** | `com.coach.app` | `coach-android/` | Read-only hub: Health Connect + Evolução + NutriTrack + check-in → deterministic readiness briefing, optional Gemini second opinion |
 
----
+## Project at a glance
 
-## 📂 Visão Geral dos Projetos
+- **Stack:** Java/Kotlin native shell + vanilla JS/CSS in `assets/` + WebView bridge. Evolução and Coach use Gradle; NutriTrack uses a manual `aapt2`/`javac`/`d8` script. Coach adds Room-less `SQLiteOpenHelper`, Health Connect `connect-client 1.1.0`, coroutines, Keystore.
+- **Storage:** Evolução and NutriTrack use `localStorage` (+ `SharedPreferences` mirrors for cross-app providers). Coach uses private SQLite (`coach.db`, schema v1, 8 tables). No server database.
+- **Cross-app contracts:** read-only `ContentProvider`s. Evolução → NutriTrack/Coach; NutriTrack → Coach. All payloads are versioned (`schemaVersion: 1`), size-capped, and caller-package-checked.
+- **AI:** NutriTrack calls Gemini directly from JS (`gemini-3.7/3.6/3.5-flash`, triple-sample "precise" mode). Coach calls Gemini from Kotlin over HTTPS with Structured Output and a mandatory preview + native confirm. No function calling.
+- **Tests:** Node suites per app + Kotlin unit tests for Coach/Evolução. Root runner: `test.ps1`. Verified passing on 2026-09-05: 41 Evolução files, 31 NutriTrack files, 15 Coach engine tests, insets test OK (see [docs/development.md](docs/development.md)).
 
-| Projeto | Nome do App | Pacote Android | Foco Principal | Principais Recursos |
-| :--- | :--- | :--- | :--- | :--- |
-| [`evolucao-android`](file:///c:/Users/gabri/OneDrive/Área%20de%20Trabalho/Android/evolucao-android) | **Evolução** | `com.evolucao.treino` | Treino e Musculação | • Motor de autorregulação por RIR (Repetições na Reserva)<br>• Estimativa contínua de 1RM e deload automático<br>• Timer com notificação contínua e vibração nativa<br>• Teclado numérico in-app e visualizador anatômico |
-| [`nutricao-android`](file:///c:/Users/gabri/OneDrive/Área%20de%20Trabalho/Android/nutricao-android) | **NutriTrack** | `com.nutricao.app` | Nutrição e Calorias | • Análise visual de fotos de refeições via Google Gemini<br>• Modo Preciso com amostragem tripla e descarte de outliers<br>• Calculadora de TDEE / Mifflin-St Jeor<br>• Banco de alimentos brasileiros e plano semanal |
+## Quick start
 
----
+Prerequisites:
 
-## 🏛️ Arquitetura Técnica Unificada
+- Windows 10/11 PowerShell, Node.js 18+ (`node --version`), internet on first build (~1 GB JDK + SDK download).
+- No preinstalled JDK, Android SDK, or Android Studio required for Evolução/NutriTrack (portable `_toolchain/`). Coach reuses Evolução's portable JDK and needs the SDK in `%LOCALAPPDATA%\Android\Sdk` for `adb install` only.
 
-```mermaid
-graph TD
-    subgraph AndroidNative ["Camada Nativa Android (Java)"]
-        Activity["MainActivity.java"]
-        WebView["Android WebView Engine"]
-        Bridge["AndroidBridge (@JavascriptInterface)"]
-        Notif["NotificationManager & Channels"]
-        Media["MediaStore (Downloads & Câmera)"]
-        Vibrator["VibrationEffect"]
-    end
-
-    subgraph FrontendEngine ["Frontend Modular (Assets)"]
-        Shell["index.html"]
-        Kernel["Kernel (db, fmt, icons, charts, ui, notif)"]
-        Core["Core (progressao.js / gemini.js)"]
-        Views["Views Especializadas"]
-        Storage["LocalStorage (100% Offline-First)"]
-    end
-
-    Activity --> WebView
-    WebView --> Shell
-    Shell --> Kernel
-    Shell --> Core
-    Shell --> Views
-    Kernel <--> Storage
-    Views <--> Bridge
-    Bridge --> Notif
-    Bridge --> Media
-    Bridge --> Vibrator
-```
-
-### 1. Camada Nativa e Bridge (`MainActivity.java`)
-- **WebSettings otimizadas:** JavaScript ativado, suporte a `DomStorage`, `allowFileAccess` e `allowUniversalAccessFromFileURLs` para carregamento assíncrono seguro a partir de `file:///android_asset/`.
-- **Interação com o Sistema:**
-  - `saveBackup(json, filename)`: grava backups diretamente em `Downloads/` via MediaStore (Android 10+ / API 29+) ou no armazenamento isolado do app.
-  - `startRestNotification(...)` e `stopRestNotification()`: controle de cronômetro com ticker em segundo plano.
-  - `vibrate(ms)`: resposta tátil nas ações e fim de descanso.
-  - `onShowFileChooser`: integração com a câmera e galeria com suporte a `EXTRA_OUTPUT` via MediaStore URI.
-
-### 2. Camada Frontend (Modular)
-- **Zero frameworks pesados:** Código escrito em JavaScript moderno puro, com divisão em camadas:
-  - `core/`: Algoritmos puros (motor de progressão matemática, integração com a API Gemini).
-  - `kernel/`: Utilitários reutilizáveis (formatação de datas/pesos, gráficos vetoriais SVG, controle de banco local, diálogos e toasts).
-  - `views/`: Telas e controladores reativos.
-- **Merge Inteligente de Dados:** Algoritmo que combina backups sem sobrescrever registros já existentes.
-
-### 3. Pipeline de Build Autônomo (`build.ps1`)
-Ambos os projetos dispensam a instalação do Android Studio ou do Gradle no computador:
-1. **Toolchain Portátil:** O script baixa o JDK 17 (Temurin) e o Android SDK (`cmdline-tools`, `platforms;android-34`, `build-tools;34.0.0`) na pasta `_toolchain/`. O `nutricao-android` reutiliza automaticamente a toolchain do `evolucao-android` quando posicionados lado a lado.
-2. **Patch Binário de Assets (Fix Windows AAPT2):** Corrige o comportamento do `aapt2.exe` no Windows que grava caminhos com contra-barra (`\`), substituindo-os in-place no ZIP por barras normais (`/`).
-3. **Cadeia de Compilação:** `aapt2` (recursos e manifest) $\rightarrow$ `javac` $\rightarrow$ `d8` (conversão para DEX) $\rightarrow$ injeção no APK $\rightarrow$ `zipalign` $\rightarrow$ `apksigner` com `debug.keystore` persistente.
-
----
-
-## 🔄 Integração Evolução → NutriTrack
-
-O Evolução publica um resumo somente-leitura dos treinos concluídos, e o NutriTrack consulta apenas as sessões da data local solicitada. O contrato inclui musculação (exercícios, séries, carga decimal, repetições, RIR, aquecimento, duração e notas) e corrida (distância, ritmo, velocidade, intervalos e duração).
-
-Fluxo de uso:
-
-1. Instale ou atualize primeiro o `Evolucao.apk` e depois o `NutriTrack.apk`.
-2. Conclua e salve o treino do dia no Evolução.
-3. No NutriTrack, abra **Hoje → Estimar gasto c/ IA → Buscar treino do dia**.
-4. Opcionalmente descreva como se sentiu ou complemente o treino e toque em **Estimar gasto**.
-5. Confira a estimativa de METs/calorias e confirme para registrá-la no balanço energético do dia.
-
-A estimativa por IA exige internet, chave Gemini configurada e biometria atualizada no NutriTrack. Se o Evolução não estiver instalado ou não houver sessão na data, o fluxo manual continua disponível. O provider rejeita escrita e restringe a leitura ao pacote do NutriTrack; os payloads também são versionados, saneados e limitados antes de chegar à IA.
-
-O teclado de cargas do Evolução aceita separador decimal por vírgula e persiste o valor numericamente, por exemplo `12,5` → `12.5 kg`.
-
----
-
-## 🛠️ Como Compilar os Projetos
-
-### 1. Evolução Treino
 ```powershell
+# 1. Evolução first (provides the shared _toolchain/ JDK+SDK)
 cd evolucao-android
 powershell -ExecutionPolicy Bypass -File build.ps1
-```
-*Gera: `evolucao-android/Evolucao.apk`*
+# -> evolucao-android/Evolucao.apk
 
-### 2. NutriTrack
-```powershell
-cd nutricao-android
+# 2. NutriTrack (reuses ../evolucao-android/_toolchain when side by side)
+cd ..\nutricao-android
 powershell -ExecutionPolicy Bypass -File build.ps1
+# -> nutricao-android/NutriTrack.apk
+
+# 3. Coach (Gradle, JDK 17 required)
+cd ..\coach-android
+$env:JAVA_HOME = (Resolve-Path '..\evolucao-android\_toolchain\jdk17\jdk-17.0.19+10').Path
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+.\gradlew.bat :app:assembleDebug --no-daemon --no-watch-fs --console=plain
+# -> coach-android/app/build/outputs/apk/debug/app-debug.apk
 ```
-*Gera: `nutricao-android/NutriTrack.apk`*
 
----
+Run all JS tests:
 
-## 🧪 Testes Automatizados
-
-Para executar a bateria completa de testes de cada app (todos os arquivos
-registrados em `run_all.js`):
-
-```bash
+```powershell
+# From the repo root:
+powershell -ExecutionPolicy Bypass -File test.ps1
+# Or per app:
 node evolucao-android/app/src/test/js/run_all.js
 node nutricao-android/app/src/test/js/run_all.js
+node coach-android/app/src/test/js/engine.test.js
+node coach-android/app/src/test/js/system-insets.test.js
 ```
 
-Ou tudo de uma vez, no Windows:
+Install order on a phone (debug builds, allow "unknown apps" / USB debugging):
 
-```powershell
-powershell -ExecutionPolicy Bypass -File test.ps1
-```
+1. `Evolucao.apk`, open once.
+2. `NutriTrack.apk`, open once.
+3. Coach `app-debug.apk`, then tap **Sincronizar tudo**.
 
----
+Confirm it works: log a workout in Evolução, photograph a meal in NutriTrack (needs a Gemini key in **Ajustes**), then Coach → sync → check-in → briefing. Without keys/network/Health Connect the local flows still work; AI and Health slots show explicit absent states.
 
-## 📋 Recomendações para o Git
+Get a free Gemini key at `https://aistudio.google.com/app/apikey` and paste it in NutriTrack **Ajustes** (stored in `localStorage`) or Coach **Ajustes** (encrypted in Keystore). Never commit keys.
 
-Ao versionar este repositório, certifique-se de ignorar artefatos temporários, caches de build e a toolchain de compilação:
+## Docs
 
-```gitignore
-# Toolchains e SDKs locais
-_toolchain/
-**/_toolchain/
+- [docs/architecture.md](docs/architecture.md) — modules, entry points, request/data flow, diagrams.
+- [docs/database.md](docs/database.md) — LocalStorage keys, Coach SQLite schema, providers, backup/merge/reset.
+- [docs/flows.md](docs/flows.md) — bridges, providers, Gemini flows, notifications/alarms, worked examples.
+- [docs/configuration.md](docs/configuration.md) — permissions, no-`.env` policy, Gemini setup, toolchain paths.
+- [docs/development.md](docs/development.md) — builds, tests, lint, conventions, how to add a view/field/test.
+- [docs/deployment-troubleshooting.md](docs/deployment-troubleshooting.md) — outputs, install, known failures.
+- [docs/onboarding.md](docs/onboarding.md) — first-run checklist, reading order, first change.
 
-# Artefatos de compilação
-build/
-**/build/
-*.apk
-*.idsig
-*.zip
+App-level docs worth keeping: [Evolução](evolucao-android/README.md), [NutriTrack](nutricao-android/README.md), [Coach](coach-android/README.md), [Coach architecture](coach-android/ARCHITECTURE.md), [Wear docs](evolucao-android/wear/README.md).
 
-# Pastas temporárias
-_temp_kernel/
-_temp_views/
-**/_backup_monolito/
+## Verification status
 
-# Arquivos de sistema e editores
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-```
+- Tested 2026-09-05: all Node suites pass (see above). Gradle `testDebugUnitTest` also runs in CI (`gradle-unit` job, JDK 17). Not run here: `assembleDebug` / `lintDebug` and on-device install (heavy, need emulator/SDK). Those steps are documented from `coach-android/README.md`, `coach-android/AGENTS.md`, and the build scripts, marked accordingly in the docs.
+- CI exists (`.github/workflows/ci.yml`: JS suites on Node 20/22 + Gradle unit tests on `windows-latest` for push/PR; `ui-smoke.js` stays manual and non-blocking). No backend, no `.env` loader found in the repo — documented as-is, not assumed.

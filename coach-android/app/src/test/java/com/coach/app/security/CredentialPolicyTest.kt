@@ -21,6 +21,20 @@ class CredentialPolicyTest {
         assertFails { CredentialPolicy.validateModel("other-model") }
     }
 
+    @Test fun modelMustBeInSupportedAllowlist() {
+        assertEquals("gemini-3.7-flash", CredentialPolicy.validateModel("gemini-3.7-flash"))
+        assertEquals("gemini-3.6-flash", CredentialPolicy.validateModel("gemini-3.6-flash"))
+        assertEquals("gemini-3.5-flash", CredentialPolicy.validateModel("gemini-3.5-flash"))
+        // Regex-plausible but not allowlisted: format guard passes, allowlist must reject.
+        assertFails { CredentialPolicy.validateModel("gemini-9.9-flash") }
+        assertFails { CredentialPolicy.validateModel("gemini-flash-latest") }
+        // Challenger hardening: empty, wrong case, and overlong names never reach the allowlist.
+        assertFails { CredentialPolicy.validateModel("") }
+        assertFails { CredentialPolicy.validateModel("   ") }
+        assertFails { CredentialPolicy.validateModel("GEMINI-3.7-FLASH") }
+        assertFails { CredentialPolicy.validateModel("gemini-" + "a".repeat(73)) }
+    }
+
     private fun assertFails(block: () -> Unit) {
         try { block(); throw AssertionError("expected IllegalArgumentException") }
         catch (_: IllegalArgumentException) { }

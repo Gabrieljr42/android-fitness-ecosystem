@@ -44,7 +44,7 @@ evolucao-android/
     └── src/
         ├── test/js/progressao.test.js     # Suíte de testes unitários do motor
         └── main/
-            ├── AndroidManifest.xml        # Permissões (VIBRATE, POST_NOTIFICATIONS)
+            ├── AndroidManifest.xml        # Permissões (VIBRATE, POST_NOTIFICATIONS, alarmes exatos, BLE SCAN/CONNECT + localização ≤30, READ_WORKOUTS)
             ├── res/                       # Ícones e recursos do Android
             ├── java/com/evolucao/treino/
             │   └── MainActivity.java      # Wrapper WebView, canais de notificação e Bridge JS

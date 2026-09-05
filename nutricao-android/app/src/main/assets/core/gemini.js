@@ -1,11 +1,35 @@
 /* core/gemini.js — fluxo de análise de fotos, texto e atividade com Gemini */
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const GEMINI_MODELS = [
-  { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', thinkingLevel: 'low' },
-  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', thinkingLevel: 'low' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', thinkingLevel: 'low' }
-];
-const RETRY_DELAY_MS = 3000;
+/* Ordered fallback config lives in core/gemini-models.js (load it first via
+   <script src="../../core/gemini-models.js">). The inline values below are an
+   identical fallback so WebView + Node vm harness keep working when the
+   config script is absent. Behavior/order must not change here — edit the
+   config file (and mirror Coach SupportedModels.kt + docs) instead.
+   Config entries are shape-checked: a stale/foreign GEMINI_MODELS_CONFIG
+   global with malformed entries can never silently replace the fallback
+   order — invalid entries are dropped, and a fully-invalid list falls back
+   to the inline constants below. */
+const GEMINI_API_BASE = (typeof GEMINI_MODELS_CONFIG !== 'undefined' && GEMINI_MODELS_CONFIG && GEMINI_MODELS_CONFIG.apiBase) || 'https://generativelanguage.googleapis.com/v1beta/models/';
+function geminiModelsFromConfig() {
+  try {
+    const cfg = (typeof GEMINI_MODELS_CONFIG !== 'undefined') ? GEMINI_MODELS_CONFIG : null;
+    const list = cfg && Array.isArray(cfg.models) ? cfg.models : null;
+    // New array (no aliasing of the config object) with the same ID regex
+    // Coach CredentialPolicy.validateModel enforces, so both apps agree.
+    const valid = (list || []).filter(m => m && typeof m === 'object'
+      && typeof m.id === 'string' && /^gemini-[A-Za-z0-9.-]{1,72}$/.test(m.id)
+      && typeof m.label === 'string' && m.label.trim()
+      && typeof m.thinkingLevel === 'string' && m.thinkingLevel.trim());
+    if (valid.length) return valid;
+  } catch (_) {}
+  return [
+    { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', thinkingLevel: 'low' },
+    { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', thinkingLevel: 'low' },
+    { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', thinkingLevel: 'low' }
+  ];
+}
+const GEMINI_MODELS = geminiModelsFromConfig();
+const RETRY_DELAY_MS = (typeof GEMINI_MODELS_CONFIG !== 'undefined' && GEMINI_MODELS_CONFIG && Number.isFinite(GEMINI_MODELS_CONFIG.retryDelayMs) ? GEMINI_MODELS_CONFIG.retryDelayMs : 3000);
+const GEMINI_MODELS_CONFIG_VERSION = (typeof GEMINI_MODELS_CONFIG !== 'undefined' && GEMINI_MODELS_CONFIG && GEMINI_MODELS_CONFIG.version) || 0;
 
 function currentEntryDate() {
   if (typeof getActiveDate === 'function') return getActiveDate();
@@ -3010,6 +3034,9 @@ if (typeof module !== 'undefined' && module.exports) {
     ACTIVITY_SCHEMA,
     ACTIVITY_PROMPT,
     GEMINI_MODELS,
+    GEMINI_API_BASE,
+    RETRY_DELAY_MS,
+    GEMINI_MODELS_CONFIG_VERSION,
     consultarModelo,
     consultarModeloTexto,
     consultarModeloResumoDia,

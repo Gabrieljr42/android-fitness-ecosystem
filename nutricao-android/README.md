@@ -42,7 +42,7 @@ nutricao-android/
 └── app/
     └── src/
         └── main/
-            ├── AndroidManifest.xml        # Permissões (INTERNET, CAMERA)
+            ├── AndroidManifest.xml        # Permissões (INTERNET, CAMERA, RECORD_AUDIO, notificações, alarmes exatos + boot, READ_WORKOUTS)
             ├── res/                       # Ícones e recursos do Android
             ├── java/com/nutricao/app/
             │   └── MainActivity.java      # WebView wrapper, captura via MediaStore e Bridge JS
