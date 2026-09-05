@@ -3,6 +3,7 @@ package com.evolucao.treino;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -237,9 +238,9 @@ public final class DavelyMeasurementPacket {
                 ", stable=" + isStable +
                 ", impedanceRaw=" + impedanceRaw +
                 ", embeddedMac='" + embeddedMac + '\'' +
-                ", seq=0x" + Integer.toHexString(seq).toUpperCase() +
-                ", attr=0x" + Integer.toHexString(attributeByte).toUpperCase() +
-                ", unit=0x" + Integer.toHexString(unitCode).toUpperCase() +
+                ", seq=0x" + Integer.toHexString(seq).toUpperCase(Locale.ROOT) +
+                ", attr=0x" + Integer.toHexString(attributeByte).toUpperCase(Locale.ROOT) +
+                ", unit=0x" + Integer.toHexString(unitCode).toUpperCase(Locale.ROOT) +
                 ", rawHex='" + rawHex + '\'' +
                 ", timestampMs=" + timestampMs +
                 '}';

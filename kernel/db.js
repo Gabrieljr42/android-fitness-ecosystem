@@ -17,7 +17,7 @@ var DEFAULT_STATE={
   },
   sessions:[], corridas:[], peso:[],
   cardioGoalKm:15,
-  draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null},
+  draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, lastActiveAt:null, sessionMode:'normal', unilateralPending:null},
   draftCorrida:null,
   settings:{restAuto:true, alarm:true, autoAdvance:true, progressao:{enabled:true, stallSessions:3, deloadPct:10, targetRir:2, expandRepRange:true, weightMatch:true}}
 };
@@ -99,6 +99,7 @@ function migrate(s){
   if(!s.draft) s.draft={day:null,date:null,entries:{}};
   if(!s.draft.warmupMode) s.draft.warmupMode={};
   if(s.draft.startedAt===undefined) s.draft.startedAt=null;
+  if(s.draft.lastActiveAt===undefined) s.draft.lastActiveAt=null;
   if(s.draft.sessionMode!=='curto') s.draft.sessionMode='normal';
   if(s.draft.unilateralPending===undefined) s.draft.unilateralPending=null;
   if(s.draftCorrida===undefined) s.draftCorrida=null;

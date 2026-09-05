@@ -1,6 +1,7 @@
 package com.evolucao.treino;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -29,7 +30,11 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import com.evolucao.treino.wear.MobileWearRepository;
+import com.evolucao.treino.wear.WearEnvelopeDispatcher;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -74,6 +79,8 @@ public class MainActivity extends Activity {
     static boolean isAppForeground() { return appForeground; }
 
     private ScaleBleScanner bleScanner;
+    private MobileWearRepository wearRepository;
+    private volatile boolean webReady;
 
     private PendingIntent appPendingIntent() {
         Intent intent = new Intent(this, MainActivity.class);
@@ -206,11 +213,40 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Only a fixed, allow-listed JavaScript entry point is invoked. The
+     * envelope itself is encoded as a JavaScript string literal, never code. */
+    private void dispatchWearEnvelope(final String envelopeJson) {
+        if (!webReady || web == null || wearRepository == null) {
+            if (wearRepository != null) wearRepository.reportApplyFailure("WEBVIEW_NOT_READY");
+            return;
+        }
+        final String safeArgument = JSONObject.quote(envelopeJson);
+        final String command = "(function(){" +
+                "if(!window.EvolucaoWear||typeof window.EvolucaoWear.consumeNativeInbox!=='function')return 'NOT_READY';" +
+                "return window.EvolucaoWear.consumeNativeInbox(" + safeArgument + ");" +
+                "})()";
+        web.post(new Runnable() {
+            @Override public void run() {
+                if (web == null) {
+                    wearRepository.reportApplyFailure("WEBVIEW_DESTROYED");
+                    return;
+                }
+                web.evaluateJavascript(command, value -> {
+                    if (value == null || value.contains("NOT_READY")) {
+                        wearRepository.reportApplyFailure("WEAR_JS_NOT_READY");
+                    }
+                });
+            }
+        });
+    }
+
     @Override
+    @SuppressLint("SetJavaScriptEnabled")
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         createChannel();
         requestNotifPermission();
+        wearRepository = MobileWearRepository.get(getApplicationContext());
 
         // Inicializa o Scanner BLE de diagnóstico e medição
         bleScanner = new ScaleBleScanner(this, new ScaleBleScanner.BleScanListener() {
@@ -297,6 +333,20 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if ("file:///android_asset/index.html".equals(url)) {
+                    webReady = true;
+                    wearRepository.attachDispatcher(new WearEnvelopeDispatcher() {
+                        @Override public void dispatch(String envelopeJson) {
+                            dispatchWearEnvelope(envelopeJson);
+                        }
+                    });
+                }
+            }
+        });
 
         setContentView(web);
         web.loadUrl("file:///android_asset/index.html");
@@ -306,6 +356,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         appForeground = true;
+        if (webReady && wearRepository != null) wearRepository.requestDrain();
     }
 
     @Override
@@ -319,8 +370,15 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        webReady = false;
+        if (wearRepository != null) wearRepository.detachDispatcher();
         if (bleScanner != null) {
             bleScanner.stopScan();
+        }
+        if (web != null) {
+            web.removeJavascriptInterface("AndroidBridge");
+            web.destroy();
+            web = null;
         }
         super.onDestroy();
     }
@@ -419,8 +477,33 @@ public class MainActivity extends Activity {
         private static final int MAX_MIRRORED_ITEMS = 500;
         private static final int MAX_MIRRORED_BYTES = 512 * 1024;
 
-        /** Mirrors only workout history; UI routine/settings/draft never cross the app boundary. */
         @JavascriptInterface
+        public void publishWearPlan(String planJson) {
+            if (wearRepository != null && planJson != null) {
+                wearRepository.publishPlanJson(planJson);
+            }
+        }
+
+        @JavascriptInterface
+        public void requestWearInboxDrain() {
+            if (wearRepository != null) wearRepository.requestDrain();
+        }
+
+        @JavascriptInterface
+        public void confirmWearEventsApplied(String resultJson) {
+            if (wearRepository != null && resultJson != null) {
+                wearRepository.confirmAppliedJson(resultJson);
+            }
+        }
+
+        @JavascriptInterface
+        public void reportWearApplyFailure(String reason) {
+            if (wearRepository != null) wearRepository.reportApplyFailure(reason);
+        }
+
+        /** Mirrors only workout/weight history; UI routine/settings/draft never cross the app boundary. */
+        @JavascriptInterface
+        @SuppressLint("ApplySharedPref")
         public void syncWorkoutState(String json) {
             if (json == null) return;
             try {
@@ -429,6 +512,7 @@ public class MainActivity extends Activity {
                 JSONObject mirrored = new JSONObject();
                 mirrored.put("sessions", boundedHistory(value.optJSONArray("sessions")));
                 mirrored.put("corridas", boundedHistory(value.optJSONArray("corridas")));
+                mirrored.put("peso", boundedWeights(value.optJSONArray("peso")));
                 trimMirroredTotal(mirrored);
                 getSharedPreferences(WorkoutProvider.PREFS, MODE_PRIVATE)
                         .edit().putString(WorkoutProvider.STATE_KEY, mirrored.toString()).commit();
@@ -448,16 +532,33 @@ public class MainActivity extends Activity {
             return out;
         }
 
+        /** Drops impedance, BLE identifiers and every field except date + kg. */
+        private JSONArray boundedWeights(JSONArray input) throws Exception {
+            JSONArray out = new JSONArray();
+            if (input == null) return out;
+            int start = Math.max(0, input.length() - MAX_MIRRORED_ITEMS);
+            for (int i = start; i < input.length(); i++) {
+                JSONObject source = input.optJSONObject(i);
+                if (source == null) continue;
+                String date = source.optString("date", source.optString("data", ""));
+                double kg = source.has("kg") ? source.optDouble("kg", Double.NaN)
+                        : source.optDouble("peso", Double.NaN);
+                if (!date.matches("\\d{4}-\\d{2}-\\d{2}") || Double.isNaN(kg) ||
+                        Double.isInfinite(kg) || kg < 20.0 || kg > 400.0) continue;
+                out.put(new JSONObject().put("date", date).put("kg", kg));
+            }
+            return out;
+        }
+
         private void trimMirroredTotal(JSONObject mirrored) throws Exception {
             JSONArray sessions = mirrored.getJSONArray("sessions");
             JSONArray corridas = mirrored.getJSONArray("corridas");
+            JSONArray peso = mirrored.getJSONArray("peso");
             while (mirrored.toString().getBytes("UTF-8").length > MAX_MIRRORED_BYTES &&
-                    (sessions.length() > 0 || corridas.length() > 0)) {
-                boolean removeRun = sessions.length() == 0;
-                if (!removeRun && corridas.length() > 0) {
-                    removeRun = recordOrder(corridas.optJSONObject(0)) < recordOrder(sessions.optJSONObject(0));
-                }
-                removeFirst(removeRun ? corridas : sessions);
+                    (sessions.length() > 0 || corridas.length() > 0 || peso.length() > 0)) {
+                if (sessions.length() > 0) removeFirst(sessions);
+                else if (corridas.length() > 0) removeFirst(corridas);
+                else removeFirst(peso);
             }
         }
 

@@ -496,11 +496,13 @@ function renderCorrida(){
     h += '</div>';
   }
 
-  // 3. Card de Meta Semanal de Cardio & Volume Cumulativo
   h += '<div class="card">';
   h += '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
   h += '    <span style="font-size:11px;font-weight:700;color:var(--txt-secondary);text-transform:uppercase;letter-spacing:0.6px">Meta Semanal de Cardio</span>';
-  h += '    <button id="btnEditCardioGoal" class="rtag" style="cursor:pointer;padding:3px 9px">⚙️ Ajustar Meta</button>';
+  h += '    <div style="display:flex;gap:6px">';
+  h += '      <button id="btnStravaSync" class="rtag" style="cursor:pointer;padding:3px 9px;background:rgba(252,76,2,0.15);color:#fc4c02;border:1px solid rgba(252,76,2,0.3)">🟠 Strava</button>';
+  h += '      <button id="btnEditCardioGoal" class="rtag" style="cursor:pointer;padding:3px 9px">⚙️ Ajustar</button>';
+  h += '    </div>';
   h += '  </div>';
   h += '  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">';
   h += '    <span style="font-size:28px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">' + nkg(weekKm) + ' <small style="font-size:14px;color:var(--txt-secondary);font-weight:600">km</small></span>';
@@ -825,7 +827,41 @@ function bindCorrida(){
     };
   });
 
-  // 3. Ajuste de Meta Semanal de Cardio
+  // 3. Ajuste de Meta Semanal de Cardio & Strava Sync
+  var btnStrava = document.getElementById('btnStravaSync');
+  if(btnStrava){
+    btnStrava.onclick = function(){
+      dlg({
+        title: 'Sincronizar Strava',
+        sub: 'Cole o JSON de atividades do Strava ou array de corridas:',
+        input: true,
+        value: '',
+        ph: '[{"id": 12345, "name": "Corrida", "distance": 10000, "moving_time": 3000}]',
+        ok: 'Sincronizar',
+        onOk: function(val){
+          if(!val || !String(val).trim()){
+            toast('Nenhuma atividade informada.');
+            return;
+          }
+          try {
+            var acts = JSON.parse(String(val).trim());
+            if(!Array.isArray(acts)) acts = [acts];
+            var res = typeof syncStravaActivities === 'function' ? syncStravaActivities(acts) : { ok: false, error: 'NO_MODULE' };
+            if(res.ok){
+              celebrate();
+              toast('Strava: ' + res.importedCount + ' importada(s), ' + res.duplicatesCount + ' duplicada(s). 🏃');
+              render();
+            } else {
+              toast('Erro ao sincronizar: ' + (res.error || 'falha'));
+            }
+          } catch(e) {
+            toast('JSON inválido de atividades Strava.');
+          }
+        }
+      });
+    };
+  }
+
   var btnGoal = document.getElementById('btnEditCardioGoal');
   if(btnGoal){
     btnGoal.onclick = function(){

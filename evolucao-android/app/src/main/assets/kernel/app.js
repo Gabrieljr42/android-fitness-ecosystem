@@ -19,6 +19,7 @@ var TABS = [
 ];
 
 function render() {
+  if (typeof checkDraftInactivity === 'function') checkDraftInactivity();
   var wk = typeof weekCount === 'function' ? weekCount() : 0;
   
   var tc = typeof document !== 'undefined' ? document.querySelector('meta[name="theme-color"]') : null;
@@ -80,6 +81,9 @@ function render() {
 if (typeof initRest === 'function') initRest();
 if (typeof initLiveTimer === 'function') initLiveTimer();
 if (typeof render === 'function' && typeof document !== 'undefined' && document.getElementById('app')) render();
+if (typeof window !== 'undefined' && window.EvolucaoWear && window.EvolucaoWear.onAppReady) {
+  window.EvolucaoWear.onAppReady();
+}
 
 /* service worker — habilita instalação + uso offline (só em http/https) */
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && typeof location !== 'undefined' && location.protocol.indexOf('http') === 0) {

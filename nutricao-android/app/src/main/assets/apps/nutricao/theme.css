@@ -272,6 +272,267 @@ header .hin {
   color: #ffffff;
 }
 
+.day-selector-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.day-selector-head,
+.day-selector-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.day-selector-kicker {
+  color: var(--txt-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.day-selector-title {
+  color: var(--txt-primary);
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.day-selector-controls {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.day-arrow {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 6px 12px;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.day-arrow:disabled {
+  cursor: default;
+  opacity: .35;
+}
+
+.day-date-input {
+  width: auto;
+  min-width: 155px;
+  min-height: 42px;
+  padding: 9px 12px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.day-today-btn {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.day-selector-hint {
+  color: var(--txt-secondary);
+  font-size: 11.5px;
+  line-height: 1.35;
+  margin-top: 9px;
+  text-align: center;
+}
+
+.daily-summary-action {
+  position: relative;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 58px;
+}
+
+.daily-summary-action-hint {
+  color: var(--txt-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.daily-photo-picker {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.daily-photo-picker-head,
+.daily-meal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.daily-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.daily-photo-tile {
+  position: relative;
+  min-width: 0;
+}
+
+.daily-photo-tile img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-input);
+}
+
+.daily-photo-tile span {
+  display: block;
+  overflow: hidden;
+  color: var(--txt-secondary);
+  font-size: 10px;
+  margin-top: 3px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, .4);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 20px;
+}
+
+.daily-photo-empty {
+  color: var(--txt-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px 4px 2px;
+}
+
+.daily-summary-total {
+  background: var(--bg-card);
+  border: 1px solid var(--border-focus);
+  border-radius: 14px;
+  margin: 10px 0 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.daily-summary-label {
+  color: var(--txt-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.daily-summary-kcal {
+  color: var(--txt-primary);
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  margin-top: 3px;
+}
+
+.daily-summary-macros {
+  color: var(--txt-secondary);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.daily-meal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  margin-top: 10px;
+  padding: 12px;
+}
+
+.daily-meal-head > .grow {
+  min-width: 0;
+}
+
+.daily-meal-hour {
+  flex: 0 0 96px;
+}
+
+.daily-meal-head label {
+  display: block;
+  color: var(--txt-secondary);
+  font-size: 11px;
+  margin: 0 0 4px;
+}
+
+.daily-meal-head input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+}
+
+.daily-add-item {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.daily-meal-total {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--txt-secondary);
+  font-size: 12px;
+  margin-top: 10px;
+  padding-top: 9px;
+  text-align: right;
+}
+
+.daily-meal-total b {
+  color: var(--txt-primary);
+}
+
+.daily-notes {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--txt-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 8px 0;
+  padding: 9px 10px;
+}
+
+.daily-notes ul {
+  margin: 5px 0 0 17px;
+  padding: 0;
+}
+
+.daily-notes li + li {
+  margin-top: 3px;
+}
+
+@media (max-width: 380px) {
+  .daily-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .daily-meal-head { display: block; }
+  .daily-meal-hour { margin-top: 8px; }
+}
+
 /* ==========================================================================
    TYPOGRAPHY
    ========================================================================== */

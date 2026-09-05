@@ -8,6 +8,7 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
@@ -20,6 +21,10 @@
         android:name="com.nutricao.app.permission.TRIGGER_REMINDERS"
         android:protectionLevel="signature"
         android:label="Disparar lembretes internos do NutriTrack" />
+    <permission
+        android:name="com.nutricao.app.permission.READ_NUTRITION"
+        android:protectionLevel="normal"
+        android:label="Ler resumos nutricionais" />
 
     <queries>
         <provider android:authorities="com.evolucao.treino.workouts" />
@@ -60,5 +65,11 @@
                 <action android:name="com.nutricao.app.ACTION_MEAL_REMINDER"/>
             </intent-filter>
         </receiver>
+        <provider
+            android:name=".NutritionProvider"
+            android:authorities="com.nutricao.app.nutrition"
+            android:exported="true"
+            android:readPermission="com.nutricao.app.permission.READ_NUTRITION"
+            android:grantUriPermissions="false" />
     </application>
 </manifest>

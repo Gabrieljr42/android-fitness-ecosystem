@@ -19,6 +19,7 @@ var TABS = [
 ];
 
 function render() {
+  if (typeof checkDraftInactivity === 'function') checkDraftInactivity();
   var wk = typeof weekCount === 'function' ? weekCount() : 0;
   
   var tc = typeof document !== 'undefined' ? document.querySelector('meta[name="theme-color"]') : null;

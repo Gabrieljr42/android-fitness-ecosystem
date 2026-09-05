@@ -36,7 +36,7 @@ Aplicativo Android nativo (baseado em WebView de alto desempenho) para controle 
 
 ```text
 evolucao-android/
-├── build.ps1                              # Script autônomo de compilação do APK
+├── build.ps1                              # Entrada histórica; delega ao Gradle mobile integrado
 ├── LEIAME.txt                             # Instruções rápidas de uso
 ├── PROGRESSAO.md                          # Documentação detalhada do motor de progressão
 ├── _toolchain/                            # JDK 17 + Android SDK (baixados automaticamente)
@@ -78,25 +78,26 @@ evolucao-android/
 
 ## 🚀 Como Compilar o APK
 
-O projeto possui um pipeline autônomo em PowerShell que não requer a instalação prévia do Android Studio ou do JDK no sistema operacional.
+O projeto possui um pipeline Gradle multi-módulo acionado por PowerShell. Nesta workspace, JDK 17 e Android SDK ficam isolados em `_toolchain/`; Android Studio não é necessário.
 
 ### Requisitos
 - Windows 10/11 com PowerShell.
-- Conexão com a internet na primeira execução (baixa ~1 GB do JDK 17 e Android SDK em `_toolchain/`).
+- JDK 17 e Android SDK 34 em `_toolchain/` (já provisionados nesta workspace) e Node.js para a suíte JS.
+- Conexão com a internet somente quando o Gradle ainda precisar baixar dependências.
 
 ### Passos de Compilação
 1. Abra o PowerShell na pasta `evolucao-android`:
    ```powershell
    powershell -ExecutionPolicy Bypass -File build.ps1
    ```
-2. O script executará automaticamente:
-   - Configuração do JDK 17 e Android SDK em cache local (`_toolchain`).
-   - Compilação dos recursos via `aapt2`.
-   - Aplicação do patch binário para correção de caminhos de assets no Windows (`\` $\rightarrow$ `/`).
-   - Compilação do `MainActivity.java` via `javac`.
-   - Geração do bytecode `classes.dex` via `d8`.
-   - Empacotamento, `zipalign` e assinatura do APK com keystore persistente.
+2. O comando histórico delega a `build-wear.ps1 -MobileOnly -WithTests`, usa uma unidade temporária para o caminho com acento, executa testes Kotlin/Room e JS, empacota e assina pelo Gradle.
 3. Ao término, o arquivo `Evolucao.apk` estará gerado na raiz da pasta.
+
+Para gerar mobile e Wear, além de lint:
+
+```powershell
+.\build-wear.ps1 -WithTests -WithLint
+```
 
 ---
 
@@ -113,3 +114,21 @@ Saída esperada: `progressao.test.js: OK`
 
 ## 🔒 Dados e Privacidade
 Todos os dados ficam armazenados localmente no dispositivo (`localStorage`). Recomenda-se realizar backups periódicos pela aba **Ficha > Fazer backup**.
+
+---
+
+## ⌚ Companion Wear OS
+
+O companion oficial do Evolução fica no módulo `wear/` e sincroniza diretamente com este app — não com o Coach. O pipeline Gradle preserva o app WebView, acrescenta uma inbox/outbox Room no telefone e gera dois APKs assinados pelo mesmo keystore.
+
+```powershell
+.\build-wear.ps1 -WithTests -WithLint
+```
+
+- Guia do companion: [wear/README.md](wear/README.md)
+- Instalação no TicWatch E3: [INSTALL_TICWATCH_E3.md](INSTALL_TICWATCH_E3.md)
+- Arquitetura: [ARCHITECTURE_WEAR.md](ARCHITECTURE_WEAR.md)
+- Protocolo: [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md)
+- Solução de problemas: [TROUBLESHOOTING_WEAR.md](TROUBLESHOOTING_WEAR.md)
+
+O comando histórico `build.ps1` continua disponível e agora delega ao build Gradle mobile integrado, executa os testes e copia o resultado para `Evolucao.apk`. O corpo do pipeline manual foi mantido no arquivo como referência de migração, mas não é usado quando a estrutura Gradle está presente. Para gerar o par mobile + Wear, use `build-wear.ps1`.

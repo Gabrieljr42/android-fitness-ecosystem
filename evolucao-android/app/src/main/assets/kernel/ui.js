@@ -120,11 +120,16 @@ function restTick() {
   paintRest();
 }
 
+function wearRestPublish() {
+  try { if (typeof window !== 'undefined' && window.EvolucaoWear && window.EvolucaoWear.schedulePublish) window.EvolucaoWear.schedulePublish(); } catch (_) {}
+}
+
 function startRest(sec, label) {
   rest.end = Date.now() + sec * 1000; 
   rest.remain = sec; 
   rest.on = true; 
   rest.done = false; 
+  rest.paused = false;
   rest.label = label || '';
   
   var el = document.getElementById('rest');
@@ -132,6 +137,7 @@ function startRest(sec, label) {
   
   nativeRestStart();
   paintRest();
+  wearRestPublish();
   clearInterval(rest.iv); 
   rest.iv = setInterval(restTick, 250);
 }
@@ -148,6 +154,7 @@ function adjustRest(delta) {
       rest.end = Date.now() + 1; 
     } 
     nativeRestStart(); 
+    wearRestPublish();
   } else { 
     rest.remain = Math.max(0, rest.remain + delta); 
   }
@@ -162,11 +169,15 @@ function toggleRest() {
   if (rest.on) { 
     rest.remain = restLeft(); 
     rest.on = false; 
+    rest.paused = true;
     nativeRestStop(); 
+    wearRestPublish();
   } else { 
     rest.end = Date.now() + rest.remain * 1000; 
     rest.on = true; 
+    rest.paused = false;
     nativeRestStart(); 
+    wearRestPublish();
   }
   paintRest();
 }
@@ -174,8 +185,11 @@ function toggleRest() {
 function hideRest() { 
   rest.on = false; 
   rest.done = false; 
+  rest.paused = false;
+  rest.remain = 0;
   clearInterval(rest.iv); 
   nativeRestStop(); 
+  wearRestPublish();
   var el = document.getElementById('rest');
   if (el) el.classList.add('hidden'); 
 }
@@ -211,9 +225,20 @@ function initRest() {
 
 function initLiveTimer() {
   setInterval(function() {
+    if (typeof checkDraftInactivity === 'function') {
+      var reset = checkDraftInactivity();
+      if (reset) {
+        var elReset = document.getElementById('liveDur');
+        if (elReset) elReset.textContent = 'Pronto para registrar';
+        if (typeof render === 'function') render();
+        return;
+      }
+    }
     var el = document.getElementById('liveDur');
     if (el && typeof state !== 'undefined' && state.draft && state.draft.startedAt) {
       el.textContent = '⏱ ' + (typeof fmtDur === 'function' ? fmtDur((Date.now() - state.draft.startedAt) / 1000) : '') + ' treinando';
+    } else if (el && typeof state !== 'undefined' && state.draft && !state.draft.startedAt) {
+      el.textContent = 'Pronto para registrar';
     }
   }, 1000);
 }

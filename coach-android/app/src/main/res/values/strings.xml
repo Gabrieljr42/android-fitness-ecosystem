@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">Coach</string>
+    <string name="health_rationale_title">Seus dados, sob seu controle</string>
+    <string name="health_rationale_body" tools:ignore="Typos">O Coach armazena seus dados localmente e lê sono, passos, frequência cardíaca de repouso e peso pelo Health Connect para preparar o briefing. Somente quando você pedir uma revisão do Gemini e confirmar o payload exibido, aquele resumo sanitizado sairá do aparelho. Nada é escrito no Health Connect. Você pode revogar as permissões a qualquer momento.</string>
+    <string name="close">Fechar</string>
+</resources>

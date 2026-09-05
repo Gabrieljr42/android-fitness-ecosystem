@@ -825,6 +825,17 @@ function maratonaCumulative(corridas) {
   return rows;
 }
 
+var api = {
+  MARATONA_META: MARATONA_META,
+  MARATONA_PLAN: MARATONA_PLAN,
+  maratonaWeekForDate: maratonaWeekForDate,
+  maratonaWeekByNumber: maratonaWeekByNumber,
+  maratonaActualKm: maratonaActualKm,
+  maratonaLongRunInfo: maratonaLongRunInfo,
+  maratonaAdherence: maratonaAdherence,
+  maratonaCumulative: maratonaCumulative
+};
+
 if (typeof window !== 'undefined') {
   window.MARATONA_META = MARATONA_META;
   window.MARATONA_PLAN = MARATONA_PLAN;
@@ -834,4 +845,8 @@ if (typeof window !== 'undefined') {
   window.maratonaLongRunInfo = maratonaLongRunInfo;
   window.maratonaAdherence = maratonaAdherence;
   window.maratonaCumulative = maratonaCumulative;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = api;
 }

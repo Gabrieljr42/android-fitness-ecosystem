@@ -13,12 +13,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -31,6 +33,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
@@ -42,9 +46,15 @@ public class MainActivity extends Activity {
     private WebView web;
     private static final int FILE_CHOOSER_CODE = 51;
     private static final int NOTIF_PERM_CODE = 102;
+    private static final int AUDIO_PERM_CODE = 103;
+    private static final long MAX_AUDIO_BYTES = 12L * 1024L * 1024L;
     public static final String CHANNEL_ID = "nutricao_lembretes";
     private ValueCallback<Uri[]> filePathCallback;
     private Uri cameraOutputUri;
+    private MediaRecorder audioRecorder;
+    private File audioRecordingFile;
+    private long audioRecordingStartedAt;
+    private boolean audioPermissionPending;
 
     /** Remove da MediaStore a entrada pendente de foto não utilizada (usuário
      *  cancelou a captura ou o lançamento falhou). Sem isto, linhas vazias de
@@ -55,6 +65,155 @@ public class MainActivity extends Activity {
             getContentResolver().delete(cameraOutputUri, null, null);
         } catch (Exception ignored) {}
         cameraOutputUri = null;
+    }
+
+    private boolean hasAudioPermission() {
+        return Build.VERSION.SDK_INT < 23
+                || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void notifyAudioPermissionResult(final boolean granted) {
+        audioPermissionPending = false;
+        if (web == null) return;
+        web.post(new Runnable() {
+            @Override public void run() {
+                String js = "if(window.__nutriAudioPermissionResult)window.__nutriAudioPermissionResult(" + granted + ");";
+                web.evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    private void requestAudioPermissionFromBridge() {
+        if (audioPermissionPending) return;
+        audioPermissionPending = true;
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                if (hasAudioPermission()) {
+                    notifyAudioPermissionResult(true);
+                } else if (Build.VERSION.SDK_INT >= 23) {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, AUDIO_PERM_CODE);
+                }
+            }
+        });
+    }
+
+    private String audioResult(boolean ok, String code, String message) {
+        try {
+            JSONObject result = new JSONObject().put("ok", ok);
+            if (code != null) result.put("code", code);
+            if (message != null) result.put("message", message);
+            return result.toString();
+        } catch (Exception ignored) {
+            return ok ? "{\"ok\":true}" : "{\"ok\":false}";
+        }
+    }
+
+    private String startAudioCapture() {
+        if (!hasAudioPermission()) {
+            requestAudioPermissionFromBridge();
+            return audioResult(false, "permission_required", "O microfone precisa ser autorizado para gravar.");
+        }
+        if (audioRecorder != null) return audioResult(false, "already_recording", "Já existe uma gravação em andamento.");
+
+        MediaRecorder recorder = null;
+        File output = null;
+        try {
+            output = File.createTempFile("nutritrack_audio_", ".m4a", getCacheDir());
+            recorder = new MediaRecorder();
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            recorder.setAudioEncodingBitRate(64000);
+            recorder.setAudioSamplingRate(44100);
+            recorder.setOutputFile(output.getAbsolutePath());
+            recorder.prepare();
+            recorder.start();
+            audioRecorder = recorder;
+            audioRecordingFile = output;
+            audioRecordingStartedAt = System.currentTimeMillis();
+            return audioResult(true, "recording", null);
+        } catch (Exception e) {
+            if (recorder != null) {
+                try { recorder.reset(); } catch (Exception ignored) {}
+                try { recorder.release(); } catch (Exception ignored) {}
+            }
+            if (output != null) {
+                try { output.delete(); } catch (Exception ignored) {}
+            }
+            audioRecorder = null;
+            audioRecordingFile = null;
+            return audioResult(false, "recording_failed", "Não foi possível iniciar o microfone.");
+        }
+    }
+
+    private String stopAudioCapture() {
+        MediaRecorder recorder = audioRecorder;
+        File output = audioRecordingFile;
+        long startedAt = audioRecordingStartedAt;
+        audioRecorder = null;
+        audioRecordingFile = null;
+        audioRecordingStartedAt = 0L;
+        if (recorder == null || output == null) {
+            return audioResult(false, "not_recording", "Nenhuma gravação está em andamento.");
+        }
+
+        try {
+            recorder.stop();
+        } catch (Exception e) {
+            try { recorder.reset(); } catch (Exception ignored) {}
+            try { recorder.release(); } catch (Exception ignored) {}
+            try { output.delete(); } catch (Exception ignored) {}
+            return audioResult(false, "recording_too_short", "Grave por pelo menos um segundo.");
+        }
+        try { recorder.release(); } catch (Exception ignored) {}
+
+        try {
+            long length = output.length();
+            if (!output.exists() || length < 128L) {
+                output.delete();
+                return audioResult(false, "empty_recording", "O áudio ficou vazio. Tente gravar novamente.");
+            }
+            if (length > MAX_AUDIO_BYTES) {
+                output.delete();
+                return audioResult(false, "recording_too_large", "A gravação ficou grande demais. Faça um áudio mais curto.");
+            }
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream((int) length);
+            FileInputStream input = new FileInputStream(output);
+            try {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
+            } finally {
+                input.close();
+            }
+            String encoded = Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP);
+            long duration = Math.max(0L, System.currentTimeMillis() - startedAt);
+            JSONObject result = new JSONObject()
+                    .put("ok", true)
+                    .put("mimeType", "audio/mp4")
+                    .put("data", encoded)
+                    .put("durationMs", duration);
+            output.delete();
+            return result.toString();
+        } catch (Exception e) {
+            try { output.delete(); } catch (Exception ignored) {}
+            return audioResult(false, "read_failed", "Não foi possível preparar o áudio para análise.");
+        }
+    }
+
+    private void cancelAudioCapture() {
+        MediaRecorder recorder = audioRecorder;
+        File output = audioRecordingFile;
+        audioRecorder = null;
+        audioRecordingFile = null;
+        audioRecordingStartedAt = 0L;
+        if (recorder != null) {
+            try { recorder.stop(); } catch (Exception ignored) {}
+            try { recorder.release(); } catch (Exception ignored) {}
+        }
+        if (output != null) {
+            try { output.delete(); } catch (Exception ignored) {}
+        }
     }
 
     @Override
@@ -91,10 +250,19 @@ public class MainActivity extends Activity {
                 filePathCallback = callback;
                 cameraOutputUri = null;
                 String[] accepts = params.getAcceptTypes();
-                boolean isImage = accepts != null && accepts.length > 0
-                        && accepts[0] != null && accepts[0].startsWith("image/");
+                boolean isImage = false;
+                if (accepts != null) {
+                    for (String accept : accepts) {
+                        if (accept != null && accept.startsWith("image/")) {
+                            isImage = true;
+                            break;
+                        }
+                    }
+                }
+                boolean allowMultiple = isImage
+                        && params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
                 Intent intent;
-                if (isImage) {
+                if (isImage && !allowMultiple) {
                     // foto do prato: camera direta sem envolver em chooser
                     intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                     if (intent.resolveActivity(getPackageManager()) == null) {
@@ -129,9 +297,15 @@ public class MainActivity extends Activity {
                         return false;
                     }
                 } else {
+                    // O fluxo de resumo diário usa <input multiple>: abre a
+                    // galeria e devolve todos os URIs escolhidos ao WebView.
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
-                    intent.setType("*/*");
+                    intent.setType(isImage ? "image/*" : "*/*");
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    if (allowMultiple) {
+                        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    }
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     try {
                         startActivityForResult(Intent.createChooser(intent, "Selecionar"), FILE_CHOOSER_CODE);
                     } catch (Exception e) {
@@ -158,31 +332,54 @@ public class MainActivity extends Activity {
         if (requestCode == FILE_CHOOSER_CODE) {
             if (filePathCallback == null) return;
             Uri[] results = null;
-                if (resultCode == Activity.RESULT_OK) {
-                    Uri picked = null;
-                    if (data != null && data.getData() != null) {
-                        picked = data.getData();
-                    } else if (cameraOutputUri != null) {
-                        // foto tirada com a camera: usar o Uri proprio (data.getData() é null nesse caso)
-                        picked = cameraOutputUri;
+            if (resultCode == Activity.RESULT_OK) {
+                if (data != null && data.getClipData() != null) {
+                    ClipData clip = data.getClipData();
+                    int count = clip.getItemCount();
+                    if (count > 0) {
+                        results = new Uri[count];
+                        for (int i = 0; i < count; i++) {
+                            results[i] = clip.getItemAt(i).getUri();
+                        }
                     }
-                    if (picked != null) {
-                        results = new Uri[]{ picked };
-                    }
+                } else if (data != null && data.getData() != null) {
+                    results = new Uri[]{ data.getData() };
+                } else if (cameraOutputUri != null) {
+                    // foto tirada com a camera: usar o Uri proprio (data.getData() é null nesse caso)
+                    results = new Uri[]{ cameraOutputUri };
                 }
-                // Foto cancelada ou substituída por pick da galeria: descarta a
-                // entrada pendente da câmera para não acumular lixo na galeria.
-                if (cameraOutputUri != null && (results == null || results[0] != cameraOutputUri)) {
-                    discardCameraOutput();
-                } else {
-                    cameraOutputUri = null; // URI consumida pelo JS
-                }
-                // se results == null, o JS recebe nada e mostra o fallback "nenhuma foto"
-                filePathCallback.onReceiveValue(results);
-                filePathCallback = null;
+            }
+            // Foto cancelada ou substituída por pick da galeria: descarta a
+            // entrada pendente da câmera para não acumular lixo na galeria.
+            boolean cameraConsumed = results != null && results.length == 1
+                    && cameraOutputUri != null && cameraOutputUri.equals(results[0]);
+            if (cameraOutputUri != null && !cameraConsumed) {
+                discardCameraOutput();
+            } else {
+                cameraOutputUri = null; // URI consumida pelo JS
+            }
+            // se results == null, o JS recebe nada e mostra o fallback "nenhuma foto"
+            filePathCallback.onReceiveValue(results);
+            filePathCallback = null;
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == AUDIO_PERM_CODE) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            notifyAudioPermissionResult(granted);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        cancelAudioCapture();
+        super.onDestroy();
     }
 
     private void requestCameraPermission() {
@@ -235,6 +432,26 @@ public class MainActivity extends Activity {
 
     /** Bridge chamada do JS para notificacoes, vibracao, agendamento de alarmes e backup. */
     public class Bridge {
+        @JavascriptInterface
+        public String startAudioRecording() {
+            return startAudioCapture();
+        }
+
+        @JavascriptInterface
+        public String stopAudioRecording() {
+            return stopAudioCapture();
+        }
+
+        @JavascriptInterface
+        public void cancelAudioRecording() {
+            cancelAudioCapture();
+        }
+
+        @JavascriptInterface
+        public boolean isAudioRecording() {
+            return audioRecorder != null;
+        }
+
         /** Consulta o treino diário publicado pelo Evolução. Nunca propaga exceções ao WebView. */
         @JavascriptInterface
         public String getEvolucaoWorkout(final String date) {
@@ -276,6 +493,68 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {}
                 return error.toString();
             }
+        }
+
+        /** Persists a bounded aggregate-only mirror for the Coach provider. */
+        @JavascriptInterface
+        public void syncNutritionSummary(final String json) {
+            if (json == null) return;
+            try {
+                if (json.getBytes("UTF-8").length > 256 * 1024) return;
+                JSONObject root = new JSONObject(json);
+                if (root.optInt("schemaVersion", -1) != 1) return;
+                JSONArray input = root.optJSONArray("days");
+                if (input == null || input.length() > 120) return;
+                JSONArray days = new JSONArray();
+                JSONObject seen = new JSONObject();
+                for (int i = 0; i < input.length(); i++) {
+                    JSONObject source = input.optJSONObject(i);
+                    if (source == null) continue;
+                    String date = source.optString("date", "");
+                    Object mealRaw = source.opt("mealCount");
+                    Object waterRaw = source.opt("hasWaterLog");
+                    if (!date.matches("\\d{4}-\\d{2}-\\d{2}") || seen.has(date) ||
+                            !(mealRaw instanceof Number) || !(waterRaw instanceof Boolean)) continue;
+                    double mealNumber = ((Number) mealRaw).doubleValue();
+                    if (Double.isNaN(mealNumber) || Double.isInfinite(mealNumber) ||
+                            mealNumber % 1.0 != 0.0) continue;
+                    int mealCount = (int) mealNumber;
+                    boolean hasWaterLog = (Boolean) waterRaw;
+                    if (mealCount < 0 || mealCount > 200 || (mealCount == 0 && !hasWaterLog)) continue;
+                    JSONObject targets = source.optJSONObject("targets");
+                    if (targets == null) continue;
+                    JSONObject day = new JSONObject()
+                            .put("date", date)
+                            .put("mealCount", mealCount)
+                            .put("hasWaterLog", hasWaterLog)
+                            .put("energyKcal", boundedNumber(source, "energyKcal", 100000.0))
+                            .put("proteinG", boundedNumber(source, "proteinG", 10000.0))
+                            .put("carbsG", boundedNumber(source, "carbsG", 20000.0))
+                            .put("fatG", boundedNumber(source, "fatG", 10000.0))
+                            .put("waterMl", boundedNumber(source, "waterMl", 100000.0))
+                            .put("targets", new JSONObject()
+                                    .put("energyKcal", boundedNumber(targets, "energyKcal", 10000.0))
+                                    .put("proteinG", boundedNumber(targets, "proteinG", 1000.0))
+                                    .put("carbsG", boundedNumber(targets, "carbsG", 2000.0))
+                                    .put("fatG", boundedNumber(targets, "fatG", 1000.0))
+                                    .put("waterMl", boundedNumber(targets, "waterMl", 20000.0)));
+                    seen.put(date, true);
+                    days.put(day);
+                }
+                JSONObject sanitized = new JSONObject().put("schemaVersion", 1).put("days", days);
+                getSharedPreferences(NutritionProvider.PREFS, MODE_PRIVATE).edit()
+                        .putString(NutritionProvider.STATE_KEY, sanitized.toString()).commit();
+            } catch (Exception ignored) { }
+        }
+
+        private double boundedNumber(JSONObject value, String key, double max) throws Exception {
+            Object raw = value.opt(key);
+            if (!(raw instanceof Number)) throw new IllegalArgumentException("number required");
+            double number = ((Number) raw).doubleValue();
+            if (Double.isNaN(number) || Double.isInfinite(number) || number < 0.0 || number > max) {
+                throw new IllegalArgumentException("number outside bounds");
+            }
+            return number;
         }
 
         @JavascriptInterface

@@ -22,7 +22,7 @@ import java.util.Comparator;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 
-/** Read-only bridge consumed by NutriTrack. The mirrored state is written by MainActivity. */
+/** Read-only bridge consumed by NutriTrack and Coach. The mirrored state is written by MainActivity. */
 public final class WorkoutProvider extends ContentProvider {
     public static final String AUTHORITY = "com.evolucao.treino.workouts";
     public static final String PATH = "workouts";
@@ -30,6 +30,7 @@ public final class WorkoutProvider extends ContentProvider {
     public static final String STATE_KEY = "state";
     private static final Pattern ISO_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final String NUTRICAO_PACKAGE = "com.nutricao.app";
+    private static final String COACH_PACKAGE = "com.coach.app";
     private static final int MAX_SESSIONS = 20, MAX_EXERCISES = 50, MAX_SETS = 100, MAX_NOTE_CHARS = 2000;
 
     @Override public boolean onCreate() { return true; }
@@ -52,8 +53,10 @@ public final class WorkoutProvider extends ContentProvider {
         String[] packages;
         try { packages = getContext().getPackageManager().getPackagesForUid(uid); }
         catch (RuntimeException e) { throw new SecurityException("Caller UID indisponível", e); }
-        if (packages != null) for (String pkg : packages) if (NUTRICAO_PACKAGE.equals(pkg)) return;
-        throw new SecurityException("Somente NutriTrack pode ler treinos");
+        if (packages != null) for (String pkg : packages) {
+            if (NUTRICAO_PACKAGE.equals(pkg) || COACH_PACKAGE.equals(pkg)) return;
+        }
+        throw new SecurityException("Chamador não autorizado a ler o histórico do Evolução");
     }
 
     private String buildPayload(String date) {
@@ -63,6 +66,7 @@ public final class WorkoutProvider extends ContentProvider {
             payload.put("source", "com.evolucao.treino");
             payload.put("date", date);
             payload.put("generatedAt", nowIso());
+            payload.put("weight", JSONObject.NULL);
             ArrayList<Candidate> candidates = new ArrayList<>();
             String raw = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(STATE_KEY, null);
             if (raw != null) {
@@ -84,6 +88,8 @@ public final class WorkoutProvider extends ContentProvider {
                     JSONObject source = runs.optJSONObject(i);
                     if (source != null && date.equals(source.optString("date"))) candidates.add(new Candidate(normalizeRun(source), orderOf(source, i)));
                 }
+                JSONObject weight = latestWeightAtOrBefore(state.optJSONArray("peso"), date);
+                if (weight != null) payload.put("weight", weight);
             }
             Collections.sort(candidates, new Comparator<Candidate>() { public int compare(Candidate a, Candidate b) { return Long.compare(b.order, a.order); } });
             JSONArray sessions = new JSONArray();
@@ -93,6 +99,26 @@ public final class WorkoutProvider extends ContentProvider {
             try { payload.put("sessions", new JSONArray()); } catch (Exception impossible) { }
         }
         return payload.toString();
+    }
+
+    private JSONObject latestWeightAtOrBefore(JSONArray values, String date) throws Exception {
+        if (values == null) return null;
+        String bestDate = null;
+        double bestKg = Double.NaN;
+        for (int i = 0; i < values.length(); i++) {
+            JSONObject source = values.optJSONObject(i);
+            if (source == null) continue;
+            String observedDate = source.optString("date", source.optString("data", ""));
+            double kg = source.has("kg") ? source.optDouble("kg", Double.NaN)
+                    : source.optDouble("peso", Double.NaN);
+            if (!ISO_DATE.matcher(observedDate).matches() || observedDate.compareTo(date) > 0 ||
+                    Double.isNaN(kg) || Double.isInfinite(kg) || kg < 20.0 || kg > 400.0) continue;
+            if (bestDate == null || observedDate.compareTo(bestDate) >= 0) {
+                bestDate = observedDate;
+                bestKg = kg;
+            }
+        }
+        return bestDate == null ? null : new JSONObject().put("date", bestDate).put("kg", bestKg);
     }
 
     private static final class Candidate {

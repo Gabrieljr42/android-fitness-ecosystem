@@ -7,12 +7,14 @@ const tests = [
   'gemini_merge.test.js',
   'tdee_macros.test.js',
   'gemini_text.test.js',
+  'gemini_daily_summary.test.js',
   'habits_water.test.js',
   'meal_plan_custom_food.test.js',
   'notifications.test.js',
   'activity_tdee.test.js',
   'gemini_activity.test.js',
   'evolucao_workout_bridge.test.js',
+  'coach_nutrition_export.test.js',
   'challenger_m1_1_stress.test.js',
   'adversarial_m2_stress.test.js',
   'challenger_m2_empirical.test.js',
@@ -26,11 +28,13 @@ const tests = [
   'r7_alim_kcal.test.js',
   'r7_strength_import.test.js',
   'r7_meal_edit.test.js',
+  'previous_day_meal.test.js',
   'challenger_m3_1.test.js',
   'challenger_m3_stress_matrix.test.js',
   'challenger_r3_timezone_stress.test.js',
   'empirical_m3_adversarial.test.js',
-  'meal_plan_habits.test.js'
+  'meal_plan_habits.test.js',
+  'gemini_photo_error.test.js'
 ];
 
 console.log('=== [NUTRITRACK] Executando Suíte de Testes Unitários ===\n');

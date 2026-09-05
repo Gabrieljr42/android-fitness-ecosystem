@@ -45,9 +45,11 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch(e) { return d; } };
 let __saveFailedShown = false;
+let __nutritionSyncTimer = null;
 const save = (k, v) => {
   try {
     localStorage.setItem(k, JSON.stringify(v));
+    queueNutritionSync();
   } catch (e) {
     /* Única fronteira durável do app: falha (cota/storage cheio) precisa ser
        visível. Aviso uma vez por sessão para não irritar em operação normal. */
@@ -59,7 +61,54 @@ const save = (k, v) => {
   }
 };
 
-let state = { tab: 'hoje' };
+let state = { tab: 'hoje', activeDate: today() };
+
+function isValidDateKey(value) {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+  return date.getFullYear() === Number(match[1]) &&
+    date.getMonth() === Number(match[2]) - 1 &&
+    date.getDate() === Number(match[3]);
+}
+
+function getActiveDate() {
+  const current = today();
+  if (!isValidDateKey(state.activeDate) || state.activeDate > current) {
+    state.activeDate = current;
+  }
+  return state.activeDate;
+}
+
+function setActiveDate(value, shouldRender = true) {
+  const candidate = String(value ?? '');
+  if (!isValidDateKey(candidate)) {
+    if (typeof toast === 'function') toast('Escolha uma data válida.');
+    return false;
+  }
+  if (candidate > today()) {
+    if (typeof toast === 'function') toast('Só é possível registrar hoje ou em dias anteriores.');
+    return false;
+  }
+  state.activeDate = candidate;
+  if (shouldRender && typeof render === 'function') render();
+  return true;
+}
+
+function shiftActiveDate(days) {
+  const date = new Date(getActiveDate() + 'T12:00:00');
+  date.setDate(date.getDate() + Number(days || 0));
+  return setActiveDate(localDateStr(date));
+}
+
+function resetActiveDate() {
+  return setActiveDate(today());
+}
+
+function getEntryDate(value, fallback = getActiveDate()) {
+  const candidate = String(value || fallback || '');
+  return isValidDateKey(candidate) && candidate <= today() ? candidate : null;
+}
 let profile = load(LS.p, {
   kcal: 2200, p: 120, c: 250, g: 70, peso: 75, altura: 175, idade: 30, sexo: 'm', atividade: 1.4, metaMetodo: 'manual',
   metaAgua: 3000
@@ -76,6 +125,81 @@ pref.paralelo = !!pref.paralelo;
 
 let habits = load(LS.habits, {}); // { "YYYY-MM-DD": { creatina: boolean } }
 let water = load(LS.water, {});   // { "YYYY-MM-DD": number }
+
+/* Exportação mínima para o Coach. Nunca inclui nomes/itens de refeições,
+   fotos, atividades, hábitos, preferências ou chave Gemini. */
+function buildCoachNutritionExport() {
+  const finite = (value, max) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, Math.min(max, number)) : 0;
+  };
+  const dates = new Set();
+  (Array.isArray(meals) ? meals : []).forEach(meal => {
+    const date = meal && String(meal.date || meal.data || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) dates.add(date);
+  });
+  if (water && typeof water === 'object') {
+    Object.keys(water).forEach(date => { if (/^\d{4}-\d{2}-\d{2}$/.test(date)) dates.add(date); });
+  }
+  const currentDate = today();
+  const currentLegacyWater = load(`nt_water_${currentDate}`, null);
+  if (currentLegacyWater !== null) dates.add(currentDate);
+  const days = Array.from(dates).sort().slice(-120).map(date => {
+    const dailyMeals = (Array.isArray(meals) ? meals : []).filter(meal =>
+      meal && String(meal.date || meal.data || '').slice(0, 10) === date
+    );
+    const totals = dailyMeals.reduce((sum, meal) => {
+      (Array.isArray(meal.itens) ? meal.itens : []).forEach(item => {
+        sum.energyKcal += finite(item && item.kcal, 10000);
+        sum.proteinG += finite(item && (item.proteina_g ?? item.p), 1000);
+        sum.carbsG += finite(item && (item.carbo_g ?? item.c), 2000);
+        sum.fatG += finite(item && (item.gordura_g ?? item.g), 1000);
+      });
+      return sum;
+    }, { energyKcal: 0, proteinG: 0, carbsG: 0, fatG: 0 });
+    const hasPrimaryWater = !!(water && typeof water === 'object' && Object.prototype.hasOwnProperty.call(water, date));
+    const legacyWater = load(`nt_water_${date}`, null);
+    const hasWaterLog = hasPrimaryWater || legacyWater !== null;
+    const waterValue = hasPrimaryWater
+      ? (water[date] && typeof water[date] === 'object' ? water[date].current_ml : water[date])
+      : (legacyWater && typeof legacyWater === 'object' ? legacyWater.current_ml : legacyWater);
+    return {
+      date,
+      mealCount: dailyMeals.length,
+      hasWaterLog,
+      energyKcal: Math.round(finite(totals.energyKcal, 100000)),
+      proteinG: +finite(totals.proteinG, 10000).toFixed(1),
+      carbsG: +finite(totals.carbsG, 20000).toFixed(1),
+      fatG: +finite(totals.fatG, 10000).toFixed(1),
+      waterMl: Math.round(finite(waterValue, 20000)),
+      targets: {
+        energyKcal: Math.round(finite(profile && profile.kcal, 10000)),
+        proteinG: +finite(profile && profile.p, 1000).toFixed(1),
+        carbsG: +finite(profile && profile.c, 2000).toFixed(1),
+        fatG: +finite(profile && profile.g, 1000).toFixed(1),
+        waterMl: Math.round(finite(profile && profile.metaAgua, 20000))
+      }
+    };
+  }).filter(day => day.mealCount > 0 || day.hasWaterLog);
+  return { schemaVersion: 1, days };
+}
+
+function syncNutritionNative() {
+  try {
+    if (typeof AndroidBridge !== 'undefined' && AndroidBridge.syncNutritionSummary) {
+      AndroidBridge.syncNutritionSummary(JSON.stringify(buildCoachNutritionExport()));
+    }
+  } catch (_) {}
+}
+
+function queueNutritionSync() {
+  if (typeof AndroidBridge === 'undefined' || !AndroidBridge.syncNutritionSummary) return;
+  if (typeof clearTimeout === 'function') clearTimeout(__nutritionSyncTimer);
+  __nutritionSyncTimer = typeof setTimeout === 'function' ? setTimeout(syncNutritionNative, 0) : null;
+}
+
+// Publica dados que já estavam salvos antes da atualização do aplicativo.
+queueNutritionSync();
 
 // --- Helpers de Atividades / Gasto Calórico (M2) ---
 function saveActivities(list) {
@@ -94,7 +218,7 @@ function dayBurned(d = today()) {
 
 function addActivity(act) {
   if (!act || typeof act !== 'object') act = {};
-  const d = act.date || act.data || today();
+  const d = act.date || act.data || (typeof getActiveDate === 'function' ? getActiveDate() : today());
   const h = act.hour || act.hora || (typeof horaNow === 'function' ? horaNow() : (function() { const now = new Date(); return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'); })());
   const dur = Number(act.duracaoMin ?? act.duracao_min) || 0;
   const k = Number(act.kcal_gasto ?? act.kcal) || 0;
@@ -221,8 +345,15 @@ if (typeof window !== 'undefined') {
   window.today = today;
   window.dateKey = dateKey;
   window.todayISO = todayISO;
+  window.isValidDateKey = isValidDateKey;
+  window.getActiveDate = getActiveDate;
+  window.setActiveDate = setActiveDate;
+  window.shiftActiveDate = shiftActiveDate;
+  window.resetActiveDate = resetActiveDate;
+  window.getEntryDate = getEntryDate;
   window.activities = activities;
   window.saveActivities = saveActivities;
+  window.buildCoachNutritionExport = buildCoachNutritionExport;
   window.dayActivities = dayActivities;
   window.dayBurned = dayBurned;
   window.addActivity = addActivity;
@@ -243,4 +374,10 @@ if (typeof globalThis !== 'undefined') {
   globalThis.today = today;
   globalThis.dateKey = dateKey;
   globalThis.todayISO = todayISO;
+  globalThis.isValidDateKey = isValidDateKey;
+  globalThis.getActiveDate = getActiveDate;
+  globalThis.setActiveDate = setActiveDate;
+  globalThis.shiftActiveDate = shiftActiveDate;
+  globalThis.resetActiveDate = resetActiveDate;
+  globalThis.getEntryDate = getEntryDate;
 }

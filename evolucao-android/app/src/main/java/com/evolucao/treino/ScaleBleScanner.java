@@ -335,6 +335,8 @@ public class ScaleBleScanner {
                 bleScanner.stopScan(scanCallback);
                 Log.i(TAG, "BLE Scan parado com sucesso.");
             }
+        } catch (SecurityException se) {
+            Log.w(TAG, "Permissão BLE revogada antes de parar o scan", se);
         } catch (Exception e) {
             Log.e(TAG, "Erro ao parar BLE scan", e);
         } finally {

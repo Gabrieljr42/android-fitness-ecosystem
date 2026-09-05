@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="coach_bg">#101418</color>
+    <color name="coach_bg_dark">#0B0E12</color>
+    <color name="coach_icon_bg">#0B1517</color>
+</resources>

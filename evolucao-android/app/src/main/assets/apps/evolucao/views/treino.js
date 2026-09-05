@@ -139,7 +139,7 @@ function renderTreino(){
   var warmOn = !!d.warmupMode[ex];
 
   /* Cabeçalho minimalista despoluído (sem botão Curto/Completo topo e sem setup banner) */
-  var h='<div class="mf-session"><div><span class="mf-eyebrow">Treino '+d.day+' · '+esc(day.nome)+'</span><strong>'+(d.startedAt?fmtDur((Date.now()-d.startedAt)/1000):'Pronto para registrar')+'</strong></div><div class="mf-sessioncount">'+totalDone+'<small>/'+totalGoal+' séries</small></div></div>';
+  var h='<div class="mf-session"><div><span class="mf-eyebrow">Treino '+d.day+' · '+esc(day.nome)+'</span><strong id="liveDur">'+(d.startedAt?fmtDur((Date.now()-d.startedAt)/1000):'Pronto para registrar')+'</strong></div><div class="mf-sessioncount">'+totalDone+'<small>/'+totalGoal+' séries</small></div></div>';
   h+='<div class="mf-sessiontools"><div class="mf-days">';
   ['A','B','C'].forEach(function(k){ h+='<button class="mf-day'+(d.day===k?' on':'')+'" data-day="'+k+'">'+k+'</button>'; });
   h+='</div><button class="mf-tool" id="dateBtn">'+(d.date===todayISO()?'Hoje':fmtBR(d.date))+'</button><button class="mf-tool" id="mfPreviewBtn">Resumo</button></div>';
@@ -416,6 +416,8 @@ function todosConcluidos(exIndex){
 
 function handleSetCompletion(exo, rowIndex, setObj, currentIsPhantom){
   var d = state.draft;
+  if(!d.startedAt) d.startedAt = Date.now();
+  d.lastActiveAt = Date.now();
   var isUnilateral = isUnilateralEx(exo);
 
   if(isUnilateral){
@@ -503,6 +505,11 @@ function handleSetCompletion(exo, rowIndex, setObj, currentIsPhantom){
 function promptFinishSession(){
   var d = state.draft;
   if(!d || !Object.keys(d.entries).length){ toast('Nenhuma série registrada'); return; }
+  if (typeof checkDraftInactivity === 'function' && checkDraftInactivity()) {
+    if (typeof toast === 'function') toast('Sessão expirada por inatividade (>3h)');
+    if (typeof render === 'function') render();
+    return;
+  }
   var totalDone = 0, totalGoal = 0;
   var day = state.ficha[d.day];
   if(day && Array.isArray(day.ex)){
@@ -512,7 +519,8 @@ function promptFinishSession(){
       totalGoal += e.sets;
     });
   }
-  var dur = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+  var rawDur = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+  var dur = rawDur != null ? Math.min(rawDur, 3 * 3600) : null;
   var isShortDefault = totalDone < totalGoal;
   var defaultMode = isShortDefault ? 'Treino Curto' : 'Treino Completo';
   var subtitle = totalDone + ' de ' + totalGoal + ' séries concluídas' + (dur ? ' · ' + fmtDur(dur) : '') +
@@ -525,8 +533,14 @@ function promptFinishSession(){
     segVal: defaultMode,
     ok: 'Concluir Treino',
     onOk: function(selected){
+      if (typeof checkDraftInactivity === 'function' && checkDraftInactivity()) {
+        if (typeof toast === 'function') toast('Sessão expirada por inatividade (>3h)');
+        if (typeof render === 'function') render();
+        return;
+      }
       var mode = (selected === 'Treino Curto' || selected === 'curto') ? 'curto' : 'normal';
-      var durFinal = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+      var rawDurFinal = d.startedAt ? Math.max(1, Math.round((Date.now() - d.startedAt) / 1000)) : null;
+      var durFinal = rawDurFinal != null ? Math.min(rawDurFinal, 3 * 3600) : null;
       var notesStr = (function(){
         try {
           if (mfNotes == null) return '';
@@ -559,7 +573,7 @@ function promptFinishSession(){
       mfCompleteSession = savedSession;
       mfComplete = true;
       mfKeepPlan = false;
-      state.draft = { day: null, date: null, dateExplicit: false, entries: {}, warmupMode: {}, startedAt: null, sessionMode: 'normal', unilateralPending: null };
+      state.draft = { day: null, date: null, dateExplicit: false, entries: {}, warmupMode: {}, startedAt: null, lastActiveAt: null, sessionMode: 'normal', unilateralPending: null };
       mfNotes = {};
       kbdReset();
       save();
@@ -583,11 +597,11 @@ function bindTreino(){
     var k=b.getAttribute('data-day'); if(k===d.day) return;
     if(Object.keys(d.entries).length){
       dlg({title:'Trocar de dia', sub:'As séries não salvas serão descartadas. Continuar?', dangerous:true, ok:'Trocar', onOk:function(){
-        d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
+        d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.lastActiveAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
       }});
       return;
     }
-    d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
+    d.day=k; d.entries={}; d.dateExplicit=false; d.startedAt=null; d.lastActiveAt=null; d.warmupMode={}; d.sessionMode='normal'; d.unilateralPending=null; calOpen=false; mfEx=0; mfNotes={}; save(); render();
   };});
   var dateBtn=document.getElementById('dateBtn');
   if(dateBtn) dateBtn.onclick=function(){ if(calOpen){ calOpen=false; } else { openCal(d.date); } render(); };
@@ -601,7 +615,9 @@ function bindTreino(){
   }
   /* carrossel */
   document.querySelectorAll('[data-mfex]').forEach(function(b){ b.onclick=function(){
-    mfEx=+b.getAttribute('data-mfex'); kbdReset(); render();
+    mfEx=+b.getAttribute('data-mfex');
+    if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
+    kbdReset(); render();
     var el=document.querySelector('.mf-item.on'); if(el) el.scrollIntoView({inline:'center',block:'nearest'});
   };});
   var addEx=document.getElementById('mfAddEx');
@@ -618,7 +634,9 @@ function bindTreino(){
   /* ações do exercício */
   document.querySelectorAll('[data-warm]').forEach(function(b){ b.onclick=function(){
     var idx=+b.getAttribute('data-warm'), ex=state.ficha[d.day].ex[idx].n;
-    d.warmupMode[ex]=!d.warmupMode[ex]; kbdReset(); save(); render();
+    d.warmupMode[ex]=!d.warmupMode[ex];
+    if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
+    kbdReset(); save(); render();
   };});
   document.querySelectorAll('[data-mfinfo]').forEach(function(b){ b.onclick=function(){
     mfDetail=b.getAttribute('data-mfinfo'); mfEx=0; render();
@@ -627,13 +645,16 @@ function bindTreino(){
     var idx=+b.getAttribute('data-mfnote'), exo=state.ficha[d.day].ex[idx];
     var cur=mfNotes[exo.n]||'';
     dlg({title:'Notas · '+exo.n, sub:'Anotações livres sobre este exercício no treino de hoje.', input:true, value:cur, onOk:function(v){
-      mfNotes[exo.n]=String(v||''); render();
+      mfNotes[exo.n]=String(v||'');
+      if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
+      render();
     }});
   };});
   var wa=document.getElementById('mfWarmAdd'); if(wa) wa.onclick=function(){
     var exo=state.ficha[d.day].ex[mfEx], ex=exo.n;
     if(!d.entries[ex]) d.entries[ex]=[];
     if(!d.startedAt) d.startedAt=Date.now();
+    d.lastActiveAt=Date.now();
     var last=(d.entries[ex]||[]).filter(isWarmup).pop(), lw=last?last.w:null;
     var entryIndex=d.entries[ex].length;
     d.entries[ex].push({w:lw||20, r:10, wu:true, warmup:true});
@@ -644,6 +665,7 @@ function bindTreino(){
     var day=state.ficha[d.day];
     if(mfEx<=0){ toast('Esse exercício já é o primeiro do dia'); return; }
     var tmp=day.ex[mfEx-1]; day.ex[mfEx-1]=day.ex[mfEx]; day.ex[mfEx]=tmp;
+    if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
     mfEx--; save(); render();
   };
   var autoBtn = document.getElementById('mfAutoProg');
@@ -668,6 +690,8 @@ function bindTreino(){
           existing.w = meta.carga;
           existing.r = meta.repsMeta;
           if(meta.targetRir != null) existing.rir = meta.targetRir;
+          if(!d.startedAt) d.startedAt = Date.now();
+          d.lastActiveAt = Date.now();
           save();
         }
         vibrate(15);
@@ -684,6 +708,7 @@ function bindTreino(){
   document.querySelectorAll('[data-rirsel]').forEach(function(b){ b.onclick=function(){
     var value=b.getAttribute('data-rirsel'), q=value==='6+'?6:parseInt(value,10);
     kbdRir=isFinite(q)?Math.max(0,Math.min(6,q)):2;
+    if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
     if(kbdEdit!=null){
       var activeEx=state.ficha[d.day].ex[mfEx].n, rows=mfSetRows(activeEx), current=rows[kbdEdit.si], entryIndex=current?current.__entryIndex:-1;
       if(entryIndex>=0 && d.entries[activeEx] && d.entries[activeEx][entryIndex]){
@@ -718,6 +743,7 @@ function bindTreino(){
     var rirManual = kbdRir != null;
 
     if(!d.startedAt) d.startedAt = Date.now();
+    d.lastActiveAt = Date.now();
 
     if(current.phantom){
       var phantomSet = {
@@ -753,6 +779,7 @@ function bindTreino(){
       if(d.unilateralPending && d.unilateralPending.ex === exoDone.n && d.unilateralPending.setIndex === rowIdx){
         d.unilateralPending = null;
       }
+      d.lastActiveAt = Date.now();
       save();
       vibrate(10);
       render();
@@ -774,7 +801,12 @@ function bindTreino(){
       if(entryIdx >= 0 && d.entries[activeEx]){
         d.entries[activeEx].splice(entryIdx, 1);
         if(!d.entries[activeEx].length) delete d.entries[activeEx];
-        if(!Object.keys(d.entries).length) d.startedAt = null;
+        if(!Object.keys(d.entries).length){
+          d.startedAt = null;
+          d.lastActiveAt = null;
+        } else {
+          d.lastActiveAt = Date.now();
+        }
       }
       kbdReset(); save(); render();
     };
@@ -836,7 +868,12 @@ function bindTreino(){
     var p=x.getAttribute('data-rm').split(':'), ex=state.ficha[d.day].ex[+p[0]].n, entryIndex=mfEntryIndex(ex,+p[1]);
     if(entryIndex<0) return;
     d.entries[ex].splice(entryIndex,1); if(!d.entries[ex].length) delete d.entries[ex];
-    if(!Object.keys(d.entries).length) d.startedAt=null;
+    if(!Object.keys(d.entries).length){
+      d.startedAt = null;
+      d.lastActiveAt = null;
+    } else {
+      d.lastActiveAt = Date.now();
+    }
     kbdReset(); save(); render();
   };});
 
@@ -846,6 +883,7 @@ function bindTreino(){
     nextExBtn.onclick = function(){
       if(mfEx < state.ficha[d.day].ex.length - 1){
         mfEx++;
+        if(d.startedAt || (d.entries && Object.keys(d.entries).length)) d.lastActiveAt = Date.now();
         kbdReset();
         render();
         var nextEl = document.querySelector('.mf-item.on');
@@ -891,6 +929,8 @@ function kbdCommit(){
         existing.rirManual = rirManual;
       }
     }
+    if(!d.startedAt) d.startedAt = Date.now();
+    d.lastActiveAt = Date.now();
     save();
     kbdReset();
     render();
@@ -900,6 +940,7 @@ function kbdCommit(){
   /* confirma um phantom (ou nova série) */
   if(!d.entries[ex]) d.entries[ex]=[];
   if(!d.startedAt) d.startedAt=Date.now();
+  d.lastActiveAt=Date.now();
   var warmOn=!!d.warmupMode[ex];
   var setObj={w:w, r:r, wu:warmOn, warmup:warmOn, done:true};
   if(p>0) setObj.p=p;
@@ -955,7 +996,15 @@ function renderPreview(d, day){
 }
 function bindPreview(){
   var back=document.getElementById('mfPreviewBack'); if(back) back.onclick=function(){ mfPreview=false; render(); };
-  var start=document.getElementById('mfStartWorkout'); if(start) start.onclick=function(){ mfPreview=false; render(); };
+  var start=document.getElementById('mfStartWorkout'); if(start) start.onclick=function(){
+    mfPreview=false;
+    if(state && state.draft){
+      if(!state.draft.startedAt) state.draft.startedAt = Date.now();
+      state.draft.lastActiveAt = Date.now();
+      save();
+    }
+    render();
+  };
 }
 function completeStats(session){
   var volume=0, reps=0, e1=0, count=0;

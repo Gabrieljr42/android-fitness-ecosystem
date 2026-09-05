@@ -335,16 +335,22 @@ const HORARIO_REFEICAO = {
 let planoAberto = window.planoAberto || 'segunda';
 window.planoAberto = planoAberto;
 
+function formatRegistroDate(date = (typeof getActiveDate === 'function' ? getActiveDate() : today())) {
+  const parts = String(date).split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : String(date);
+}
+
 function refKcal(r) {
   return r.itens.reduce((a, i) => a + (i.kcal || 0), 0);
 }
 
 function renderPlano(box) {
   if (!box) return;
-  const hojeKey = today();
+  const dataAtiva = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const dataLabel = formatRegistroDate(dataAtiva);
   const temDia = {};
   PLANO_SEMANAL.forEach(p => {
-    temDia[p.dia] = meals.some(m => m.date === hojeKey && m.plano && m.plano === p.dia);
+    temDia[p.dia] = meals.some(m => m.date === dataAtiva && m.plano && m.plano === p.dia);
   });
   const dias = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
   const aberto = PLANO_SEMANAL.find(p => p.dia === planoAberto) || PLANO_SEMANAL[0];
@@ -380,7 +386,7 @@ function renderPlano(box) {
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
             <div class="k">${fmt(r.kcal)} kcal</div>
-            <button class="plus" style="width:32px;height:32px;font-size:16px" title="Adicionar ao Hoje" onclick="event.stopPropagation();carregarRefeicao('${aberto.dia}', ${idx})">+</button>
+            <button class="plus" style="width:32px;height:32px;font-size:16px" title="Adicionar em ${dataLabel}" onclick="event.stopPropagation();carregarRefeicao('${aberto.dia}', ${idx})">+</button>
           </div>
         </div>`).join('')}
 
@@ -397,7 +403,7 @@ function renderPlano(box) {
       </div>
 
       <button class="plano-load" onclick="carregarDia('${aberto.dia}')">
-        ${temDia[aberto.dia] ? 'Carregar dia novamente · ' + aberto.dia.charAt(0).toUpperCase() + aberto.dia.slice(1) : 'Carregar dia completo · ' + aberto.dia.charAt(0).toUpperCase() + aberto.dia.slice(1)}
+        ${temDia[aberto.dia] ? 'Carregar dia novamente · ' + aberto.dia.charAt(0).toUpperCase() + aberto.dia.slice(1) : 'Carregar dia completo · ' + aberto.dia.charAt(0).toUpperCase() + aberto.dia.slice(1)} em ${dataLabel}
       </button>
     </div>
   </div>`;
@@ -442,7 +448,7 @@ function abrirModalRefPlano(dia, refIndex) {
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Fechar</button>
       <button class="bigbtn primary" onclick="carregarRefeicao('${dia}', ${refIndex}); closeModal();">
-        + Adicionar ao Hoje
+        + Adicionar em ${formatRegistroDate()}
       </button>
     </div>
   `);
@@ -457,11 +463,11 @@ function carregarRefeicao(dia, refIndex) {
   }
   const r = p.refeicoes[refIndex];
   const macros = getRefeicaoMacros(r);
-  const hojeKey = today();
+  const dataAtiva = typeof getActiveDate === 'function' ? getActiveDate() : today();
 
   const novaRef = {
     id: uid(),
-    date: hojeKey,
+    date: dataAtiva,
     hour: HORARIO_REFEICAO[r.nome] || horaNow(),
     nome: r.nome,
     itens: macros.itens,
@@ -471,7 +477,7 @@ function carregarRefeicao(dia, refIndex) {
 
   meals.push(novaRef);
   save(LS.m, meals);
-  toast(`"${r.nome}" adicionada ao Hoje! (${fmt(macros.kcal)} kcal)`);
+  toast(`"${r.nome}" adicionada em ${formatRegistroDate(dataAtiva)}! (${fmt(macros.kcal)} kcal)`);
   if ($('#planoBox')) renderPlano($('#planoBox'));
 }
 window.carregarRefeicao = carregarRefeicao;
@@ -479,17 +485,17 @@ window.carregarRefeicao = carregarRefeicao;
 function carregarDia(dia) {
   const p = PLANO_SEMANAL.find(x => x.dia === dia);
   if (!p) return;
-  const hojeKey = today();
-  const q = meals.filter(m => m.date === hojeKey && m.plano);
+  const dataAtiva = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const q = meals.filter(m => m.date === dataAtiva && m.plano);
   if (q.length) {
-    toast('Já existem refeições de plano para hoje. Remova-as em Hoje primeiro.');
+    toast(`Já existem refeições de plano em ${formatRegistroDate(dataAtiva)}. Remova-as no diário primeiro.`);
     return;
   }
   const dm = getDiaMacros(p);
   dm.refeicoes.forEach(r => {
     meals.push({
       id: uid(),
-      date: hojeKey,
+      date: dataAtiva,
       hour: HORARIO_REFEICAO[r.nome] || horaNow(),
       nome: r.nome,
       itens: r.itens,
@@ -498,16 +504,20 @@ function carregarDia(dia) {
     });
   });
   save(LS.m, meals);
-  toast('Dia carregado em Hoje! · ≈' + fmt(dm.totalKcal) + ' kcal');
+  toast('Dia carregado em ' + formatRegistroDate(dataAtiva) + '! · ≈' + fmt(dm.totalKcal) + ' kcal');
   renderPlano($('#planoBox'));
 }
 window.carregarDia = carregarDia;
 
 /* ============ REGISTRO DE ALIMENTOS & MEUS ALIMENTOS (UI) ============ */
 function renderAlimentos(main) {
+  const dataAtiva = typeof getActiveDate === 'function' ? getActiveDate() : today();
   main.innerHTML = `
   <div class="card">
-    <h2>Registrar alimento</h2>
+    <h2>Registrar alimento <span class="small">${formatRegistroDate(dataAtiva)}</span></h2>
+    <label>Data do lançamento</label>
+    <input id="alimentosDate" type="date" value="${dataAtiva}" max="${today()}" onchange="setActiveDate(this.value)"/>
+    <p class="small mt8">Escolha hoje ou um dia anterior antes de adicionar o alimento.</p>
     <input id="busca" placeholder="Buscar alimento..." oninput="filtrarRef()"/>
     <div id="refList" class="mt8"></div>
   </div>
@@ -802,6 +812,8 @@ function addRef(nome) {
   if (!a) return;
   openModal(`
     <h2>${escapeHtml(a.nome)}</h2>
+    <label>Data do lançamento</label>
+    <input id="refDate" type="date" value="${typeof getActiveDate === 'function' ? getActiveDate() : today()}" max="${today()}"/>
     <label>Porção (g)</label>
     <input id="pPorc" type="number" value="${a.porcao_g || 100}" oninput="calcPrev()"/>
     <div class="formcard mt12" id="prevBox"></div>
@@ -834,6 +846,13 @@ function porcanoLabel(g) {
 window.confirmRef = () => {
   const a = window.__ref;
   if (!a) return;
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#refDate')?.value)
+    : ($('#refDate')?.value || (typeof getActiveDate === 'function' ? getActiveDate() : today()));
+  if (!date) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
   const porcao = parseFloat($('#pPorc').value) || 0;
   const b = alimBasis(a);
   const f = b.baseG > 0 ? (porcao / b.baseG) : 0;
@@ -849,7 +868,7 @@ window.confirmRef = () => {
 
   meals.push({
     id: uid(),
-    date: today(),
+    date,
     hour: horaNow(),
     nome: a.nome,
     itens: [item],
@@ -857,8 +876,9 @@ window.confirmRef = () => {
   });
 
   save(LS.m, meals);
+  if (typeof setActiveDate === 'function') setActiveDate(date, false);
   closeModal();
-  toast('Adicionado!');
+  toast(`Adicionado em ${formatRegistroDate(date)}!`);
   render();
 };
 

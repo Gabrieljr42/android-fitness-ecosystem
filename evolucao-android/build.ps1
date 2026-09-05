@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 #  build.ps1  -  Compila o Evolucao.apk (WebView) do ZERO.
 #  Windows 10/11 + internet. Baixa JDK + Android SDK (~1 GB)
 #  na primeira vez, dentro da pasta _toolchain (nao mexe no
@@ -10,6 +10,25 @@
 
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Compatibilidade do comando histórico: a integração Wear introduziu Kotlin,
+# Room e Play Services, que não podem ser resolvidos pelo javac/d8 manual abaixo.
+# Depois de comprovado o build Gradle, mantemos esta entrada e o nome Evolucao.apk.
+$compatRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$integratedBuild = Join-Path $compatRoot "build-wear.ps1"
+if ((Test-Path -LiteralPath $integratedBuild -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $compatRoot "settings.gradle.kts") -PathType Leaf)) {
+  Write-Host "==> Build integrado mobile (Gradle + testes)" -ForegroundColor Green
+  & $integratedBuild -MobileOnly -WithTests
+  if ($LASTEXITCODE -ne 0) { throw "Build integrado falhou com código $LASTEXITCODE." }
+  $integratedApk = Join-Path $compatRoot "app\build\outputs\apk\debug\app-debug.apk"
+  if (-not (Test-Path -LiteralPath $integratedApk -PathType Leaf)) {
+    throw "Gradle terminou sem gerar o APK mobile esperado: $integratedApk"
+  }
+  Copy-Item -LiteralPath $integratedApk -Destination (Join-Path $compatRoot "Evolucao.apk") -Force
+  Write-Host "PRONTO!  ->  $(Join-Path $compatRoot 'Evolucao.apk')" -ForegroundColor Cyan
+  return
+}
 
 # ---- URLs (se alguma der 404, atualize aqui) ----
 $JDK_URL      = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"

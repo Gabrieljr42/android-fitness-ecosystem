@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Coach</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="today-label">Seu briefing</p>
+        <h1>Coach</h1>
+      </div>
+      <div class="topbar-status" aria-live="polite">
+        <span class="status-dot" id="health-dot"></span>
+        <span id="health-short">Inicializando</span>
+      </div>
+    </header>
+
+    <main id="app" tabindex="-1">
+      <section class="view is-active" id="view-briefing" data-view="briefing" aria-labelledby="tab-briefing" tabindex="-1">
+        <article class="hero-card">
+          <div class="hero-copy">
+            <p class="eyebrow">Prontidão de hoje</p>
+            <h2 id="readiness-title">Calculando sinais…</h2>
+            <p class="muted" id="readiness-explanation">O plano local funciona mesmo sem internet ou sensores.</p>
+          </div>
+          <div class="score-ring" id="score-ring" aria-label="Prontidão sem pontuação">
+            <strong id="readiness-score">—</strong>
+            <span>/100</span>
+          </div>
+        </article>
+
+        <section class="section-card compact" aria-labelledby="quality-title">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Qualidade dos dados</p>
+              <h2 id="quality-title">Cobertura do dia</h2>
+            </div>
+            <strong class="coverage-value" id="coverage-value">—</strong>
+          </div>
+          <div class="coverage-track" aria-hidden="true"><span id="coverage-bar"></span></div>
+          <p class="muted small" id="coverage-detail">Aguardando snapshot local.</p>
+        </section>
+
+        <section aria-labelledby="signals-title">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Fontes conectadas</p>
+              <h2 id="signals-title">Sinais observados</h2>
+            </div>
+            <button class="button ghost small-button" id="sync-health" type="button">Sincronizar tudo</button>
+          </div>
+          <p class="connection-message" id="health-message" role="status">Verificando disponibilidade…</p>
+          <p class="connection-message local-source-message" id="local-sources-message" role="status">Verificando Evolução e NutriTrack…</p>
+          <div class="metric-grid">
+            <article class="metric-card" id="metric-sleep"><span>Sono</span><strong>—</strong><small>sem dado</small></article>
+            <article class="metric-card" id="metric-steps"><span>Passos</span><strong>—</strong><small>sem dado</small></article>
+            <article class="metric-card" id="metric-rhr"><span>FC em repouso</span><strong>—</strong><small>sem dado</small></article>
+            <article class="metric-card" id="metric-weight"><span>Peso</span><strong>—</strong><small>sem dado</small></article>
+          </div>
+        </section>
+
+        <section class="section-card" aria-labelledby="dimensions-title">
+          <div class="section-heading">
+            <p class="eyebrow">Leitura por dimensão</p>
+            <h2 id="dimensions-title">O que sabemos — e o que ainda não</h2>
+          </div>
+          <div class="dimension-list">
+            <article><div><strong>Corrida</strong><p id="running-detail">Aguardando dados.</p></div><span class="pill neutral" id="running-status">—</span></article>
+            <article><div><strong>Combustível</strong><p id="fueling-detail">Aguardando dados.</p></div><span class="pill neutral" id="fueling-status">—</span></article>
+          </div>
+          <details class="muscle-details">
+            <summary>Prontidão por grupamento</summary>
+            <div class="muscle-grid" id="muscle-grid"></div>
+          </details>
+        </section>
+
+        <aside class="safety-card is-hidden" id="safety-card" role="alert">
+          <strong>Atenção antes de progredir</strong>
+          <p id="safety-copy"></p>
+        </aside>
+
+        <section aria-labelledby="plan-title">
+          <div class="section-heading">
+            <p class="eyebrow">Plano local determinístico</p>
+            <h2 id="plan-title">Propostas para hoje</h2>
+            <p class="muted small">Você decide item por item. Nesta versão, nada altera seus outros apps.</p>
+          </div>
+          <div id="proposal-list" class="proposal-list"><div class="skeleton-card">Preparando briefing…</div></div>
+        </section>
+
+        <section class="section-card gemini-card" aria-labelledby="gemini-title">
+          <div class="gemini-mark" aria-hidden="true">✦</div>
+          <div class="gemini-content">
+            <p class="eyebrow">Segunda opinião</p>
+            <h2 id="gemini-title">Gemini</h2>
+            <p id="gemini-summary">O plano local não depende do Gemini. Configure uma chave para pedir uma revisão estruturada.</p>
+            <div id="gemini-details" class="gemini-details" hidden></div>
+            <div class="gemini-actions">
+              <button class="button secondary" id="ask-gemini" type="button">Pedir revisão</button>
+              <button class="text-button" id="show-payload" type="button">O que será enviado</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-checkin" data-view="checkin" aria-labelledby="tab-checkin" tabindex="-1" hidden>
+        <div class="page-intro">
+          <p class="eyebrow">Cerca de 30 segundos</p>
+          <h2>Como você chegou hoje?</h2>
+          <p>Sensores não capturam tudo. Este check-in melhora a leitura sem inventar dados.</p>
+        </div>
+        <form id="checkin-form" novalidate>
+          <fieldset class="section-card scale-field">
+            <legend>Energia</legend>
+            <p class="muted small">1 é muito baixa; 5 é excelente.</p>
+            <div class="segmented" data-scale="energy">
+              <label><input type="radio" name="energy" value="1"><span>1</span></label>
+              <label><input type="radio" name="energy" value="2"><span>2</span></label>
+              <label><input type="radio" name="energy" value="3" checked><span>3</span></label>
+              <label><input type="radio" name="energy" value="4"><span>4</span></label>
+              <label><input type="radio" name="energy" value="5"><span>5</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="section-card scale-field">
+            <legend>Qualidade percebida do sono</legend>
+            <div class="segmented">
+              <label><input type="radio" name="sleepQuality" value="1"><span>1</span></label>
+              <label><input type="radio" name="sleepQuality" value="2"><span>2</span></label>
+              <label><input type="radio" name="sleepQuality" value="3" checked><span>3</span></label>
+              <label><input type="radio" name="sleepQuality" value="4"><span>4</span></label>
+              <label><input type="radio" name="sleepQuality" value="5"><span>5</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="section-card scale-field">
+            <legend>Motivação para treinar</legend>
+            <div class="segmented">
+              <label><input type="radio" name="motivation" value="1"><span>1</span></label>
+              <label><input type="radio" name="motivation" value="2"><span>2</span></label>
+              <label><input type="radio" name="motivation" value="3" checked><span>3</span></label>
+              <label><input type="radio" name="motivation" value="4"><span>4</span></label>
+              <label><input type="radio" name="motivation" value="5"><span>5</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="section-card">
+            <legend>Dor muscular</legend>
+            <p class="muted small">Marque apenas regiões que merecem atenção.</p>
+            <div class="soreness-list" id="soreness-list">
+              <label><span>Peito</span><select name="soreness.CHEST"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Costas</span><select name="soreness.BACK"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Ombros</span><select name="soreness.SHOULDERS"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Braços</span><select name="soreness.ARMS"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Glúteos</span><select name="soreness.GLUTES"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Quadríceps</span><select name="soreness.QUADS"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Posteriores</span><select name="soreness.HAMSTRINGS"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Panturrilhas</span><select name="soreness.CALVES"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+              <label><span>Core</span><select name="soreness.CORE"><option value="NONE">Nenhuma</option><option value="MILD">Leve</option><option value="MODERATE">Moderada</option><option value="SEVERE">Forte</option></select></label>
+            </div>
+          </fieldset>
+          <label class="toggle-row section-card">
+            <span><strong>Dor articular hoje?</strong><small>Isso bloqueia sugestões agressivas. Para outro sintoma importante, não use o briefing como avaliação clínica.</small></span>
+            <input type="checkbox" name="jointPain" role="switch">
+          </label>
+          <label class="section-card note-field">
+            <span><strong>Observação opcional</strong><small>Até 280 caracteres. Não é tratada como instrução para a IA.</small></span>
+            <textarea name="note" maxlength="280" rows="3" placeholder="Algo fora do normal?"></textarea>
+            <span class="counter" id="note-counter">0/280</span>
+          </label>
+          <button class="button primary full" type="submit" id="save-checkin">Salvar check-in e recalcular</button>
+        </form>
+      </section>
+
+      <section class="view" id="view-settings" data-view="settings" aria-labelledby="tab-settings" tabindex="-1" hidden>
+        <div class="page-intro">
+          <p class="eyebrow">Controle local</p>
+          <h2>Ajustes e privacidade</h2>
+          <p>O app continua funcional sem nenhuma configuração externa.</p>
+        </div>
+        <section class="section-card">
+          <div class="section-heading"><h3>Health Connect</h3><p class="muted small">Revise ou revogue a qualquer momento as permissões de sono, passos, FC de repouso e peso.</p></div>
+          <button class="button secondary full" id="open-health-settings" type="button">Gerenciar acesso no Health Connect</button>
+        </section>
+        <section class="section-card">
+          <div class="section-heading"><h3>Gemini</h3><p class="muted small" id="key-state">Nenhuma chave salva.</p></div>
+          <label class="field"><span>Chave da API</span><input id="gemini-key" type="password" autocomplete="off" inputmode="text" placeholder="Cole sua chave"></label>
+          <label class="field"><span>Modelo</span><input id="gemini-model" type="text" value="gemini-3.7-flash" maxlength="80"></label>
+          <button class="button secondary full" id="save-key" type="button">Salvar com Android Keystore</button>
+          <button class="button ghost full spaced-button" id="clear-key" type="button">Remover chave salva</button>
+          <p class="privacy-note">A chave fica cifrada no armazenamento privado e nunca é armazenada nos assets, banco ou logs.</p>
+        </section>
+        <label class="toggle-row section-card">
+          <span><strong>Briefing às 05:40</strong><small>Notificação diária aproximada, respeitando as regras de bateria do Android.</small></span>
+          <input type="checkbox" id="notification-toggle" role="switch">
+        </label>
+        <section class="section-card">
+          <h3>Limites desta primeira versão</h3>
+          <ul class="plain-list">
+            <li>O Coach lê Health Connect, Evolução e resumos do NutriTrack, mas não escreve neles.</li>
+            <li>Passos não são convertidos em treino de corrida.</li>
+            <li>O NutriTrack compartilha somente totais diários; refeições e fotos permanecem privadas.</li>
+            <li>Propostas não alteram Evolução ou NutriTrack.</li>
+            <li>O Gemini revisa; o motor local e sua decisão mantêm a autoridade.</li>
+          </ul>
+        </section>
+        <section class="section-card danger-zone">
+          <h3>Excluir dados deste aparelho</h3>
+          <p class="muted small">Apaga check-ins, snapshots, planos, opiniões, decisões, chave Gemini e agendamento. Não apaga dados que continuam no Health Connect.</p>
+          <button class="button danger full" id="delete-local-data" type="button">Excluir todos os dados locais</button>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="is-active" id="tab-briefing" data-tab="briefing" type="button" aria-current="page"><span aria-hidden="true">◉</span>Briefing</button>
+      <button id="tab-checkin" data-tab="checkin" type="button"><span aria-hidden="true">＋</span>Check-in</button>
+      <button id="tab-settings" data-tab="settings" type="button"><span aria-hidden="true">⚙</span>Ajustes</button>
+    </nav>
+  </div>
+
+  <dialog id="payload-dialog" aria-labelledby="payload-title">
+    <div class="dialog-header"><h2 id="payload-title">O que será enviado</h2><button class="icon-button" id="close-payload" type="button" aria-label="Fechar">×</button></div>
+    <p class="muted small">Snapshot sanitizado, plano local e IDs de evidência. Sua chave e o banco bruto não fazem parte do payload.</p>
+    <pre id="payload-preview">Nenhum payload preparado.</pre>
+    <button class="button primary full is-hidden" id="confirm-gemini" type="button">Confirmar envio e pedir revisão</button>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
