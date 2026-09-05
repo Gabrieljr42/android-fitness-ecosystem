@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import com.coach.app.ai.SupportedModels
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -33,6 +34,7 @@ object CredentialPolicy {
     fun validateModel(value: String): String {
         val trimmed = value.trim()
         require(modelPattern.matches(trimmed)) { "Nome de modelo Gemini inválido." }
+        require(SupportedModels.isSupported(trimmed)) { "Modelo Gemini não suportado." }
         return trimmed
     }
 }

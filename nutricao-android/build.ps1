@@ -6,6 +6,9 @@
 #
 #  Como rodar (PowerShell, dentro desta pasta):
 #     powershell -ExecutionPolicy Bypass -File build.ps1
+#
+#  CANONICAL BUILD (Phase 4): este script continua sendo o build oficial.
+#  Scaffold Gradle lado a lado em MIGRATION_GRADLE.md (reversivel, sem cutover).
 # ============================================================
 
 $ErrorActionPreference = "Stop"

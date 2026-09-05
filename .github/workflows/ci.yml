@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  js-tests:
+    name: js-tests (Node ${{ matrix.node-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Evolucao JS tests
+        run: node evolucao-android/app/src/test/js/run_all.js
+      - name: NutriTrack JS tests
+        run: node nutricao-android/app/src/test/js/run_all.js
+      - name: Coach engine tests
+        run: node coach-android/app/src/test/js/engine.test.js
+      - name: Coach system-insets tests
+        run: node coach-android/app/src/test/js/system-insets.test.js
+
+  gradle-unit:
+    name: gradle-unit (JDK 17)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+      - name: Evolucao unit tests
+        working-directory: evolucao-android
+        run: .\gradlew.bat :app:testDebugUnitTest :protocol:test --no-daemon --no-watch-fs --console=plain
+      - name: Coach unit tests
+        working-directory: coach-android
+        run: .\gradlew.bat :app:testDebugUnitTest --no-daemon --no-watch-fs --console=plain
+
+# ui-smoke is intentionally NOT a blocking CI job:
+# coach-android/app/src/test/js/ui-smoke.js needs a local Chromium/Edge +
+# headed environment and writes screenshots to coach-android/artifacts/ui/.
+# Run it manually before distributing a Coach UI change:
+#   node coach-android/app/src/test/js/ui-smoke.js
+# If ever wired into CI, keep it as a separate manual workflow with
+# continue-on-error: true (allow-failure) so it never blocks push/PR.

@@ -18,10 +18,13 @@ _temp_views/
 backup/
 .agents/
 ORIGINAL_REQUEST.md
-PROJECT.md
-TEST_INFRA.md
 TEST_READY.md
 verify_all_acceptance.js
+
+# Nested historical specs stay ignored; root PROJECT.md/TEST_INFRA.md are tracked.
+# Bare PROJECT.md/TEST_INFRA.md would ignore at all levels, so scope explicitly:
+evolucao-android/PROJECT.md
+evolucao-android/TEST_INFRA.md
 
 # Logs e arquivos de sistema
 *.log

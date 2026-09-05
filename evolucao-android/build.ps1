@@ -1,8 +1,11 @@
 ﻿# ============================================================
-#  build.ps1  -  Compila o Evolucao.apk (WebView) do ZERO.
-#  Windows 10/11 + internet. Baixa JDK + Android SDK (~1 GB)
-#  na primeira vez, dentro da pasta _toolchain (nao mexe no
-#  seu sistema). Depois e so rodar de novo (fica em cache).
+#  build.ps1  -  Compila o Evolucao.apk via Gradle (delega a build-wear.ps1).
+#  Active path: the integrated block below (currently lines 17-31) runs
+#  build-wear.ps1 -MobileOnly -WithTests and copies app-debug.apk to
+#  Evolucao.apk. It does NOT download a toolchain: it requires the
+#  pre-existing _toolchain/jdk17 + _toolchain/android-sdk (throws otherwise).
+#  The "~1 GB download on first run" note below applies ONLY to the legacy
+#  manual javac/d8/aapt2 pipeline kept for history behind the fence.
 #
 #  Como rodar (PowerShell, dentro desta pasta):
 #     powershell -ExecutionPolicy Bypass -File build.ps1
@@ -30,6 +33,15 @@ if ((Test-Path -LiteralPath $integratedBuild -PathType Leaf) -and
   return
 }
 
+# ---- LEGACY MANUAL BUILD (reference-only, kept for history; DO NOT RUN) ----
+# The active path is the integrated Gradle block above (build-wear.ps1
+# delegation, currently lines 17-31; line numbers may shift — the block is
+# the `if (Test-Path build-wear.ps1 ... settings.gradle.kts)` branch that ends
+# with `return`). Everything below this fence (manual javac/d8/aapt2 pipeline)
+# is unreachable while build-wear.ps1 + settings.gradle.kts exist and is kept
+# only as a commented readable record of the pre-Wear procedure. Do not
+# uncomment, extend, or copy-paste it as executable steps; fix the Gradle path
+# instead. (This comment block is documentation only; every line starts with #.)
 # ---- URLs (se alguma der 404, atualize aqui) ----
 $JDK_URL      = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"
 $CMDLINE_URL  = "https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip"

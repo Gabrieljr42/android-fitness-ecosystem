@@ -29,7 +29,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Coach"
         android:usesCleartextTraffic="false"
-        tools:targetApi="33">
+        tools:targetApi="36">
 
         <activity
             android:name=".MainActivity"
