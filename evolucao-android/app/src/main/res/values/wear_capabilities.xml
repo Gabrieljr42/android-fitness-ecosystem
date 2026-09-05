@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string-array name="android_wear_capabilities" tools:ignore="Typos,UnusedResources">
+        <item>evolucao_phone_sync_v1</item>
+    </string-array>
+</resources>

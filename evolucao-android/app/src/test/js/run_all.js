@@ -38,7 +38,13 @@ const tests = [
   'r6_rest_timer.test.js',
   'r6_peso_semanal.test.js',
   'r6_maratona_plano.test.js',
-  'r7_nav_corrida.test.js'
+  'r7_nav_corrida.test.js',
+  'r8_workout_date.test.js',
+  'challenger_m1_adversarial.test.js',
+  'm1_challenger2_simulation.test.js',
+  'wear_sync.test.js',
+  'timer_inactivity.test.js',
+  'strava.test.js'
 ];
 
 console.log('=== [EVOLUÇÃO] Executando Suíte de Testes Unitários ===\n');

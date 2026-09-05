@@ -3,7 +3,8 @@
 /* ============ RENDER ============ */
 function render() {
   if ($('#dataHoje')) {
-    const d = new Date();
+    const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+    const d = new Date(activeDate + 'T12:00:00');
     const dName = DIAS[d.getDay()].slice(0, 3);
     const mName = MESES[d.getMonth()];
     $('#dataHoje').innerHTML = `<b>${dName.toUpperCase()}</b> · ${d.getDate()} ${mName}`;
@@ -17,10 +18,42 @@ function render() {
   else renderAjustes(main);
 }
 
+function activeDateLabel(date = (typeof getActiveDate === 'function' ? getActiveDate() : today())) {
+  const d = new Date(date + 'T12:00:00');
+  const day = DIAS[d.getDay()];
+  const month = MESES[d.getMonth()];
+  return `${day.charAt(0).toUpperCase() + day.slice(1)}, ${d.getDate()} de ${month}`;
+}
+
+function renderActiveDatePicker() {
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const hoje = today();
+  const isToday = activeDate === hoje;
+  return `
+    <div class="day-selector-card">
+      <div class="day-selector-head">
+        <div>
+          <div class="day-selector-kicker">Diário alimentar</div>
+          <div class="day-selector-title">${activeDateLabel(activeDate)}</div>
+        </div>
+        ${isToday ? '' : '<button class="datebtn day-today-btn" onclick="resetActiveDate()">Hoje</button>'}
+      </div>
+      <div class="day-selector-controls">
+        <button class="datebtn day-arrow" onclick="shiftActiveDate(-1)" aria-label="Ver dia anterior">‹</button>
+        <input id="activeDateInput" class="day-date-input" type="date" value="${activeDate}" max="${hoje}" onchange="setActiveDate(this.value)" aria-label="Data do diário"/>
+        <button class="datebtn day-arrow" onclick="shiftActiveDate(1)" aria-label="Ver próximo dia" ${isToday ? 'disabled' : ''}>›</button>
+      </div>
+      <div class="day-selector-hint">${isToday ? 'Registre as refeições de hoje' : 'Você está visualizando um dia anterior. Novos alimentos serão salvos nesta data.'}</div>
+    </div>`;
+}
+
 function renderHoje(main) {
-  const t = dayTotals();
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const isToday = activeDate === today();
+  const dayLabel = isToday ? 'hoje' : 'este dia';
+  const t = dayTotals(activeDate);
   const I = t.kcal || 0;
-  const G = typeof dayBurned === 'function' ? dayBurned() : 0;
+  const G = typeof dayBurned === 'function' ? dayBurned(activeDate) : 0;
   const L = I - G;
   const targetKcal = Number(profile?.kcal) || 2200;
   const bmr = typeof calcBMR === 'function' ? calcBMR() : 1700;
@@ -29,15 +62,17 @@ function renderHoje(main) {
   const netPct = Math.min(100, Math.max(0, Math.round(Math.max(0, L) / (targetKcal || 1) * 100)));
 
   // Habitos e Agua
-  const creatinaOk = getCreatinaStatus();
-  const waterVol = getWaterIntake();
+  const creatinaOk = getCreatinaStatus(activeDate);
+  const waterVol = getWaterIntake(activeDate);
   const waterGoal = getWaterGoal();
   const waterPct = Math.min(100, Math.round((waterVol / (waterGoal || 1)) * 100));
 
-  const hojeMeals = dayMeals();
-  const hojeActivities = typeof dayActivities === 'function' ? dayActivities() : [];
+  const hojeMeals = dayMeals(activeDate);
+  const hojeActivities = typeof dayActivities === 'function' ? dayActivities(activeDate) : [];
 
   main.innerHTML = `
+  ${renderActiveDatePicker()}
+
   <!-- Card de Balanço Energético Diário (R3) -->
   <div class="card energy-balance-card">
     <div class="energy-head">
@@ -121,7 +156,7 @@ function renderHoje(main) {
         <div class="habit-icon creatina-icon">💊</div>
         <div class="habit-info">
           <b>Creatina diária</b>
-          <small>${creatinaOk ? 'Tomada hoje' : 'Pendente para hoje'}</small>
+           <small>${creatinaOk ? (isToday ? 'Tomada hoje' : 'Tomada neste dia') : (isToday ? 'Pendente para hoje' : 'Pendente neste dia')}</small>
         </div>
       </div>
       <button class="habit-btn ${creatinaOk ? 'done' : ''}" id="btnCreatina" onclick="handleToggleCreatina()">
@@ -148,7 +183,7 @@ function renderHoje(main) {
         <button class="water-btn" onclick="handleQuickWater(250)">+250 mL</button>
         <button class="water-btn" onclick="handleQuickWater(500)">+500 mL</button>
         <button class="water-btn" onclick="modalCustomWater()">+ Outro</button>
-        ${waterVol > 0 ? `<button class="water-btn reset-water" onclick="handleResetWater()" title="Zerar registro de água de hoje">✕</button>` : ''}
+        ${waterVol > 0 ? `<button class="water-btn reset-water" onclick="handleResetWater()" title="Zerar registro de água de ${dayLabel}">✕</button>` : ''}
       </div>
     </div>
   </div>
@@ -160,6 +195,13 @@ function renderHoje(main) {
       <circle cx="12" cy="13" r="3.6" stroke="#09090b" stroke-width="2"/>
     </svg>
     Fotografar prato
+  </button>
+  <button class="bigbtn secondary daily-summary-action" id="btnResumoDiaIA">
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M6 3h9l3 3v15H6a2 2 0 01-2-2V5a2 2 0 012-2zM14 3v4h4M8 11h8M8 15h8M8 19h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    🧾 Resumir meu dia com IA
+    <span class="daily-summary-action-hint">Cole o WhatsApp + anexe várias fotos</span>
   </button>
   <button class="bigbtn secondary" id="btnTextoIA">
     <svg viewBox="0 0 24 24" fill="none">
@@ -190,13 +232,13 @@ function renderHoje(main) {
 
   <!-- Lista de Refeições -->
   <div class="card" style="margin-top:4px">
-    <h2>Refeições de hoje <span class="small">${hojeMeals.length} registro(s) · ${fmt(I)} kcal</span></h2>
+    <h2>Refeições de ${dayLabel} <span class="small">${hojeMeals.length} registro(s) · ${fmt(I)} kcal</span></h2>
     ${renderListaMeals(hojeMeals)}
   </div>
 
   <!-- Lista de Exercícios e Atividades -->
   <div class="card" style="margin-top:4px">
-    <h2>Exercícios &amp; Gasto de hoje <span class="small">${hojeActivities.length} registro(s) · -${fmt(G)} kcal</span></h2>
+    <h2>Exercícios &amp; Gasto de ${dayLabel} <span class="small">${hojeActivities.length} registro(s) · -${fmt(G)} kcal</span></h2>
     ${renderListaActivities(hojeActivities)}
   </div>
 
@@ -207,11 +249,12 @@ function renderHoje(main) {
       <circle cx="14.5" cy="10.5" r="1.2" fill="#71717a"/>
       <path d="M9 14.5c1 .8 2 1 3 1s2-.2 3-1" stroke="#71717a" stroke-width="1.4" stroke-linecap="round"/>
     </svg>
-    <p>Nenhum registro ainda.<br/>Tire uma foto, descreva com IA ou adicione manualmente.</p>
+    <p>Nenhum registro neste dia.<br/>Tire uma foto, descreva com IA ou adicione manualmente.</p>
     <button onclick="$('#btnFoto').click()">Começar agora</button>
   </div></div>` : ''}`;
 
   if ($('#btnFoto')) $('#btnFoto').onclick = abrirFoto;
+  if ($('#btnResumoDiaIA')) $('#btnResumoDiaIA').onclick = (typeof abrirResumoDiaIA === 'function' ? abrirResumoDiaIA : null);
   if ($('#btnTextoIA')) $('#btnTextoIA').onclick = abrirTextoIA;
   if ($('#btnAtivIA')) $('#btnAtivIA').onclick = (typeof abrirAtividadeIA === 'function' ? abrirAtividadeIA : null);
   if ($('#btnMan')) $('#btnMan').onclick = abrirManual;
@@ -237,7 +280,7 @@ function renderHoje(main) {
 }
 
 function renderListaMeals(lista) {
-  if (!lista.length) return '<div class="empty"><p>Nenhuma refeição registrada hoje.</p></div>';
+  if (!lista.length) return '<div class="empty"><p>Nenhuma refeição registrada neste dia.</p></div>';
   return lista.map(m => {
     const kTotal = (m.itens || []).reduce((a, i) => a + (i.kcal || 0), 0);
     const pTotal = +((m.itens || []).reduce((a, i) => a + (i.proteina_g || 0), 0)).toFixed(1);
@@ -245,7 +288,8 @@ function renderListaMeals(lista) {
     const gTotal = +((m.itens || []).reduce((a, i) => a + (i.gordura_g || 0), 0)).toFixed(1);
 
     let badge = '';
-    if (m.origem === 'ia_texto') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA TEXTO</span>';
+    if (m.origem === 'ia_resumo_dia') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.12);color:#ffffff;border:1px solid var(--border-focus);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">RESUMO IA</span>';
+    else if (m.origem === 'ia_texto') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA TEXTO</span>';
     else if (m.origem === 'foto') badge = '<span style="font-size:10px;background:var(--status-ok-dim);color:var(--status-ok);border:1px solid rgba(74,222,128,0.25);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">FOTO</span>';
     else if (m.origem === 'plano') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--txt-secondary);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">PLANO</span>';
 
@@ -254,7 +298,7 @@ function renderListaMeals(lista) {
       <div class="dot"></div>
       <div class="info" data-edit-meal="${escapeHtml(m.id)}" role="button" aria-label="Editar ${escapeHtml(m.nome)}" style="cursor:pointer">
         <div class="nome" style="display:flex;align-items:center">${escapeHtml(m.nome)}${badge}</div>
-        <div class="det">${(m.itens || []).map(i => escapeHtml(i && i.nome)).join(' · ')} · ${escapeHtml(m.hour || '')}</div>
+    <div class="det">${(m.itens || []).map(i => escapeHtml(i && i.nome)).join(' · ')} · ${escapeHtml(m.horario || m.hour || '')}</div>
         <div class="small" style="margin-top:2px;font-size:11px;color:var(--txt-secondary)">
           <span>P ${pTotal}g</span> ·
           <span>C ${cTotal}g</span> ·
@@ -335,20 +379,23 @@ function handleDelActivity(id) {
 
 // Handlers do Widget de Hábitos
 function handleToggleCreatina() {
-  const status = toggleCreatina();
-  toast(status ? 'Creatina tomada hoje! ✓' : 'Creatina desmarcada.');
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const status = toggleCreatina(activeDate);
+  toast(status ? 'Creatina registrada neste dia! ✓' : 'Creatina desmarcada.');
   render();
 }
 
 function handleQuickWater(ml) {
-  addWaterIntake(ml);
-  toast(`+${ml} mL de água registrados! 💧`);
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  addWaterIntake(ml, activeDate);
+  toast(`+${ml} mL de água registrados neste dia! 💧`);
   render();
 }
 
 function handleResetWater() {
-  setWaterIntake(0);
-  toast('Registro de água zerado para hoje.');
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  setWaterIntake(0, activeDate);
+  toast('Registro de água zerado neste dia.');
   render();
 }
 
@@ -368,9 +415,10 @@ function modalCustomWater() {
 function confirmCustomWater() {
   const val = parseFloat($('#inCustomWater')?.value) || 0;
   if (val <= 0) { toast('Digite uma quantidade válida'); return; }
-  addWaterIntake(val);
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  addWaterIntake(val, activeDate);
   closeModal();
-  toast(`+${fmt(val)} mL de água registrados! 💧`);
+  toast(`+${fmt(val)} mL de água registrados neste dia! 💧`);
   render();
 }
 

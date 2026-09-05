@@ -4,7 +4,7 @@
     android:versionCode="1"
     android:versionName="1.0">
 
-    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33"/>
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34"/>
 
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -50,6 +50,27 @@
         <receiver
             android:name=".RestAlarmReceiver"
             android:exported="false" />
+        <service
+            android:name=".wear.MobileWearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/evolucao/v1/envelopes/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/evolucao/v1/poke" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.PEER_CONNECTED" />
+            </intent-filter>
+        </service>
         <provider
             android:name=".WorkoutProvider"
             android:authorities="com.evolucao.treino.workouts"

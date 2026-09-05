@@ -353,14 +353,16 @@
     return { score: weighted.score / weighted.weight, failureReps: weighted.failureReps / weighted.weight, sampleCount: samples.length };
   }
 
-  function candidateFor(score, weight, range, targetRir, inc, profile, currentWeight) {
+  function candidateFor(score, weight, range, targetRir, inc, profile, currentWeight, step) {
     if (weight <= 0) return null;
     var predicted = Math.round((score / weight - 1) * 30 - targetRir);
-    var max = profile.expandRepRange ? range.max + 4 : range.max;
+    var allowExpand = profile.expandRepRange && (step === undefined || step >= 0);
+    var max = allowExpand ? range.max + 4 : range.max;
     var reps = Math.max(range.min, Math.min(max, predicted));
     var predictedScore = weight * (1 + (reps + targetRir) / 30);
     return {
       carga: roundToIncrement(weight, inc), reps: reps,
+      predicted: predicted,
       error: Math.abs(predictedScore - score),
       distance: Math.abs(weight - currentWeight),
       inRange: reps >= range.min && reps <= range.max
@@ -386,20 +388,21 @@
       if (inc <= 0 && step !== 0) return;
       var weight = currentWeight + step * inc;
       if (weight <= 0) return;
-      var c = candidateFor(targetScore, weight, range, profile.targetRir, inc, profile, currentWeight);
+      var c = candidateFor(targetScore, weight, range, profile.targetRir, inc, profile, currentWeight, step);
       if (c) {
         c.step = step;
-        if (!profile.expandRepRange && !c.inRange) c.error += 1000;
+        if (step < 0 && (c.predicted > range.max || !c.inRange)) c.error += 2000;
+        else if (!profile.expandRepRange && !c.inRange) c.error += 1000;
         if (profile.weightMatch && step === 0) c.error -= 0.25;
         candidates.push(c);
       }
     });
     candidates.sort(function (a, b) { return (a.error - b.error) || (a.distance - b.distance); });
-    var chosen = candidates[0] || candidateFor(targetScore, currentWeight, range, profile.targetRir, inc, profile, currentWeight);
+    var chosen = candidates[0] || candidateFor(targetScore, currentWeight, range, profile.targetRir, inc, profile, currentWeight, 0);
     if (delta > progressThreshold && inc > 0) {
       var upward = candidates.filter(function (candidate) {
         return candidate.step > 0 && candidate.reps >= range.min && candidate.reps <= (profile.expandRepRange ? range.max + 4 : range.max);
-      }).sort(function (a, b) { return (a.error - b.error) || (a.distance - b.distance); });
+      }).sort(function (a, b) { return (a.distance - b.distance) || (a.error - b.error); });
       if (upward.length) chosen = upward[0];
     }
     if (!chosen) return null;
@@ -418,10 +421,25 @@
     if (delta > progressThreshold && chosen.step > 0) {
       return result(chosen.carga, chosen.reps, 'subir', 'Sua capacidade estimada ficou ' + Math.round(delta * 100) + '% acima do esperado. Progrida para ' + chosen.carga + ' kg x ' + chosen.reps + ' reps @ ' + profile.targetRir + ' RIR' + suffix + '.', extra);
     }
+    if (latestEvidence.enough && (latestEvidence.allAtCeiling || (latestEvidence.allAtRangeMax && latestEvidence.ceiling === range.max)) && inc > 0) {
+      var nextLoad = roundToIncrement(currentWeight + inc, inc);
+      var nextReps = (chosen && chosen.step > 0 && chosen.reps >= range.min) ? chosen.reps : range.min;
+      return result(nextLoad, nextReps, 'subir', (latestEvidence.ceiling > range.max ? 'As series atingiram ' + latestEvidence.ceiling + ' reps para compensar o salto de carga.' : 'As series de decisao atingiram o topo da faixa.') + ' Suba ' + inc + ' kg' + suffix + '.', extra);
+    }
     if (delta < -underThreshold && chosen.step < 0 && history.filter(function (item) { return !item.short && evidenceFor(item, profile, range, inc).hasRir; }).length >= 2) {
       return result(chosen.carga, chosen.reps, 'reduzir', 'A capacidade recente ficou abaixo do alvo; ajuste para ' + chosen.carga + ' kg x ' + chosen.reps + ' reps @ ' + profile.targetRir + ' RIR' + suffix + '.', extra);
     }
-    return result(chosen.carga, chosen.reps, 'manter', 'Mantenha ' + chosen.carga + ' kg e busque ' + chosen.reps + ' reps @ ' + profile.targetRir + ' RIR. Capacidade estimada: ' + Math.round(model.failureReps * 10) / 10 + ' reps até a falha.', extra);
+    var repsTarget = chosen.reps;
+    if (chosen.step === 0) {
+      var minReps = latestEvidence.minReps;
+      var ceiling = latestEvidence.ceiling || range.max;
+      if (minReps >= range.min && minReps < ceiling) {
+        repsTarget = Math.min(ceiling, Math.max(chosen.reps, minReps + 1));
+      } else if (minReps < range.min) {
+        repsTarget = Math.max(range.min, Math.min(ceiling, minReps + 1));
+      }
+    }
+    return result(chosen.carga, repsTarget, 'manter', 'Mantenha ' + chosen.carga + ' kg e busque ' + repsTarget + ' reps @ ' + profile.targetRir + ' RIR. Capacidade estimada: ' + Math.round(model.failureReps * 10) / 10 + ' reps até a falha.', extra);
   }
 
   function calcularMeta(ficha, sessions, day, nomeExercicio, settings) {

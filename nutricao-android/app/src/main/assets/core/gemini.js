@@ -7,6 +7,14 @@ const GEMINI_MODELS = [
 ];
 const RETRY_DELAY_MS = 3000;
 
+function currentEntryDate() {
+  if (typeof getActiveDate === 'function') return getActiveDate();
+  if (typeof today === 'function') return today();
+  if (typeof localDateStr === 'function') return localDateStr();
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const FOOD_SCHEMA = {
   type: 'object',
   properties: {
@@ -30,9 +38,44 @@ const FOOD_SCHEMA = {
     proteina_total: { type: 'number' },
     carbo_total: { type: 'number' },
     gordura_total: { type: 'number' },
-    confianca: { type: 'string', enum: ['baixa', 'media', 'alta'] }
+    confianca: { type: 'string', enum: ['baixa', 'media', 'alta'] },
+    transcricao: { type: 'string' }
   },
   required: ['nome_refeicao', 'itens', 'kcal_total', 'proteina_total', 'carbo_total', 'gordura_total', 'confianca']
+};
+
+/* Resposta usada pelo fechamento do dia. Cada refeição continua usando o
+   mesmo formato de item do fluxo de foto/texto, mas agora a IA pode devolver
+   várias refeições em uma única chamada multimodal. */
+const DAILY_FOOD_SCHEMA = {
+  type: 'object',
+  properties: {
+    refeicoes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          nome_refeicao: { type: 'string' },
+          horario: { type: 'string' },
+          itens: FOOD_SCHEMA.properties.itens,
+          kcal_total: { type: 'number' },
+          proteina_total: { type: 'number' },
+          carbo_total: { type: 'number' },
+          gordura_total: { type: 'number' },
+          confianca: { type: 'string', enum: ['baixa', 'media', 'alta'] }
+        },
+        required: ['nome_refeicao', 'horario', 'itens', 'kcal_total', 'proteina_total', 'carbo_total', 'gordura_total', 'confianca']
+      }
+    },
+    kcal_total: { type: 'number' },
+    proteina_total: { type: 'number' },
+    carbo_total: { type: 'number' },
+    gordura_total: { type: 'number' },
+    observacoes: { type: 'array', items: { type: 'string' } },
+    transcricao_audio: { type: 'string' },
+    confianca: { type: 'string', enum: ['baixa', 'media', 'alta'] }
+  },
+  required: ['refeicoes', 'kcal_total', 'proteina_total', 'carbo_total', 'gordura_total', 'confianca']
 };
 
 const FOOD_PROMPT = `Analise a foto deste prato de comida e estime o conteúdo nutricional.
@@ -46,6 +89,20 @@ Identifique todos os alimentos mencionados ou implícitos e estime as porções 
 Retorne também nome_refeicao com um nome curto e descritivo para a refeição, por exemplo "Café da manhã com ovos" ou "Almoço caseiro".
 Preencha proteínas, carboidratos e gorduras em gramas para cada item e também nos totais (kcal_total, proteina_total, carbo_total, gordura_total).
 Responda APENAS com JSON no schema fornecido. Valores numéricos realistas para a culinária brasileira.`;
+
+const DAILY_FOOD_PROMPT = `Você vai analisar um diário alimentar de um dia inteiro.
+O usuário pode fornecer um texto grande copiado do WhatsApp, com várias mensagens e horários, além de várias fotos de refeições.
+Identifique e separe todas as refeições distintas no array "refeicoes". Use os horários e os rótulos presentes no texto quando existirem; quando não existirem, use um rótulo curto como "café da manhã", "almoço", "lanche" ou "jantar".
+Relacione texto e foto quando eles falarem da mesma refeição. Não conte duas vezes uma refeição só porque ela aparece em uma mensagem e também em uma foto.
+Uma foto pode representar uma refeição inteira ou parte dela. Use a descrição textual como contexto, sem inventar alimentos que não foram mencionados nem aparecem nas imagens.
+Para cada refeição, liste todos os itens, estime porções em gramas e informe calorias, proteínas, carboidratos e gorduras por item e no total da refeição.
+Some os totais das refeições para produzir os totais do dia. Se uma quantidade não estiver clara, faça uma estimativa realista de porção brasileira e marque a confiança como "baixa" ou "media". Inclua em "observacoes" dúvidas importantes para a revisão do usuário.
+  Se houver um áudio anexado, transcreva mentalmente o relato em português e use-o como fonte adicional. Não repita alimentos que aparecem tanto no áudio quanto no texto ou nas fotos. Não inclua água, suplementos ou exercícios como comida, a menos que sejam explicitamente ingeridos e tenham valor calórico. Responda APENAS com JSON válido no schema fornecido.`;
+
+const AUDIO_FOOD_PROMPT = `O áudio contém o relato falado pelo usuário sobre uma refeição ou alimentos que ele acabou de consumir.
+Entenda e transcreva mentalmente o áudio em português brasileiro. Identifique tudo o que foi ingerido, incluindo quantidades, ingredientes e bebidas quando informados, e estime porções e conteúdo nutricional.
+Retorne nome_refeicao com um nome curto e descritivo. Preencha proteínas, carboidratos e gorduras em gramas para cada item e também nos totais. Inclua no campo opcional "transcricao" uma transcrição curta e fiel do que foi compreendido, sem inventar informações.
+Se o áudio mencionar mais de uma refeição, mantenha o conjunto como uma única resposta de refeição apenas quando não houver separação clara; nesse caso, o usuário poderá usar o modo "resumir meu dia". Responda APENAS com JSON no schema fornecido.`;
 
 const ACTIVITY_SCHEMA = {
   type: 'object',
@@ -184,20 +241,101 @@ function apiBodyTexto(texto, model) {
   };
 }
 
+function audioPayload(audio) {
+  if (!audio || typeof audio !== 'object' || !audio.data) return null;
+  const mime = String(audio.mimeType || audio.mime_type || 'audio/mp4');
+  return {
+    data: String(audio.data),
+    mimeType: mime.startsWith('audio/') ? mime : 'audio/mp4',
+    durationMs: Number(audio.durationMs) || 0
+  };
+}
+
+function apiBodyAudio(audio, model, contexto = '') {
+  const payload = audioPayload(audio);
+  const contextoSeguro = String(contexto || '').trim().slice(0, 1000);
+  return {
+    contents: [{
+      parts: [
+        { text: `${AUDIO_FOOD_PROMPT}${contextoSeguro ? `\n\nContexto adicional digitado pelo usuário:\n${contextoSeguro}` : ''}` },
+        ...(payload ? [{ inline_data: { mime_type: payload.mimeType, data: payload.data } }] : [])
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: FOOD_SCHEMA,
+      thinkingConfig: { thinkingLevel: model.thinkingLevel },
+      maxOutputTokens: 4096
+    }
+  };
+}
+
+function apiBodyResumoDia(texto, fotos = [], model, date = '', audio = null) {
+  const descricao = String(texto || '').trim().slice(0, 12000);
+  const dataReferencia = String(date || '').trim().slice(0, 10);
+  const parts = [{
+    text: `${DAILY_FOOD_PROMPT}\n\nData de referência: ${dataReferencia || 'não informada'}\n\nRelato copiado do WhatsApp:\n${descricao || '(nenhum texto; use as fotos anexadas)'}`
+  }];
+
+  const audioPart = audioPayload(audio);
+  if (audioPart) {
+    parts.push({ text: '[Áudio gravado pelo usuário; use-o como relato adicional do dia]' });
+    parts.push({ inline_data: { mime_type: audioPart.mimeType, data: audioPart.data } });
+  }
+
+  (Array.isArray(fotos) ? fotos : []).slice(0, 8).forEach((foto, index) => {
+    const data = typeof foto === 'string' ? foto : foto?.data;
+    if (!data) return;
+    const mime = typeof foto === 'object' && String(foto.mimeType || foto.mime_type || '').startsWith('image/')
+      ? String(foto.mimeType || foto.mime_type)
+      : 'image/jpeg';
+    parts.push({ text: `[Foto ${index + 1} anexada pelo usuário]` });
+    parts.push({ inline_data: { mime_type: mime, data: String(data) } });
+  });
+
+  return {
+    contents: [{ parts }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: DAILY_FOOD_SCHEMA,
+      thinkingConfig: { thinkingLevel: model.thinkingLevel },
+      maxOutputTokens: 8192
+    }
+  };
+}
+
 async function consultarModelo(model, data, analysisIndex, attempt, key, legenda = '', run = null) {
   const trace = {
     ok: false, analysisIndex, attempt, modelId: model.id, modelLabel: model.label,
     status: null, body: '', modelText: '', error: '', retryable: false, result: null, cancelled: false
   };
+  let timeoutId = null;
+  const localController = typeof AbortController === 'function' ? new AbortController() : null;
+
   try {
     if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
+
+    // Configura timeout de rede (25 segundos por tentativa)
+    if (localController) {
+      timeoutId = setTimeout(() => {
+        try { localController.abort(); } catch(_) {}
+      }, 25000);
+      if (run?.controller?.signal) {
+        run.controller.signal.addEventListener('abort', () => {
+          try { localController.abort(); } catch(_) {}
+        });
+      }
+    }
+
     const url = GEMINI_API_BASE + model.id + ':generateContent';
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify(apiBody(data, model, legenda)),
-      signal: run?.controller?.signal
+      signal: localController?.signal || run?.controller?.signal
     });
+
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
     trace.status = resp.status;
     trace.body = await resp.text();
     let json = null;
@@ -214,8 +352,20 @@ async function consultarModelo(model, data, analysisIndex, attempt, key, legenda
     trace.result = JSON.parse(jsonTxt);
     trace.ok = true;
   } catch(e) {
-    trace.cancelled = !!run?.cancelled || e?.name === 'AbortError';
-    trace.error = trace.cancelled ? 'Análise encerrada pelo usuário' : (e && e.message || String(e));
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    const isAbort = e?.name === 'AbortError' || localController?.signal?.aborted;
+    if (run?.cancelled) {
+      trace.cancelled = true;
+      trace.error = 'Análise encerrada pelo usuário';
+    } else if (isAbort) {
+      trace.status = 408;
+      trace.error = 'Tempo limite de conexão esgotado (timeout de rede de 25s)';
+    } else {
+      trace.error = (e && e.message) || String(e);
+      if (e instanceof TypeError || trace.error.includes('fetch') || trace.error.includes('network') || trace.error.includes('Failed to fetch')) {
+        trace.error = 'Falha de conexão com o servidor do Gemini (rede offline ou instável)';
+      }
+    }
   }
   trace.retryable = !trace.ok && !trace.cancelled && isRetryableStatus(trace.status);
   console.log(`AI análise ${analysisIndex + 1} ${model.id} tentativa ${attempt}:`, trace.ok ? 'OK' : trace.error, trace.body);
@@ -260,6 +410,138 @@ async function consultarModeloTexto(model, texto, analysisIndex, attempt, key, r
   return trace;
 }
 
+async function consultarModeloAudio(model, audio, contexto, analysisIndex, attempt, key, run = null) {
+  const trace = {
+    ok: false, analysisIndex, attempt, modelId: model.id, modelLabel: model.label,
+    status: null, body: '', modelText: '', error: '', retryable: false, result: null, cancelled: false
+  };
+  let timeoutId = null;
+  const localController = typeof AbortController === 'function' ? new AbortController() : null;
+
+  try {
+    if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
+    if (localController) {
+      timeoutId = setTimeout(() => {
+        try { localController.abort(); } catch(_) {}
+      }, 60000);
+      if (run?.controller?.signal) {
+        run.controller.signal.addEventListener('abort', () => {
+          try { localController.abort(); } catch(_) {}
+        });
+      }
+    }
+    const url = GEMINI_API_BASE + model.id + ':generateContent';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(apiBodyAudio(audio, model, contexto)),
+      signal: localController?.signal || run?.controller?.signal
+    });
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    trace.status = resp.status;
+    trace.body = await resp.text();
+    let json = null;
+    try { json = trace.body ? JSON.parse(trace.body) : null; } catch(e) {}
+    if (!resp.ok) {
+      const msg = json?.error?.message || json?.message || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    const txt = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const block = json?.promptFeedback?.blockReason;
+    if (!txt) throw new Error(block ? `resposta bloqueada (${block})` : 'resposta vazia');
+    trace.modelText = txt;
+    const jsonTxt = String(txt).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    trace.result = JSON.parse(jsonTxt);
+    trace.ok = true;
+  } catch(e) {
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    const isAbort = e?.name === 'AbortError' || localController?.signal?.aborted;
+    if (run?.cancelled) {
+      trace.cancelled = true;
+      trace.error = 'Análise encerrada pelo usuário';
+    } else if (isAbort) {
+      trace.status = 408;
+      trace.error = 'Tempo limite de conexão esgotado (timeout de rede de 60s)';
+    } else {
+      trace.error = (e && e.message) || String(e);
+      if (e instanceof TypeError || trace.error.includes('fetch') || trace.error.includes('network') || trace.error.includes('Failed to fetch')) {
+        trace.error = 'Falha de conexão com o servidor do Gemini (rede offline ou instável)';
+      }
+    }
+  }
+  trace.retryable = !trace.ok && !trace.cancelled && isRetryableStatus(trace.status);
+  console.log(`AI áudio análise ${analysisIndex + 1} ${model.id} tentativa ${attempt}:`, trace.ok ? 'OK' : trace.error, trace.body);
+  return trace;
+}
+
+async function consultarModeloResumoDia(model, texto, fotos, date, analysisIndex, attempt, key, run = null, audio = null) {
+  const trace = {
+    ok: false, analysisIndex, attempt, modelId: model.id, modelLabel: model.label,
+    status: null, body: '', modelText: '', error: '', retryable: false, result: null, cancelled: false
+  };
+  let timeoutId = null;
+  const localController = typeof AbortController === 'function' ? new AbortController() : null;
+
+  try {
+    if (run?.cancelled) { trace.cancelled = true; trace.error = 'Análise encerrada pelo usuário'; return trace; }
+
+    // O fechamento do dia envia várias imagens; permite mais tempo por tentativa.
+    if (localController) {
+      timeoutId = setTimeout(() => {
+        try { localController.abort(); } catch(_) {}
+      }, 45000);
+      if (run?.controller?.signal) {
+        run.controller.signal.addEventListener('abort', () => {
+          try { localController.abort(); } catch(_) {}
+        });
+      }
+    }
+
+    const url = GEMINI_API_BASE + model.id + ':generateContent';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(apiBodyResumoDia(texto, fotos, model, date, audio)),
+      signal: localController?.signal || run?.controller?.signal
+    });
+
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    trace.status = resp.status;
+    trace.body = await resp.text();
+    let json = null;
+    try { json = trace.body ? JSON.parse(trace.body) : null; } catch(e) {}
+    if (!resp.ok) {
+      const msg = json?.error?.message || json?.message || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    const txt = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const block = json?.promptFeedback?.blockReason;
+    if (!txt) throw new Error(block ? `resposta bloqueada (${block})` : 'resposta vazia');
+    trace.modelText = txt;
+    const jsonTxt = String(txt).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    trace.result = JSON.parse(jsonTxt);
+    trace.ok = true;
+  } catch(e) {
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    const isAbort = e?.name === 'AbortError' || localController?.signal?.aborted;
+    if (run?.cancelled) {
+      trace.cancelled = true;
+      trace.error = 'Análise encerrada pelo usuário';
+    } else if (isAbort) {
+      trace.status = 408;
+      trace.error = 'Tempo limite de conexão esgotado (timeout de rede de 45s)';
+    } else {
+      trace.error = (e && e.message) || String(e);
+      if (e instanceof TypeError || trace.error.includes('fetch') || trace.error.includes('network') || trace.error.includes('Failed to fetch')) {
+        trace.error = 'Falha de conexão com o servidor do Gemini (rede offline ou instável)';
+      }
+    }
+  }
+  trace.retryable = !trace.ok && !trace.cancelled && isRetryableStatus(trace.status);
+  console.log(`AI resumo do dia análise ${analysisIndex + 1} ${model.id} tentativa ${attempt}:`, trace.ok ? 'OK' : trace.error, trace.body);
+  return trace;
+}
+
 function setAnalysisStep(steps, index, html) {
   const step = steps.children[index];
   if (step) step.innerHTML = html;
@@ -290,6 +572,7 @@ function mergeAnalisys(res) {
   out.nome_refeicao = nomes[0] || 'Refeição';
   out.itens = Array.isArray(res[0].itens) ? res[0].itens.map(i => ({ ...i })) : [];
   out.confianca = res[0].confianca || 'media';
+  out.transcricao = res.map(r => String(r.transcricao || '').trim()).find(Boolean) || '';
   return out;
 }
 
@@ -297,6 +580,196 @@ function desvioPct(vals) {
   const m = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
   if (!m) return 0;
   return Math.round(Math.sqrt(vals.reduce((a, v) => a + (v - m) ** 2, 0) / Math.max(1, vals.length)) / m * 100);
+}
+
+/* ============ MERGE DO RESUMO DIÁRIO ============ */
+function dailyFinite(value, fallback = 0, max = 100000) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(max, number)) : fallback;
+}
+
+function dailyText(value, fallback = '', max = 120) {
+  const text = String(value ?? '').trim();
+  return (text || fallback).slice(0, max);
+}
+
+function dailyKey(value) {
+  const raw = dailyText(value).toLowerCase();
+  try {
+    return raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  } catch (_) {
+    return raw.replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+}
+
+function dailyAverage(values, fallback = 0, max = 100000) {
+  const nums = (Array.isArray(values) ? values : [])
+    .map(value => dailyFinite(value, NaN, max))
+    .filter(Number.isFinite);
+  if (!nums.length) return fallback;
+  const sorted = [...nums].sort((a, b) => a - b);
+  let used = sorted;
+  if (sorted.length >= 3) {
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const distances = sorted.map(value => Math.abs(value - median));
+    const farthest = Math.max(...distances);
+    if (median > 0 && farthest > 0.5 * median) {
+      const index = distances.indexOf(farthest);
+      used = sorted.filter((_, i) => i !== index);
+    }
+  }
+  return used.reduce((sum, value) => sum + value, 0) / used.length;
+}
+
+function normalizeDailyItem(item) {
+  const source = item && typeof item === 'object' ? item : {};
+  return {
+    nome: dailyText(source.nome, 'Item', 160),
+    porcao_g: Math.round(dailyFinite(source.porcao_g, 0, 10000)),
+    kcal: Math.round(dailyFinite(source.kcal, 0, 10000)),
+    proteina_g: +dailyFinite(source.proteina_g, 0, 1000).toFixed(1),
+    carbo_g: +dailyFinite(source.carbo_g, 0, 2000).toFixed(1),
+    gordura_g: +dailyFinite(source.gordura_g, 0, 1000).toFixed(1)
+  };
+}
+
+function normalizeDailyMeal(meal) {
+  const source = meal && typeof meal === 'object' ? meal : {};
+  return {
+    nome_refeicao: dailyText(source.nome_refeicao || source.nome, 'Refeição', 100),
+    horario: dailyText(source.horario || source.hour || source.hora, '', 40),
+    itens: (Array.isArray(source.itens) ? source.itens : []).slice(0, 40).map(normalizeDailyItem),
+    kcal_total: dailyFinite(source.kcal_total, 0, 100000),
+    proteina_total: dailyFinite(source.proteina_total, 0, 10000),
+    carbo_total: dailyFinite(source.carbo_total, 0, 20000),
+    gordura_total: dailyFinite(source.gordura_total, 0, 10000),
+    confianca: ['baixa', 'media', 'alta'].includes(source.confianca) ? source.confianca : 'media'
+  };
+}
+
+function normalizeDailyResult(result) {
+  const source = result && typeof result === 'object' ? result : {};
+  let meals = Array.isArray(source.refeicoes) ? source.refeicoes : [];
+  // Aceita uma resposta de refeição única caso um modelo antigo ignore o
+  // schema diário; isso mantém o fechamento útil e não descarta a resposta.
+  if (!meals.length && (source.nome_refeicao || source.nome || source.itens)) meals = [source];
+  const normalizedMeals = meals.slice(0, 20).map(normalizeDailyMeal);
+  return {
+    refeicoes: normalizedMeals,
+    kcal_total: dailyFinite(source.kcal_total, 0, 100000),
+    proteina_total: dailyFinite(source.proteina_total, 0, 10000),
+    carbo_total: dailyFinite(source.carbo_total, 0, 20000),
+    gordura_total: dailyFinite(source.gordura_total, 0, 10000),
+    observacoes: (Array.isArray(source.observacoes) ? source.observacoes : [])
+      .map(value => dailyText(value, '', 240)).filter(Boolean).slice(0, 8),
+    transcricao_audio: dailyText(source.transcricao_audio, '', 4000),
+    confianca: ['baixa', 'media', 'alta'].includes(source.confianca) ? source.confianca : 'media'
+  };
+}
+
+function findDailyMeal(meals, baseMeal, index) {
+  const key = dailyKey(baseMeal?.nome_refeicao);
+  if (key) {
+    const byName = meals.find(meal => dailyKey(meal.nome_refeicao) === key);
+    if (byName) return byName;
+  }
+  return meals[index] || null;
+}
+
+function findDailyItem(items, baseItem, index) {
+  const key = dailyKey(baseItem?.nome);
+  if (key) {
+    const byName = items.find(item => dailyKey(item.nome) === key);
+    if (byName) return byName;
+  }
+  return items[index] || null;
+}
+
+function mergeResumoDiaAnalisys(res) {
+  const respostas = (Array.isArray(res) ? res : [])
+    .map(normalizeDailyResult)
+    .filter(result => result.refeicoes.length || result.kcal_total > 0);
+  if (!respostas.length) {
+    return { refeicoes: [], kcal_total: 0, proteina_total: 0, carbo_total: 0, gordura_total: 0, observacoes: [], transcricao_audio: '', confianca: 'baixa' };
+  }
+
+  const transcricaoAudio = respostas.map(result => result.transcricao_audio).find(Boolean) || '';
+
+  // Usa a resposta com mais refeições como esqueleto. Os valores dos itens
+  // são consolidados entre as demais respostas para que o total continue
+  // coerente com o que será salvo no diário.
+  const base = respostas.reduce((best, current) => current.refeicoes.length > best.refeicoes.length ? current : best, respostas[0]);
+  if (!base.refeicoes.length) {
+    const kcal = Math.round(dailyAverage(respostas.map(result => result.kcal_total), 0, 100000));
+    const protein = +dailyAverage(respostas.map(result => result.proteina_total), 0, 10000).toFixed(1);
+    const carbs = +dailyAverage(respostas.map(result => result.carbo_total), 0, 20000).toFixed(1);
+    const fat = +dailyAverage(respostas.map(result => result.gordura_total), 0, 10000).toFixed(1);
+    return {
+      refeicoes: kcal > 0 ? [{
+        nome_refeicao: 'Resumo do dia', horario: '',
+        itens: [{ nome: 'Itens não detalhados', porcao_g: 0, kcal, proteina_g: protein, carbo_g: carbs, gordura_g: fat }],
+        kcal_total: kcal, proteina_total: protein, carbo_total: carbs, gordura_total: fat, confianca: base.confianca
+      }] : [],
+      kcal_total: kcal,
+      proteina_total: protein,
+      carbo_total: carbs,
+      gordura_total: fat,
+      observacoes: ['A IA retornou apenas os totais; revise os itens antes de salvar.'],
+      transcricao_audio: transcricaoAudio,
+      confianca: base.confianca
+    };
+  }
+  const refeicoes = base.refeicoes.map((baseMeal, mealIndex) => {
+    const matchingMeals = respostas
+      .map(result => findDailyMeal(result.refeicoes, baseMeal, mealIndex))
+      .filter(Boolean);
+    const itens = baseMeal.itens.map((baseItem, itemIndex) => {
+      const matchingItems = matchingMeals
+        .map(meal => findDailyItem(meal.itens, baseItem, itemIndex))
+        .filter(Boolean);
+      return {
+        ...baseItem,
+        porcao_g: Math.round(dailyAverage(matchingItems.map(item => item.porcao_g), baseItem.porcao_g, 10000)),
+        kcal: Math.round(dailyAverage(matchingItems.map(item => item.kcal), baseItem.kcal, 10000)),
+        proteina_g: +dailyAverage(matchingItems.map(item => item.proteina_g), baseItem.proteina_g, 1000).toFixed(1),
+        carbo_g: +dailyAverage(matchingItems.map(item => item.carbo_g), baseItem.carbo_g, 2000).toFixed(1),
+        gordura_g: +dailyAverage(matchingItems.map(item => item.gordura_g), baseItem.gordura_g, 1000).toFixed(1)
+      };
+    });
+    const fallbackTotals = {
+      kcal_total: dailyAverage(matchingMeals.map(meal => meal.kcal_total), baseMeal.kcal_total, 100000),
+      proteina_total: dailyAverage(matchingMeals.map(meal => meal.proteina_total), baseMeal.proteina_total, 10000),
+      carbo_total: dailyAverage(matchingMeals.map(meal => meal.carbo_total), baseMeal.carbo_total, 20000),
+      gordura_total: dailyAverage(matchingMeals.map(meal => meal.gordura_total), baseMeal.gordura_total, 10000)
+    };
+    const hasItems = itens.length > 0;
+    return {
+      ...baseMeal,
+      itens,
+      kcal_total: hasItems ? itens.reduce((sum, item) => sum + item.kcal, 0) : Math.round(fallbackTotals.kcal_total),
+      proteina_total: hasItems ? +itens.reduce((sum, item) => sum + item.proteina_g, 0).toFixed(1) : +fallbackTotals.proteina_total.toFixed(1),
+      carbo_total: hasItems ? +itens.reduce((sum, item) => sum + item.carbo_g, 0).toFixed(1) : +fallbackTotals.carbo_total.toFixed(1),
+      gordura_total: hasItems ? +itens.reduce((sum, item) => sum + item.gordura_g, 0).toFixed(1) : +fallbackTotals.gordura_total.toFixed(1)
+    };
+  });
+
+  const observacoes = [];
+  respostas.forEach(result => result.observacoes.forEach(note => {
+    if (!observacoes.includes(note)) observacoes.push(note);
+  }));
+  const confidenceRank = value => ({ baixa: 0, media: 1, alta: 2 }[value] ?? 1);
+  const confianca = respostas.reduce((worst, result) =>
+    confidenceRank(result.confianca) < confidenceRank(worst) ? result.confianca : worst, 'alta');
+  return {
+    refeicoes,
+    kcal_total: Math.round(refeicoes.reduce((sum, meal) => sum + meal.kcal_total, 0)),
+    proteina_total: +refeicoes.reduce((sum, meal) => sum + meal.proteina_total, 0).toFixed(1),
+    carbo_total: +refeicoes.reduce((sum, meal) => sum + meal.carbo_total, 0).toFixed(1),
+    gordura_total: +refeicoes.reduce((sum, meal) => sum + meal.gordura_total, 0).toFixed(1),
+    observacoes: observacoes.slice(0, 8),
+    transcricao_audio: transcricaoAudio,
+    confianca
+  };
 }
 
 /* ============ FLUXO DE FOTO ============ */
@@ -353,6 +826,17 @@ window.abrirFoto = abrirFoto;
 window.openFoto = openFoto;
 window.getCameraFileInput = getCameraFileInput;
 
+function tentarNovamenteFoto() {
+  if (typeof window.__fotoContinue === 'function') {
+    return window.__fotoContinue();
+  } else if (window.__fotoFile) {
+    return processarFoto(window.__fotoFile);
+  } else {
+    return openFoto();
+  }
+}
+window.tentarNovamenteFoto = tentarNovamenteFoto;
+
 function encerrarAnaliseFoto() {
   const run = window.__fotoRun;
   if (!run || run.cancelled) return;
@@ -370,12 +854,50 @@ async function processarFoto(file) {
     setTimeout(() => { state.tab = 'ajustes'; render(); }, 300);
     return;
   }
-  let b64 = await new Promise((ok, no) => {
-    const r = new FileReader();
-    r.onload = () => ok(r.result.split(',')[1]);
-    r.onerror = no;
-    r.readAsDataURL(file);
-  });
+  if (!file) {
+    openModal(`
+      <h2>Foto não selecionada</h2>
+      <p class="api-hint" style="margin-top:8px">Nenhum arquivo de imagem foi recebido ou a captura foi cancelada.</p>
+      <div class="row mt12" style="display:flex;gap:8px">
+        <button class="bigbtn secondary" style="flex:1" onclick="closeModal()">Fechar</button>
+        <button class="bigbtn primary" style="flex:1" onclick="closeModal();openFoto()">Tentar novamente</button>
+      </div>
+    `);
+    return;
+  }
+
+  window.__fotoDate = currentEntryDate();
+  window.__fotoFile = file;
+  let b64 = null;
+  try {
+    b64 = await new Promise((ok, no) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const res = String(r.result || '');
+        const parts = res.split(',');
+        if (parts.length > 1 && parts[1]) ok(parts[1]);
+        else no(new Error('Formato base64 inválido no arquivo'));
+      };
+      r.onerror = err => no(err || new Error('Falha ao ler o arquivo de imagem'));
+      r.readAsDataURL(file);
+    });
+  } catch (readErr) {
+    console.error('Erro na leitura da foto:', readErr);
+    openModal(`
+      <h2>Erro ao processar imagem</h2>
+      <p class="api-hint" style="margin-top:8px">Não foi possível carregar a imagem selecionada.</p>
+      <details class="api-return bad open" style="margin-top:10px">
+        <summary>Diagnóstico do erro</summary>
+        <pre>${escapeHtml(readErr?.message || String(readErr))}</pre>
+      </details>
+      <div class="row mt12" style="display:flex;gap:8px">
+        <button class="bigbtn secondary" style="flex:1" onclick="closeModal()">Fechar</button>
+        <button class="bigbtn primary" style="flex:1" onclick="closeModal();openFoto()">Tentar novamente</button>
+      </div>
+    `);
+    return;
+  }
+
   const img = new Image();
   let finalB64 = b64;
   try {
@@ -395,6 +917,14 @@ async function processarFoto(file) {
   window.__fotoContinue = async () => {
     const run = { cancelled: false, controller: typeof AbortController === 'function' ? new AbortController() : null, waiters: [] };
     window.__fotoRun = run;
+    const fotoDate = typeof getEntryDate === 'function'
+      ? getEntryDate($('#fotoData')?.value, window.__fotoDate)
+      : ($('#fotoData')?.value || window.__fotoDate || currentEntryDate());
+    if (!fotoDate) {
+      toast('Escolha hoje ou uma data anterior válida.');
+      return;
+    }
+    window.__fotoDate = fotoDate;
     const legenda = ($('#fotoLegenda')?.value || '').trim().slice(0, 500);
     window.__fotoLegenda = legenda;
     openModal(`
@@ -455,9 +985,10 @@ async function processarFoto(file) {
           <div class="api-hint">${apiHint(status)}</div>
           ${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}
         </div>
-        <div class="row mt12">
-          <button class="bigbtn secondary" onclick="closeModal()">Fechar</button>
-          <button class="bigbtn primary" onclick="closeModal();modalManual()">Adicionar manual</button>
+        <div class="row mt12" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="bigbtn primary" style="flex:1" onclick="tentarNovamenteFoto()">Tentar novamente</button>
+          <button class="bigbtn secondary" style="flex:1" onclick="closeModal();modalManual()">Adicionar manual</button>
+          <button class="bigbtn secondary" style="width:100%" onclick="closeModal()">Fechar</button>
         </div>`;
       return;
     }
@@ -466,6 +997,8 @@ async function processarFoto(file) {
   openModal(`
     <h2>Descrever foto</h2>
     <img id="foto-preview" src="data:image/jpeg;base64,${finalB64}" style="display:block"/>
+    <label for="fotoData">Data do lançamento</label>
+    <input id="fotoData" type="date" value="${window.__fotoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
     <label for="fotoLegenda">Descrição ou legenda (opcional)</label>
     <textarea id="fotoLegenda" rows="3" maxlength="500" placeholder="Ex.: shake de banana com whey, leite e aveia"></textarea>
     <p class="small mt8">Ingredientes, quantidades e modo de preparo podem ajudar. A foto continua sendo a principal referência.</p>
@@ -542,6 +1075,8 @@ function mostrarConfirmacaoFoto(final, n, responses, apiReturns = [], cancelled 
     <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
     <input id="cNome" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
+    <label style="margin-top:10px">Data do lançamento</label>
+    <input id="cDataFoto" type="date" value="${window.__fotoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
     <button id="saveFotoAlimento" class="bigbtn secondary mt8" onclick="salvarFotoAlimento()">Salvar refeição em Meus alimentos</button>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
@@ -604,10 +1139,18 @@ function confirmFoto() {
   const nome = $('#cNome')?.value.trim() || 'Refeição com foto';
   const itens = (window.__fotoItens || []).filter(i => (i.kcal || 0) > 0);
   if (!itens.length) { toast('Nenhum item com calorias'); return; }
-  meals.push({ id: uid(), date: today(), hour: horaNow(), nome, itens, origem: 'foto' });
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#cDataFoto')?.value, window.__fotoDate)
+    : ($('#cDataFoto')?.value || window.__fotoDate || currentEntryDate());
+  if (!date) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
+  meals.push({ id: uid(), date, hour: horaNow(), nome, itens, origem: 'foto' });
   save(LS.m, meals);
+  if (typeof setActiveDate === 'function') setActiveDate(date, false);
   closeModal();
-  toast('Refeição salva!');
+  toast(`Refeição salva em ${typeof formatRegistroDate === 'function' ? formatRegistroDate(date) : date}!`);
   render();
 }
 
@@ -618,6 +1161,732 @@ window.addItemFoto = addItemFoto;
 window.updTotais = updTotais;
 window.confirmFoto = confirmFoto;
 
+/* ============ GRAVAÇÃO DE ÁUDIO ============ */
+const AUDIO_MAX_DURATION_MS = 3 * 60 * 1000;
+
+function getAudioBridge() {
+  try {
+    const bridge = typeof window !== 'undefined' ? window.AndroidBridge : null;
+    return bridge && typeof bridge.startAudioRecording === 'function' ? bridge : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function audioDurationLabel(ms) {
+  const seconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function parseAudioBridgeResult(raw) {
+  if (raw && typeof raw === 'object') return raw;
+  try { return JSON.parse(String(raw || '{}')); } catch (_) { return { ok: false, code: 'invalid_response' }; }
+}
+
+function clearAudioTicker() {
+  if (window.__audioTicker) {
+    clearInterval(window.__audioTicker);
+    window.__audioTicker = null;
+  }
+}
+
+function resetAudioRecorderState(cancelNative = true) {
+  clearAudioTicker();
+  if (cancelNative) {
+    const bridge = getAudioBridge();
+    try { if (bridge && typeof bridge.cancelAudioRecording === 'function') bridge.cancelAudioRecording(); } catch (_) {}
+  }
+  window.__audioRecorderState = 'idle';
+  window.__audioRecorderStartedAt = 0;
+  window.__audioRecording = null;
+  window.__audioRecorderMode = null;
+}
+
+function renderAudioRecorder() {
+  const box = $('#audioRecorderPanel');
+  if (!box) return;
+  const state = window.__audioRecorderState || 'idle';
+  const recording = state === 'recording';
+  const ready = state === 'ready' && window.__audioRecording;
+  const elapsed = recording
+    ? Date.now() - (window.__audioRecorderStartedAt || Date.now())
+    : (ready ? window.__audioRecording.durationMs : 0);
+  const status = state === 'recording'
+    ? 'Gravando… fale naturalmente sobre o que você comeu.'
+    : state === 'requesting'
+      ? 'Aguardando autorização do microfone…'
+      : state === 'processing'
+        ? 'Preparando o áudio…'
+        : ready
+          ? 'Áudio pronto para a análise.'
+          : 'Toque em gravar e descreva os alimentos, quantidades e horários.';
+  const action = recording
+    ? `<button id="audioRecordButton" type="button" class="bigbtn primary audio-record-button" onclick="pararGravacaoAudio()">⏹️ Parar gravação</button>`
+    : `<button id="audioRecordButton" type="button" class="bigbtn ${ready ? 'secondary' : 'primary'} audio-record-button" ${state === 'requesting' || state === 'processing' ? 'disabled' : ''} onclick="iniciarGravacaoAudio()">${ready ? '🔁 Gravar novamente' : '🎙️ Começar gravação'}</button>`;
+  box.innerHTML = `
+    <div class="audio-recorder-status ${recording ? 'is-recording' : ''}">
+      <span class="audio-record-dot"></span>
+      <span>${escapeHtml(status)}</span>
+      <b id="audioElapsed">${audioDurationLabel(elapsed)}</b>
+    </div>
+    ${ready ? `<div class="small mt8">O áudio será enviado para a IA junto com o contexto deste formulário.</div>` : ''}
+    ${action}`;
+  const mealButton = $('#analisarAudioRefeicaoBtn');
+  if (mealButton) mealButton.disabled = !ready;
+}
+
+function startAudioTicker() {
+  clearAudioTicker();
+  window.__audioTicker = setInterval(() => {
+    if (window.__audioRecorderState !== 'recording') { clearAudioTicker(); return; }
+    const elapsed = Date.now() - (window.__audioRecorderStartedAt || Date.now());
+    const clock = $('#audioElapsed');
+    if (clock) clock.textContent = audioDurationLabel(elapsed);
+    if (elapsed >= AUDIO_MAX_DURATION_MS) pararGravacaoAudio();
+  }, 1000);
+}
+
+function iniciarGravacaoAudio() {
+  const bridge = getAudioBridge();
+  if (!bridge) {
+    toast('A gravação de áudio está disponível no APK Android atualizado.');
+    return;
+  }
+  if (window.__audioRecorderState === 'recording' || window.__audioRecorderState === 'requesting') return;
+  if (window.__audioRecorderState === 'ready') {
+    try { if (typeof bridge.cancelAudioRecording === 'function') bridge.cancelAudioRecording(); } catch (_) {}
+    window.__audioRecording = null;
+  }
+  window.__audioRecorderState = 'requesting';
+  renderAudioRecorder();
+  let result;
+  try { result = parseAudioBridgeResult(bridge.startAudioRecording()); } catch (_) {
+    result = { ok: false, code: 'recording_failed' };
+  }
+  if (result.code === 'permission_required') {
+    renderAudioRecorder();
+    return;
+  }
+  if (!result.ok || result.code !== 'recording') {
+    window.__audioRecorderState = 'idle';
+    renderAudioRecorder();
+    toast(result.message || 'Não foi possível iniciar a gravação.');
+    return;
+  }
+  window.__audioRecorderState = 'recording';
+  window.__audioRecorderStartedAt = Date.now();
+  renderAudioRecorder();
+  startAudioTicker();
+}
+
+function pararGravacaoAudio() {
+  if (window.__audioRecorderState !== 'recording') return;
+  clearAudioTicker();
+  window.__audioRecorderState = 'processing';
+  renderAudioRecorder();
+  const bridge = getAudioBridge();
+  let result;
+  try { result = parseAudioBridgeResult(bridge ? bridge.stopAudioRecording() : null); } catch (_) {
+    result = { ok: false, code: 'read_failed' };
+  }
+  if (!result.ok || !result.data) {
+    window.__audioRecorderState = 'idle';
+    window.__audioRecorderStartedAt = 0;
+    renderAudioRecorder();
+    toast(result.message || 'Não foi possível preparar o áudio.');
+    return;
+  }
+  window.__audioRecording = {
+    data: String(result.data),
+    mimeType: String(result.mimeType || 'audio/mp4'),
+    durationMs: Number(result.durationMs) || (Date.now() - (window.__audioRecorderStartedAt || Date.now()))
+  };
+  window.__audioRecorderState = 'ready';
+  window.__audioRecorderStartedAt = 0;
+  renderAudioRecorder();
+}
+
+function fecharModalComAudio() {
+  resetAudioRecorderState(true);
+  closeModal();
+}
+
+window.__nutriAudioPermissionResult = function(granted) {
+  if (window.__audioRecorderState !== 'requesting') return;
+  if (!granted) {
+    window.__audioRecorderState = 'idle';
+    renderAudioRecorder();
+    toast('Permissão do microfone negada. Você pode autorizar nas configurações do Android.');
+    return;
+  }
+  if (!$('#audioRecorderPanel')) return;
+  iniciarGravacaoAudio();
+};
+
+function abrirAudioRefeicaoIA() {
+  resetAudioRecorderState(true);
+  window.__audioRecorderMode = 'meal';
+  window.__textoOrigem = 'ia_audio';
+  window.__textoDate = currentEntryDate();
+  openModal(`
+    <h2>🎙️ Gravar refeição com IA</h2>
+    <p class="small mb8">Fale o que você comeu, as quantidades aproximadas e, se quiser, a forma de preparo. A IA transcreve o relato e estima os nutrientes.</p>
+    <div class="audio-recorder-card"><div id="audioRecorderPanel"></div></div>
+    <label for="audioRefeicaoContexto" style="margin-top:12px">Contexto adicional (opcional)</label>
+    <textarea id="audioRefeicaoContexto" rows="3" maxlength="1000" placeholder="Ex.: foi no almoço e o frango foi grelhado"></textarea>
+    <label for="audioRefeicaoData" style="margin-top:10px">Data do lançamento</label>
+    <input id="audioRefeicaoData" type="date" value="${currentEntryDate()}" max="${currentEntryDate()}"/>
+    <div class="row mt12">
+      <button class="bigbtn secondary" onclick="fecharModalComAudio()">Cancelar</button>
+      <button id="analisarAudioRefeicaoBtn" class="bigbtn primary" disabled onclick="analisarAudioRefeicao()">Analisar áudio</button>
+    </div>
+  `);
+  renderAudioRecorder();
+}
+
+function analisarAudioRefeicao() {
+  const audio = window.__audioRecording;
+  if (!audio || window.__audioRecorderState !== 'ready') {
+    toast('Grave e pare o áudio antes de analisar.');
+    return;
+  }
+  if (!apikey) {
+    toast('Configure a chave da API em Ajustes primeiro');
+    setTimeout(() => { state.tab = 'ajustes'; render(); }, 300);
+    return;
+  }
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#audioRefeicaoData')?.value)
+    : ($('#audioRefeicaoData')?.value || currentEntryDate());
+  if (!date) { toast('Escolha hoje ou uma data anterior válida.'); return; }
+  const contexto = ($('#audioRefeicaoContexto')?.value || '').trim().slice(0, 1000);
+  window.__textoDate = date;
+  window.__textoAudio = audio;
+  window.__textoAudioContexto = contexto;
+  clearAudioTicker();
+  processarAudioRefeicao(audio, contexto);
+}
+
+/* ============ RESUMO DO DIA (TEXTO + MÚLTIPLAS FOTOS) ============ */
+const RESUMO_DIA_MAX_TEXTO = 12000;
+const RESUMO_DIA_MAX_FOTOS = 8;
+let _resumoDiaFileInput = null;
+
+function getResumoDiaFileInput() {
+  if (!_resumoDiaFileInput || (typeof document !== 'undefined' && document.body && !document.body.contains(_resumoDiaFileInput))) {
+    let existing = typeof document !== 'undefined' ? document.getElementById('resumoDiaFileInput') : null;
+    if (existing) {
+      _resumoDiaFileInput = existing;
+    } else if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      _resumoDiaFileInput = document.createElement('input');
+      _resumoDiaFileInput.type = 'file';
+      _resumoDiaFileInput.id = 'resumoDiaFileInput';
+      _resumoDiaFileInput.accept = 'image/*';
+      _resumoDiaFileInput.multiple = true;
+      _resumoDiaFileInput.style.position = 'fixed';
+      _resumoDiaFileInput.style.top = '-9999px';
+      _resumoDiaFileInput.style.left = '-9999px';
+      _resumoDiaFileInput.style.opacity = '0';
+      _resumoDiaFileInput.style.pointerEvents = 'none';
+      if (document.body) document.body.appendChild(_resumoDiaFileInput);
+    }
+  }
+  return _resumoDiaFileInput;
+}
+
+function readResumoDiaImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) { reject(new Error('Arquivo de imagem ausente')); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const source = String(reader.result || '');
+      if (!source.includes(',')) { reject(new Error('Formato de imagem inválido')); return; }
+      const originalMime = source.slice(5, source.indexOf(';')) || 'image/jpeg';
+      const finish = (dataUrl, mimeType) => resolve({
+        data: String(dataUrl).split(',')[1],
+        mimeType: mimeType || 'image/jpeg',
+        name: dailyText(file.name, 'foto', 100)
+      });
+      try {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const max = 1024;
+            if (img.naturalWidth > max || img.naturalHeight > max) {
+              const canvas = document.createElement('canvas');
+              const scale = Math.min(max / img.naturalWidth, max / img.naturalHeight);
+              canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+              canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              finish(canvas.toDataURL('image/jpeg', 0.82), 'image/jpeg');
+            } else {
+              finish(source, originalMime.startsWith('image/') ? originalMime : 'image/jpeg');
+            }
+          } catch (_) {
+            // A falha de canvas não deve impedir a análise: usa o arquivo original.
+            finish(source, originalMime.startsWith('image/') ? originalMime : 'image/jpeg');
+          }
+        };
+        img.onerror = () => finish(source, originalMime.startsWith('image/') ? originalMime : 'image/jpeg');
+        img.src = source;
+      } catch (_) {
+        finish(source, originalMime.startsWith('image/') ? originalMime : 'image/jpeg');
+      }
+    };
+    reader.onerror = () => reject(new Error('Não foi possível ler uma das imagens'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderResumoDiaFotos() {
+  const box = $('#resumoDiaFotos');
+  if (!box) return;
+  const fotos = Array.isArray(window.__resumoDiaFotos) ? window.__resumoDiaFotos : [];
+  const busy = window.__resumoDiaPhotosBusy;
+  const count = $('#resumoDiaFotoCount');
+  if (count) count.textContent = `${fotos.length}/${RESUMO_DIA_MAX_FOTOS} fotos anexadas`;
+  if (!fotos.length) {
+    box.innerHTML = `<div class="daily-photo-empty">Nenhuma foto anexada. Você pode usar só o texto ou combinar texto e imagens.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="daily-photo-grid">${fotos.map((foto, index) => `
+    <div class="daily-photo-tile">
+      <img src="data:${escapeHtml(foto.mimeType || 'image/jpeg')};base64,${foto.data}" alt="Foto ${index + 1}"/>
+      <button type="button" class="daily-photo-remove" onclick="removerResumoDiaFoto(${index})" aria-label="Remover foto ${index + 1}">×</button>
+      <span>Foto ${index + 1}</span>
+    </div>`).join('')}</div>
+    ${busy ? '<div class="small mt8">Carregando fotos…</div>' : ''}`;
+}
+
+async function adicionarResumoDiaFotos(files) {
+  const incoming = Array.from(files || []).filter(Boolean);
+  if (!incoming.length) return;
+  const fotosAtuais = Array.isArray(window.__resumoDiaFotos) ? window.__resumoDiaFotos : [];
+  const remaining = RESUMO_DIA_MAX_FOTOS - fotosAtuais.length;
+  if (remaining <= 0) {
+    toast(`O resumo aceita até ${RESUMO_DIA_MAX_FOTOS} fotos.`);
+    return;
+  }
+  if (incoming.length > remaining) toast(`Só as primeiras ${remaining} fotos serão adicionadas.`);
+  window.__resumoDiaPhotosBusy = true;
+  renderResumoDiaFotos();
+  let added = 0;
+  for (const file of incoming.slice(0, remaining)) {
+    try {
+      const photo = await readResumoDiaImage(file);
+      fotosAtuais.push(photo);
+      added++;
+      renderResumoDiaFotos();
+    } catch (error) {
+      console.warn('[nutritrack] foto do resumo ignorada', error);
+    }
+  }
+  window.__resumoDiaFotos = fotosAtuais;
+  window.__resumoDiaPhotosBusy = false;
+  renderResumoDiaFotos();
+  if (!added) toast('Não foi possível carregar as fotos selecionadas.');
+}
+
+function abrirResumoDiaFotos() {
+  const input = getResumoDiaFileInput();
+  if (!input) { toast('Seletor de fotos indisponível neste aparelho.'); return; }
+  input.value = '';
+  input.onchange = event => {
+    // Copia o FileList antes de limpar o input; em alguns WebViews ele é um
+    // objeto vivo e ficaria vazio depois de input.value = ''.
+    const files = Array.from(event.target.files || []);
+    input.value = '';
+    adicionarResumoDiaFotos(files);
+  };
+  input.click();
+}
+
+function removerResumoDiaFoto(index) {
+  if (!Array.isArray(window.__resumoDiaFotos)) return;
+  window.__resumoDiaFotos.splice(Number(index), 1);
+  renderResumoDiaFotos();
+}
+
+function abrirResumoDiaIA() {
+  resetAudioRecorderState(true);
+  window.__audioRecorderMode = 'daily';
+  window.__resumoDiaDate = currentEntryDate();
+  window.__resumoDiaFotos = [];
+  window.__resumoDiaAudio = null;
+  window.__resumoDiaPhotosBusy = false;
+  openModal(`
+    <h2>🧾 Resumo do dia com IA</h2>
+    <p class="small mb8">Cole aqui as mensagens do WhatsApp e, se quiser, anexe as fotos que você tirou ao longo do dia. A IA separa as refeições e calcula tudo em uma única análise.</p>
+    <label for="resumoDiaTexto">O que você comeu ao longo do dia</label>
+    <textarea id="resumoDiaTexto" rows="9" maxlength="${RESUMO_DIA_MAX_TEXTO}" placeholder="Ex.:\n08:00 — café com leite e 2 ovos\n12:30 — arroz, feijão, frango e salada\n16:00 — banana com whey\n20:00 — pizza e refrigerante"></textarea>
+    <div class="small mt8">Pode colar várias mensagens, com ou sem horários. A IA tentará agrupar o que pertence à mesma refeição.</div>
+    <div class="audio-recorder-card mt12"><div class="daily-photo-picker-head"><div><b>Relato em áudio</b><div class="small">Opcional · até 3 minutos</div></div></div><div id="audioRecorderPanel"></div></div>
+    <label for="resumoDiaData" style="margin-top:12px">Data do resumo</label>
+    <input id="resumoDiaData" type="date" value="${window.__resumoDiaDate}" max="${currentEntryDate()}"/>
+    <div class="daily-photo-picker mt12">
+      <div class="daily-photo-picker-head">
+        <div><b>Fotos do dia</b><div class="small">Até ${RESUMO_DIA_MAX_FOTOS} imagens</div></div>
+        <span id="resumoDiaFotoCount" class="small">0/${RESUMO_DIA_MAX_FOTOS} fotos anexadas</span>
+      </div>
+      <div id="resumoDiaFotos"></div>
+      <button type="button" class="bigbtn secondary mt8" onclick="abrirResumoDiaFotos()">＋ Adicionar fotos</button>
+    </div>
+    <div class="row mt12">
+      <button class="bigbtn secondary" onclick="fecharModalComAudio()">Cancelar</button>
+      <button class="bigbtn primary" onclick="iniciarAnaliseResumoDia()">Calcular resumo</button>
+    </div>
+  `);
+  renderResumoDiaFotos();
+  setTimeout(() => { const el = $('#resumoDiaTexto'); if (el) el.focus(); }, 100);
+}
+
+function encerrarAnaliseResumoDia() {
+  const run = window.__resumoDiaRun;
+  if (!run || run.cancelled) return;
+  run.cancelled = true;
+  run.controller?.abort();
+  run.waiters.splice(0).forEach(resolve => resolve());
+  const button = $('#aiCancelResumoDia');
+  if (button) { button.disabled = true; button.textContent = 'Encerrando…'; }
+}
+
+function tentarNovamenteResumoDia() {
+  if (typeof window.__resumoDiaContinue === 'function') return window.__resumoDiaContinue();
+  return abrirResumoDiaIA();
+}
+
+async function iniciarAnaliseResumoDia() {
+  const texto = ($('#resumoDiaTexto')?.value || '').trim().slice(0, RESUMO_DIA_MAX_TEXTO);
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#resumoDiaData')?.value)
+    : ($('#resumoDiaData')?.value || currentEntryDate());
+  const fotos = Array.isArray(window.__resumoDiaFotos) ? window.__resumoDiaFotos.slice(0, RESUMO_DIA_MAX_FOTOS) : [];
+  if (window.__audioRecorderState === 'recording' || window.__audioRecorderState === 'processing') {
+    toast('Pare a gravação antes de calcular o resumo.');
+    return;
+  }
+  const audio = window.__audioRecorderState === 'ready' ? audioPayload(window.__audioRecording) : null;
+  if (!texto && !fotos.length && !audio) {
+    toast('Cole o relato, grave um áudio ou adicione pelo menos uma foto.');
+    return;
+  }
+  if (!apikey) {
+    toast('Configure a chave da API em Ajustes primeiro');
+    setTimeout(() => { state.tab = 'ajustes'; render(); }, 300);
+    return;
+  }
+  if (!date) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
+  window.__resumoDiaDate = date;
+  window.__resumoDiaTexto = texto;
+  window.__resumoDiaFotos = fotos;
+  window.__resumoDiaAudio = audio;
+  await processarResumoDia(texto, fotos, date, audio);
+}
+
+async function processarResumoDia(texto, fotos, date, audio = null) {
+  const relato = String(texto || '').trim().slice(0, RESUMO_DIA_MAX_TEXTO);
+  const imagens = (Array.isArray(fotos) ? fotos : []).slice(0, RESUMO_DIA_MAX_FOTOS);
+  const gravacao = audioPayload(audio || window.__resumoDiaAudio);
+  window.__resumoDiaTexto = relato;
+  window.__resumoDiaFotos = imagens;
+  window.__resumoDiaAudio = gravacao;
+  window.__resumoDiaDate = date || currentEntryDate();
+  window.__resumoDiaContinue = () => processarResumoDia(window.__resumoDiaTexto, window.__resumoDiaFotos, window.__resumoDiaDate, window.__resumoDiaAudio);
+
+  const run = {
+    cancelled: false,
+    controller: typeof AbortController === 'function' ? new AbortController() : null,
+    waiters: []
+  };
+  window.__resumoDiaRun = run;
+  openModal(`
+    <h2>Calculando resumo do dia…</h2>
+    <div class="small mb8">${relato ? 'Relato textual recebido' : 'Sem texto'} · ${imagens.length} foto(s) · ${gravacao ? `áudio ${audioDurationLabel(gravacao.durationMs)}` : 'sem áudio'}</div>
+    <div id="aiStepsResumoDia"></div>
+    <button id="aiCancelResumoDia" class="bigbtn secondary mt12" onclick="encerrarAnaliseResumoDia()">Encerrar agora e usar respostas recebidas</button>
+  `);
+  const steps = $('#aiStepsResumoDia');
+  const n = pref.precisao === 'precisa' ? 3 : 1;
+  steps.innerHTML = Array.from({ length: n }, (_, i) => `<div class="ai-step"><div class="spin"></div><span>Análise ${i + 1} de ${n}…</span></div>`).join('');
+  const apiReturns = [];
+  const analisarUma = async index => {
+    let result = null;
+    let selectedTrace = null;
+    for (let modelIndex = 0; modelIndex < GEMINI_MODELS.length && !result; modelIndex++) {
+      const model = GEMINI_MODELS[modelIndex];
+      setAnalysisStep(steps, index, progressHtml(index, n, model, 1, `Resumo ${index + 1} de ${n}…`));
+      let trace = await consultarModeloResumoDia(model, relato, imagens, window.__resumoDiaDate, index, 1, apikey, run, gravacao);
+      apiReturns.push(trace);
+      selectedTrace = trace;
+      if (trace.ok) { result = trace.result; break; }
+      if (run.cancelled) break;
+      if (trace.retryable) {
+        setAnalysisStep(steps, index, progressHtml(index, n, model, 2, 'Falha temporária; aguardando 3 segundos…'));
+        await waitMs(RETRY_DELAY_MS, run);
+        if (run.cancelled) break;
+        setAnalysisStep(steps, index, progressHtml(index, n, model, 2));
+        trace = await consultarModeloResumoDia(model, relato, imagens, window.__resumoDiaDate, index, 2, apikey, run, gravacao);
+        apiReturns.push(trace);
+        selectedTrace = trace;
+        if (trace.ok) { result = trace.result; break; }
+      }
+      if (!trace.retryable && !([200, 404].includes(trace.status))) break;
+      if (modelIndex < GEMINI_MODELS.length - 1) {
+        const next = GEMINI_MODELS[modelIndex + 1];
+        setAnalysisStep(steps, index, progressHtml(index, n, next, 1, `Alternando para ${next.label}…`));
+      }
+    }
+    if (result) {
+      const count = Array.isArray(result.refeicoes) ? result.refeicoes.length : 1;
+      setAnalysisStep(steps, index, `<div class="ai-step" style="color:var(--status-ok)"><span>✓ Análise ${index + 1}: ${count} refeição(ões) · ${Math.round(result.kcal_total || 0)} kcal · ${selectedTrace?.modelLabel || 'Gemini'}</span></div>`);
+    } else {
+      const status = selectedTrace?.status ? ` (HTTP ${selectedTrace.status})` : '';
+      setAnalysisStep(steps, index, `<div class="ai-step" style="color:var(--status-danger)"><span>✕ Análise ${index + 1} falhou${status} após fallback</span></div>`);
+    }
+    return result;
+  };
+
+  let results = [];
+  if (pref.paralelo) results = await Promise.all(Array.from({ length: n }, (_, i) => analisarUma(i)));
+  else for (let i = 0; i < n && !run.cancelled; i++) results.push(await analisarUma(i));
+  const validos = results.filter(Boolean);
+  window.__resumoDiaRun = null;
+
+  if (!validos.length) {
+    const status = apiReturns.slice().reverse().find(item => item.status)?.status;
+    steps.innerHTML = `
+      <div class="ai-step" style="color:var(--status-danger);display:block">
+        <b>${run.cancelled ? 'Análise encerrada sem respostas concluídas.' : 'Não foi possível calcular o resumo.'}</b>
+        <div class="api-hint">${apiHint(status)}</div>
+        ${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}
+      </div>
+      <div class="row mt12" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="bigbtn primary" style="flex:1" onclick="tentarNovamenteResumoDia()">Tentar novamente</button>
+        <button class="bigbtn secondary" style="flex:1" onclick="abrirResumoDiaIA()">Editar entrada</button>
+        <button class="bigbtn secondary" style="width:100%" onclick="closeModal()">Fechar</button>
+      </div>`;
+    return;
+  }
+  mostrarConfirmacaoResumoDia(mergeResumoDiaAnalisys(validos), n, validos, apiReturns, run.cancelled, relato, imagens, gravacao);
+}
+
+function resumoDiaMealTotals(meal) {
+  const itens = Array.isArray(meal?.itens) ? meal.itens : [];
+  return {
+    kcal: itens.reduce((sum, item) => sum + (parseFloat(item.kcal) || 0), 0),
+    p: itens.reduce((sum, item) => sum + (parseFloat(item.proteina_g) || 0), 0),
+    c: itens.reduce((sum, item) => sum + (parseFloat(item.carbo_g) || 0), 0),
+    g: itens.reduce((sum, item) => sum + (parseFloat(item.gordura_g) || 0), 0)
+  };
+}
+
+function resumoDiaDraftTotals() {
+  return (Array.isArray(window.__resumoDiaRefeicoes) ? window.__resumoDiaRefeicoes : []).reduce((total, meal) => {
+    const mealTotal = resumoDiaMealTotals(meal);
+    total.kcal += mealTotal.kcal;
+    total.p += mealTotal.p;
+    total.c += mealTotal.c;
+    total.g += mealTotal.g;
+    return total;
+  }, { kcal: 0, p: 0, c: 0, g: 0 });
+}
+
+function renderResumoDiaMealItems(mealIndex) {
+  const box = $(`#resumoDiaItens${mealIndex}`);
+  const meal = window.__resumoDiaRefeicoes?.[mealIndex];
+  if (!box || !meal) return;
+  box.innerHTML = (meal.itens || []).map((item, itemIndex) => `
+    <div class="det-item daily-summary-item" style="display:block;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input value="${escapeHtml(item.nome || 'Item')}" style="flex:1;font-weight:700;font-size:14px" placeholder="Alimento" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'nome',this.value)"/>
+        <button class="det-del" onclick="rmResumoDiaItem(${mealIndex},${itemIndex})" aria-label="Remover item"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:4px"><label class="small" style="color:var(--txt-secondary)">Qtd</label><input type="number" value="${Number(item.porcao_g) || 0}" style="width:74px" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'porcao_g',this.value)"/><span class="small" style="color:var(--txt3)">g</span></span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><label class="small" style="color:var(--txt-secondary)">kcal</label><input type="number" value="${Math.round(item.kcal || 0)}" style="width:80px;color:#ffffff;font-weight:700" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'kcal',this.value)"/></span>
+        <span class="small" style="color:var(--txt3)">P ${item.proteina_g || 0}g · C ${item.carbo_g || 0}g · G ${item.gordura_g || 0}g</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderResumoDiaRefeicoes() {
+  const box = $('#resumoDiaRefeicoes');
+  if (!box) return;
+  const refeicoes = Array.isArray(window.__resumoDiaRefeicoes) ? window.__resumoDiaRefeicoes : [];
+  box.innerHTML = refeicoes.map((meal, index) => `
+    <section class="daily-meal-card">
+      <div class="daily-meal-head">
+        <div class="grow"><label>Refeição ${index + 1}</label><input value="${escapeHtml(meal.nome_refeicao || 'Refeição')}" maxlength="100" oninput="updResumoDiaMeal(${index},'nome_refeicao',this.value)"/></div>
+        <div class="daily-meal-hour"><label>Horário</label><input value="${escapeHtml(meal.horario || '')}" maxlength="40" placeholder="Ex.: 12:30" oninput="updResumoDiaMeal(${index},'horario',this.value)"/></div>
+      </div>
+      <div id="resumoDiaItens${index}"></div>
+      <button class="bigbtn secondary mt8 daily-add-item" onclick="addResumoDiaItem(${index})">＋ Adicionar item</button>
+      <div class="daily-meal-total">Total da refeição: <b id="resumoDiaMealTotal${index}">0 kcal</b></div>
+    </section>`).join('');
+  refeicoes.forEach((_, index) => renderResumoDiaMealItems(index));
+  updResumoDiaTotals();
+}
+
+function updResumoDiaMeal(index, field, value) {
+  const meal = window.__resumoDiaRefeicoes?.[index];
+  if (!meal) return;
+  meal[field] = String(value || '').slice(0, field === 'horario' ? 40 : 100);
+}
+
+function updResumoDiaItem(mealIndex, itemIndex, field, value) {
+  const item = window.__resumoDiaRefeicoes?.[mealIndex]?.itens?.[itemIndex];
+  if (!item) return;
+  item[field] = field === 'nome' ? String(value || '').slice(0, 160) : dailyFinite(value, 0, field === 'porcao_g' ? 10000 : 10000);
+  updResumoDiaTotals();
+}
+
+function rmResumoDiaItem(mealIndex, itemIndex) {
+  const meal = window.__resumoDiaRefeicoes?.[mealIndex];
+  if (!meal) return;
+  meal.itens.splice(itemIndex, 1);
+  renderResumoDiaMealItems(mealIndex);
+  updResumoDiaTotals();
+}
+
+function addResumoDiaItem(mealIndex) {
+  const meal = window.__resumoDiaRefeicoes?.[mealIndex];
+  if (!meal) return;
+  meal.itens = Array.isArray(meal.itens) ? meal.itens : [];
+  meal.itens.push({ nome: 'Item', porcao_g: 100, kcal: 0, proteina_g: 0, carbo_g: 0, gordura_g: 0 });
+  renderResumoDiaMealItems(mealIndex);
+}
+
+function updResumoDiaTotals() {
+  const total = resumoDiaDraftTotals();
+  const set = (id, value, decimals = 0) => {
+    const el = $(`#${id}`);
+    if (el) el.textContent = `${decimals ? Number(value).toFixed(decimals) : Math.round(value)}${id === 'resumoDiaKcal' ? ' kcal' : 'g'}`;
+  };
+  set('resumoDiaKcal', total.kcal);
+  set('resumoDiaP', total.p, 1);
+  set('resumoDiaC', total.c, 1);
+  set('resumoDiaG', total.g, 1);
+  (window.__resumoDiaRefeicoes || []).forEach((meal, index) => {
+    const el = $(`#resumoDiaMealTotal${index}`);
+    if (el) el.textContent = `${fmt(resumoDiaMealTotals(meal).kcal)} kcal`;
+  });
+}
+
+function formatResumoDiaHour(value) {
+  const match = String(value || '').match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)(?:\D|$)/);
+  return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : horaNow();
+}
+
+function mostrarConfirmacaoResumoDia(final, n, responses, apiReturns = [], cancelled = false, textoOriginal = '', fotos = [], audio = null) {
+  const variacoes = responses.map(item => item.kcal_total || 0);
+  const varPct = desvioPct(variacoes);
+  const accHtml = cancelled
+    ? `<div class="det-acc"><button class="on" disabled>Parcial (${responses.length}/${n})</button></div><p class="small mb8">Usando ${responses.length} resposta(s) recebida(s) antes do encerramento.</p>`
+    : responses.length > 1
+      ? `<div class="det-acc"><button class="on" disabled>Precisa (${responses.length}/${n})</button></div><p class="small mb8">Média consolidada de ${responses.length} análises · variação entre respostas: <b style="color:${varPct > 25 ? 'var(--status-danger)' : varPct > 15 ? 'var(--status-warn)' : 'var(--status-ok)'}">${varPct}%</b></p>`
+      : `<p class="small mb8">Análise rápida · valores estimados; revise os itens antes de salvar.</p>`;
+  const descHtml = textoOriginal ? `<div class="small mb8"><b>Texto enviado:</b> ${escapeHtml(textoOriginal.slice(0, 1600))}${textoOriginal.length > 1600 ? '…' : ''}</div>` : '';
+  const photoHtml = fotos.length ? `<div class="small mb8"><b>${fotos.length} foto(s)</b> considerada(s) na análise.</div>` : '';
+  const audioHtml = audio ? `<div class="small mb8"><b>Áudio de ${audioDurationLabel(audio.durationMs)}</b> considerado na análise.</div>` : '';
+  const transcriptHtml = final.transcricao_audio ? `<details class="audio-transcript mb8"><summary>Ver transcrição entendida pela IA</summary><div>${escapeHtml(final.transcricao_audio)}</div></details>` : '';
+  const notesHtml = Array.isArray(final.observacoes) && final.observacoes.length
+    ? `<div class="daily-notes"><b>Confira estas observações:</b><ul>${final.observacoes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ul></div>`
+    : '';
+  const okCalls = apiReturns.filter(item => item.ok).length;
+  const failedCalls = apiReturns.length - okCalls;
+  const apiHtml = apiReturns.length ? `<details class="api-return ok mt8"><summary>Ver retorno da API (${responses.length} análises concluídas · ${okCalls} respostas OK · ${failedCalls} falhas)</summary>${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}</details>` : '';
+  openModal(`
+    <h2>Resumo do dia pronto</h2>
+    ${descHtml}${audioHtml}${photoHtml}${transcriptHtml}${accHtml}${notesHtml}${apiHtml}
+    <div class="daily-summary-total">
+      <div class="daily-summary-label">Total estimado do dia</div>
+      <div class="daily-summary-kcal" id="resumoDiaKcal">0 kcal</div>
+      <div class="daily-summary-macros">P <b id="resumoDiaP">0g</b> · C <b id="resumoDiaC">0g</b> · G <b id="resumoDiaG">0g</b></div>
+    </div>
+    <p class="small mt8">Ajuste qualquer item abaixo. Ao confirmar, cada refeição será salva separadamente no diário.</p>
+    <div id="resumoDiaRefeicoes"></div>
+    <label style="margin-top:12px">Data dos lançamentos</label>
+    <input id="resumoDiaConfirmData" type="date" value="${escapeHtml(window.__resumoDiaDate || currentEntryDate())}" max="${currentEntryDate()}"/>
+    <div class="row mt12">
+      <button class="bigbtn secondary" onclick="fecharModalComAudio()">Cancelar</button>
+      <button class="bigbtn primary" onclick="confirmResumoDia()">Salvar refeições</button>
+    </div>
+  `);
+  window.__resumoDiaRefeicoes = Array.isArray(final.refeicoes) ? final.refeicoes.map(meal => ({
+    ...meal,
+    nome_refeicao: String(meal.nome_refeicao || 'Refeição'),
+    horario: String(meal.horario || ''),
+    itens: Array.isArray(meal.itens) ? meal.itens.map(item => ({ ...item })) : []
+  })) : [];
+  renderResumoDiaRefeicoes();
+}
+
+function confirmResumoDia() {
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#resumoDiaConfirmData')?.value, window.__resumoDiaDate)
+    : ($('#resumoDiaConfirmData')?.value || window.__resumoDiaDate || currentEntryDate());
+  if (!date) { toast('Escolha hoje ou uma data anterior válida.'); return; }
+  const refeicoes = (Array.isArray(window.__resumoDiaRefeicoes) ? window.__resumoDiaRefeicoes : [])
+    .map(meal => {
+      const itens = (Array.isArray(meal.itens) ? meal.itens : [])
+        .map(item => normalizeDailyItem(item))
+        .filter(item => item.kcal > 0);
+      if (!itens.length && Number(meal.kcal_total) > 0) {
+        itens.push({
+          nome: 'Itens não detalhados',
+          porcao_g: 0,
+          kcal: Math.round(dailyFinite(meal.kcal_total, 0, 100000)),
+          proteina_g: +dailyFinite(meal.proteina_total, 0, 10000).toFixed(1),
+          carbo_g: +dailyFinite(meal.carbo_total, 0, 20000).toFixed(1),
+          gordura_g: +dailyFinite(meal.gordura_total, 0, 10000).toFixed(1)
+        });
+      }
+      return { meal, itens };
+    })
+    .filter(item => item.itens.length);
+  if (!refeicoes.length) { toast('Nenhuma refeição com calorias para salvar.'); return; }
+  refeicoes.forEach(({ meal, itens }) => {
+    const horario = String(meal.horario || '').trim();
+    const hour = formatResumoDiaHour(horario);
+    meals.push({
+      id: uid(),
+      date,
+      hour,
+      horario: horario || hour,
+      nome: String(meal.nome_refeicao || 'Refeição').trim() || 'Refeição',
+      itens,
+      origem: 'ia_resumo_dia'
+    });
+  });
+  resetAudioRecorderState(false);
+  save(LS.m, meals);
+  if (typeof setActiveDate === 'function') setActiveDate(date, false);
+  closeModal();
+  toast(`${refeicoes.length} refeição(ões) salvas em ${typeof formatRegistroDate === 'function' ? formatRegistroDate(date) : date}!`);
+  render();
+}
+
+window.abrirResumoDiaIA = abrirResumoDiaIA;
+window.abrirResumoDiaFotos = abrirResumoDiaFotos;
+window.adicionarResumoDiaFotos = adicionarResumoDiaFotos;
+window.removerResumoDiaFoto = removerResumoDiaFoto;
+window.renderResumoDiaFotos = renderResumoDiaFotos;
+window.iniciarAnaliseResumoDia = iniciarAnaliseResumoDia;
+window.processarResumoDia = processarResumoDia;
+window.encerrarAnaliseResumoDia = encerrarAnaliseResumoDia;
+window.tentarNovamenteResumoDia = tentarNovamenteResumoDia;
+window.renderResumoDiaRefeicoes = renderResumoDiaRefeicoes;
+window.renderResumoDiaMealItems = renderResumoDiaMealItems;
+window.updResumoDiaMeal = updResumoDiaMeal;
+window.updResumoDiaItem = updResumoDiaItem;
+window.rmResumoDiaItem = rmResumoDiaItem;
+window.addResumoDiaItem = addResumoDiaItem;
+window.updResumoDiaTotals = updResumoDiaTotals;
+window.confirmResumoDia = confirmResumoDia;
+
 /* ============ FLUXO DE TEXTO (IA) ============ */
 function abrirTextoIA() {
   openModal(`
@@ -625,6 +1894,8 @@ function abrirTextoIA() {
     <p class="small mb8">Digite o que você comeu ou bebeu. A IA identificará os alimentos, porções e macros automaticamente.</p>
     <label for="textoRefeicao">Descrição da refeição</label>
     <textarea id="textoRefeicao" rows="4" maxlength="1000" placeholder="Ex.: 2 ovos mexidos com 1 fatia de pão integral e 1 xícara de café com leite"></textarea>
+    <label for="textoData" style="margin-top:10px">Data do lançamento</label>
+    <input id="textoData" type="date" value="${currentEntryDate()}" max="${currentEntryDate()}"/>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
       <button class="bigbtn primary" onclick="iniciarAnaliseTexto()">Analisar texto</button>
@@ -654,10 +1925,19 @@ async function iniciarAnaliseTexto() {
     setTimeout(() => { state.tab = 'ajustes'; render(); }, 300);
     return;
   }
+  const textoDate = typeof getEntryDate === 'function'
+    ? getEntryDate($('#textoData')?.value)
+    : ($('#textoData')?.value || currentEntryDate());
+  if (!textoDate) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
+  window.__textoDate = textoDate;
   await processarTexto(texto);
 }
 
 async function processarTexto(texto) {
+  window.__textoDate = window.__textoDate || currentEntryDate();
   const run = {
     cancelled: false,
     controller: typeof AbortController === 'function' ? new AbortController() : null,
@@ -761,6 +2041,8 @@ function mostrarConfirmacaoTexto(final, n, responses, apiReturns = [], cancelled
     <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
     <input id="cNomeTexto" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
+    <label style="margin-top:10px">Data do lançamento</label>
+    <input id="cDataTexto" type="date" value="${window.__textoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
     <button id="saveTextoAlimento" class="bigbtn secondary mt8" onclick="salvarTextoAlimento()">Salvar refeição em Meus alimentos</button>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
@@ -843,6 +2125,14 @@ function confirmTexto() {
   const nome = $('#cNomeTexto')?.value.trim() || 'Refeição descrita';
   const itens = (window.__textoItens || []).filter(i => (i.kcal || 0) > 0);
   if (!itens.length) { toast('Nenhum item com calorias'); return; }
+
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#cDataTexto')?.value, window.__textoDate)
+    : ($('#cDataTexto')?.value || window.__textoDate || currentEntryDate());
+  if (!date) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
   
   const pTotal = parseFloat($('#cPT')?.value) || 0;
   const cTotal = parseFloat($('#cCT')?.value) || 0;
@@ -856,15 +2146,16 @@ function confirmTexto() {
 
   meals.push({
     id: uid(),
-    date: today(),
+    date,
     hour: horaNow(),
     nome,
     itens,
     origem: 'ia_texto'
   });
   save(LS.m, meals);
+  if (typeof setActiveDate === 'function') setActiveDate(date, false);
   closeModal();
-  toast('Refeição salva!');
+  toast(`Refeição salva em ${typeof formatRegistroDate === 'function' ? formatRegistroDate(date) : date}!`);
   render();
 }
 
@@ -1005,6 +2296,8 @@ window.confirmEditMeal = confirmEditMeal;
 function modalManual() {
   openModal(`
     <h2>Adicionar refeição</h2>
+    <label>Data do lançamento</label>
+    <input id="fDate" type="date" value="${currentEntryDate()}" max="${currentEntryDate()}"/>
     <label>Nome da refeição</label>
     <input id="fNome" placeholder="Ex: Almoço" value="Refeição"/>
     <div id="fItens" class="mt8"></div>
@@ -1043,6 +2336,13 @@ function updFTotal() {
 
 function confirmManual() {
   const nome = $('#fNome')?.value.trim() || 'Refeição';
+  const date = typeof getEntryDate === 'function'
+    ? getEntryDate($('#fDate')?.value)
+    : ($('#fDate')?.value || currentEntryDate());
+  if (!date) {
+    toast('Escolha hoje ou uma data anterior válida.');
+    return;
+  }
   const itens = [];
   Array.from(document.querySelectorAll('#fItens .det-item')).forEach(d => {
     const ins = Array.from(d.querySelectorAll('input'));
@@ -1052,10 +2352,11 @@ function confirmManual() {
     if (k > 0) itens.push({ nome: n || 'Alimento', porcao_g: g, kcal: Math.round(k), proteina_g: 0, carbo_g: 0, gordura_g: 0 });
   });
   if (!itens.length) { toast('Adicione ao menos um alimento com calorias'); return; }
-  meals.push({ id: uid(), date: today(), hour: horaNow(), nome, itens, origem: 'manual' });
+  meals.push({ id: uid(), date, hour: horaNow(), nome, itens, origem: 'manual' });
   save(LS.m, meals);
+  if (typeof setActiveDate === 'function') setActiveDate(date, false);
   closeModal();
-  toast('Refeição salva!');
+  toast(`Refeição salva em ${typeof formatRegistroDate === 'function' ? formatRegistroDate(date) : date}!`);
   render();
 }
 
@@ -1671,7 +2972,12 @@ function confirmManualExercicio() {
   render();
 }
 
-// Activity exports
+// Activity and Photo exports
+window.DAILY_FOOD_SCHEMA = DAILY_FOOD_SCHEMA;
+window.DAILY_FOOD_PROMPT = DAILY_FOOD_PROMPT;
+window.apiBodyResumoDia = apiBodyResumoDia;
+window.consultarModeloResumoDia = consultarModeloResumoDia;
+window.mergeResumoDiaAnalisys = mergeResumoDiaAnalisys;
 window.ACTIVITY_SCHEMA = ACTIVITY_SCHEMA;
 window.ACTIVITY_PROMPT = ACTIVITY_PROMPT;
 window.getEvolucaoWorkout = getEvolucaoWorkout;
@@ -1690,3 +2996,35 @@ window.abrirManualExercicio = abrirManualExercicio;
 window.handleManualIntensityChange = handleManualIntensityChange;
 window.calcManualKcal = calcManualKcal;
 window.confirmManualExercicio = confirmManualExercicio;
+window.processarFoto = processarFoto;
+window.tentarNovamenteFoto = tentarNovamenteFoto;
+window.consultarModelo = consultarModelo;
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    FOOD_SCHEMA,
+    FOOD_PROMPT,
+    TEXT_FOOD_PROMPT,
+    DAILY_FOOD_SCHEMA,
+    DAILY_FOOD_PROMPT,
+    ACTIVITY_SCHEMA,
+    ACTIVITY_PROMPT,
+    GEMINI_MODELS,
+    consultarModelo,
+    consultarModeloTexto,
+    consultarModeloResumoDia,
+    apiBodyResumoDia,
+    consultarModeloAtividade,
+    processarFoto,
+    tentarNovamenteFoto,
+    openFoto,
+    abrirFoto,
+    encerrarAnaliseFoto,
+    mergeAnalisys,
+    mergeResumoDiaAnalisys,
+    mergeActivityAnalisys,
+    apiHint,
+    apiTraceHtml,
+    isRetryableStatus
+  };
+}

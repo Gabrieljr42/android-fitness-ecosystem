@@ -27,9 +27,10 @@ var DEFAULT_STATE={
   },
   sessions:[], corridas:[], peso:[],
   cardioGoalKm:15,
-  draft:{day:null, date:null, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null},
+  draft:{day:null, date:null, dateExplicit:false, entries:{}, warmupMode:{}, startedAt:null, lastActiveAt:null, sessionMode:'normal', unilateralPending:null},
   draftCorrida:null,
   marathonState:{assoc:{},pain:{},notes:{},checkpoints:{}},
+  wearSync:{schemaVersion:1,activePlan:null,setMeta:{},appliedEvents:{},eventHeads:{},pendingEvents:{},finishedSessions:{},conflicts:[],lastPublishedHash:null},
   settings:{restAuto:true, alarm:true, autoAdvance:true, progressao:{enabled:true, stallSessions:3, deloadPct:10, targetRir:2, expandRepRange:true, weightMatch:true}}
 };
 
@@ -108,11 +109,21 @@ function migrate(s){
   if(!s.corridas) s.corridas=[];
   if(s.cardioGoalKm==null) s.cardioGoalKm=d.cardioGoalKm||15;
   if(!s.draft) s.draft={day:null,date:null,entries:{}};
+  if(s.draft.dateExplicit===undefined) s.draft.dateExplicit=false;
   if(!s.draft.warmupMode) s.draft.warmupMode={};
   if(s.draft.startedAt===undefined) s.draft.startedAt=null;
+  if(s.draft.lastActiveAt===undefined) s.draft.lastActiveAt=null;
   if(s.draft.sessionMode!=='curto') s.draft.sessionMode='normal';
   if(s.draft.unilateralPending===undefined) s.draft.unilateralPending=null;
   if(s.draftCorrida===undefined) s.draftCorrida=null;
+  if(!s.wearSync || typeof s.wearSync!=='object') s.wearSync={};
+  if(s.wearSync.schemaVersion!==1) s.wearSync.schemaVersion=1;
+  ['setMeta','appliedEvents','eventHeads','pendingEvents','finishedSessions'].forEach(function(k){
+    if(!s.wearSync[k] || typeof s.wearSync[k]!=='object' || Array.isArray(s.wearSync[k])) s.wearSync[k]={};
+  });
+  if(!Array.isArray(s.wearSync.conflicts)) s.wearSync.conflicts=[];
+  if(s.wearSync.activePlan===undefined) s.wearSync.activePlan=null;
+  if(s.wearSync.lastPublishedHash===undefined) s.wearSync.lastPublishedHash=null;
   /* Maratona: estado do usuário (associações/dor/notas/checkpoints).
      Idempotente e aditivo — estados antigos ganham o objeto vazio. */
   if(!s.marathonState || typeof s.marathonState!=='object'){
@@ -133,11 +144,12 @@ function migrate(s){
       var out={}; Object.keys(e).forEach(function(key){ out[key]=e[key]; });
       var eq=(typeof Progression !== 'undefined' && Progression.INC_BY_EQ && Progression.INC_BY_EQ[e.eq]!==undefined) ? e.eq : (typeof Progression !== 'undefined' && Progression.inferEq ? Progression.inferEq(e.n||'') : 'maquina');
       out.n=e.n;
-      /* Normaliza IDs desviados (ex.: exercícios criados enquanto o gerador
-         canônico estava sombreado) de volta ao formato canônico. Idempotente:
-         IDs saudáveis geram a si mesmos. Seguro porque histórico/entries são
-         indexados por nome, nunca por ID. */
-      out.id=String(typeof exerciseIdFor === 'function' ? exerciseIdFor(e.n||'') : e.id||e.n);
+      /* Um ID canônico já persistido é identidade opaca e sobrevive a rename.
+         Somente formatos legados/desviados são recalculados. */
+      var persistedId=String(e.id||'');
+      out.id=/^ex_[a-z0-9][a-z0-9._-]{0,95}$/.test(persistedId)
+        ? persistedId
+        : String(typeof exerciseIdFor === 'function' ? exerciseIdFor(e.n||'') : e.id||e.n);
       out.aliases=typeof uniqueStrings === 'function' ? uniqueStrings((e.aliases||[]).concat(typeof aliasesForExercise === 'function' ? aliasesForExercise(e.n||'') : [])) : (e.aliases||[]);
       out.rest=(e.rest==null?(typeof restFor === 'function' ? restFor(e.n||'') : 90):e.rest); 
       out.sets=(e.sets==null?t.sets:e.sets); 
@@ -159,12 +171,14 @@ function migrate(s){
   return s;
 }
 function syncNative(){
-  try{ if(typeof AndroidBridge!=='undefined' && AndroidBridge.syncWorkoutState) AndroidBridge.syncWorkoutState(JSON.stringify({sessions:state.sessions||[],corridas:state.corridas||[]})); }catch(e){}
+  try{ if(typeof AndroidBridge!=='undefined' && AndroidBridge.syncWorkoutState) AndroidBridge.syncWorkoutState(JSON.stringify({sessions:state.sessions||[],corridas:state.corridas||[],peso:state.peso||[]})); }catch(e){}
 }
 var _saveFailedShown = false; // avisa uma única vez por sessão
 function save(){
+  var persisted=false;
   try{
     localStorage.setItem(KEY, JSON.stringify(state));
+    persisted=true;
   }catch(e){
     /* Falha de gravação (cota cheia, storage bloqueado) NÃO pode passar em
        silêncio: é a única fronteira durável do app. */
@@ -175,13 +189,44 @@ function save(){
     }
   }
   syncNative();
+  if(persisted){
+    try{ if(typeof window!=='undefined' && window.EvolucaoWear && window.EvolucaoWear.schedulePublish) window.EvolucaoWear.schedulePublish(); }catch(_wearSaveError){}
+  }
+  return persisted;
 }
 // Espelha o estado já carregado, inclusive após reinício antes da primeira edição.
 syncNative();
 
 /* ---------- Merge de backup (nunca sobrescreve, só combina) ---------- */
-function sessionSig(s){ return s.date+'|'+s.day+'|'+(s.mode||'normal')+'|'+JSON.stringify(s.entries); }
+function sessionEntriesSig(entries){
+  var clean={};
+  Object.keys(entries||{}).sort().forEach(function(name){
+    clean[name]=(entries[name]||[]).map(function(set){
+      var out={}; Object.keys(set||{}).sort().forEach(function(k){
+        if(k.indexOf('sync')===0 || k.indexOf('__')===0) return;
+        out[k]=set[k];
+      }); return out;
+    });
+  });
+  return JSON.stringify(clean);
+}
+function sessionSig(s){ return s.syncSessionId ? ('wear|'+s.syncSessionId) : (s.date+'|'+s.day+'|'+(s.mode||'normal')+'|'+sessionEntriesSig(s.entries)); }
 function corridaSig(c){ return (c.id||'')+'|'+c.date+'|'+(c.mode||c.tipo||'continua')+'|'+c.distanciaKm+'|'+(c.duracaoSeg||c.tempoSegundos); }
+function mergeWearSync(curSync,incSync){
+  var cur=curSync&&typeof curSync==='object'?curSync:{};
+  var inc=incSync&&typeof incSync==='object'?incSync:{};
+  var out={schemaVersion:1,activePlan:cur.activePlan||inc.activePlan||null,setMeta:{},appliedEvents:{},eventHeads:{},pendingEvents:{},finishedSessions:{},conflicts:[],lastPublishedHash:cur.lastPublishedHash||null};
+  ['setMeta','appliedEvents','eventHeads','pendingEvents','finishedSessions'].forEach(function(k){
+    Object.keys(inc[k]||{}).forEach(function(id){ out[k][id]=inc[k][id]; });
+    Object.keys(cur[k]||{}).forEach(function(id){ out[k][id]=cur[k][id]; });
+  });
+  var seen={};
+  (inc.conflicts||[]).concat(cur.conflicts||[]).forEach(function(c){
+    var key=JSON.stringify(c); if(!seen[key]){ seen[key]=1; out.conflicts.push(c); }
+  });
+  if(out.conflicts.length>200) out.conflicts=out.conflicts.slice(-200);
+  return out;
+}
 function mergeState(cur, inc){
   var bySig={}, order=[];
   (cur.sessions||[]).forEach(function(s){ var k=sessionSig(s); if(!bySig[k]){ bySig[k]=s; order.push(k); } });
@@ -228,7 +273,8 @@ function mergeState(cur, inc){
       draftCorrida:cur.draftCorrida || null,
       /* Estado da maratona nunca vem do backup (dados cur vencem) */
       marathonState:(typeof migrate==='function') ? migrate({marathonState:cur.marathonState||{}}).marathonState : (cur.marathonState||{assoc:{},pain:{},notes:{},checkpoints:{}}),
-      settings:cur.settings
+      settings:cur.settings,
+      wearSync:mergeWearSync(cur.wearSync,inc.wearSync)
     },
     addedSessions:addedSessions,
     addedPeso:addedPeso,

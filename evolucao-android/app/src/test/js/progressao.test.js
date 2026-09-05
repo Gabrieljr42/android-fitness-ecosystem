@@ -137,4 +137,158 @@ aliased.id = 'ex_nome-atual';
 aliased.aliases = ['Nome antigo'];
 assert.strictEqual(meta(aliased, [session(1, '2026-08-01', 'Nome antigo', sets(3, 50, 12))]).status, 'subir');
 
+/* =========================================================================
+ * Milestone 1 (R1): Evolução Dupla Progressão / RIR Tests
+ * ========================================================================= */
+
+/* Problem 1: Double Progression Rep Increment (45kg x 8 in 8-12 @ 2 RIR -> 45kg seeking 9 reps) */
+var doubleProgPlan = plan('Puxada aberta R1', '8-12', 3, 'polia', 5);
+var dpMeta1 = meta(doubleProgPlan, [session(1, '2026-08-01', doubleProgPlan.n, sets(3, 45, 8, { rir: 2 }))]);
+assert.strictEqual(dpMeta1.status, 'manter', 'Status should be manter for 45kg x 8 in 8-12 @ 2 RIR');
+assert.strictEqual(dpMeta1.carga, 45, 'Carga should remain 45kg');
+assert.strictEqual(dpMeta1.repsMeta, 9, 'RepsMeta should advance to 9 reps');
+
+/* Problem 1 Sequential progression: 45kg x 9 -> 10, 45kg x 10 -> 11, 45kg x 12 -> subir 50kg */
+var dpMeta2 = meta(doubleProgPlan, [session(1, '2026-08-01', doubleProgPlan.n, sets(3, 45, 9, { rir: 2 }))]);
+assert.strictEqual(dpMeta2.status, 'manter');
+assert.strictEqual(dpMeta2.carga, 45);
+assert.strictEqual(dpMeta2.repsMeta, 10);
+
+var dpMeta3 = meta(doubleProgPlan, [session(1, '2026-08-01', doubleProgPlan.n, sets(3, 45, 10, { rir: 2 }))]);
+assert.strictEqual(dpMeta3.status, 'manter');
+assert.strictEqual(dpMeta3.carga, 45);
+assert.strictEqual(dpMeta3.repsMeta, 11);
+
+var dpMeta4 = meta(doubleProgPlan, [session(1, '2026-08-01', doubleProgPlan.n, sets(3, 45, 12, { rir: 2 }))]);
+assert.strictEqual(dpMeta4.status, 'subir', 'Status should be subir after achieving top of range (12 reps)');
+assert.strictEqual(dpMeta4.carga, 50, 'Carga should increase by increment (50kg)');
+assert.strictEqual(dpMeta4.repsMeta, 8, 'RepsMeta should reset to range.min (8 reps)');
+
+/* Problem 2: Strict Range Candidate Selection (17.5kg x 7 in 6-10 @ 2 RIR -> 17.5kg seeking 8 reps, never 15kg x 14) */
+var dbBench = plan('Supino reto c/ halteres R1', '6-10', 3, 'halter', 2.5);
+var dbBenchMeta = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 7, { rir: 2 }))]);
+assert.strictEqual(dbBenchMeta.status, 'manter');
+assert.strictEqual(dbBenchMeta.carga, 17.5);
+assert.strictEqual(dbBenchMeta.repsMeta, 8);
+assert.notStrictEqual(dbBenchMeta.carga, 15, 'Should never downgrade load on valid in-range set');
+assert.notStrictEqual(dbBenchMeta.repsMeta, 14, 'Should never inflate reps above range.max on downstep');
+
+/* Boundary Case: Exactly at range.min (6 reps in 6-10 @ 2 RIR) */
+var dbBenchMin = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 6, { rir: 2 }))]);
+assert.strictEqual(dbBenchMin.status, 'manter');
+assert.strictEqual(dbBenchMin.carga, 17.5);
+assert.strictEqual(dbBenchMin.repsMeta, 7);
+
+/* Boundary Case: Exactly at range.max (10 reps in 6-10 @ 2 RIR) */
+var dbBenchMax = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 10, { rir: 2 }))]);
+assert.strictEqual(dbBenchMax.status, 'subir');
+assert.strictEqual(dbBenchMax.carga, 20.0);
+assert.strictEqual(dbBenchMax.repsMeta, 6);
+
+/* Boundary Case: Above range.max (11 reps in 6-10 @ 2 RIR) */
+var dbBenchAbove = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 11, { rir: 2 }))]);
+assert.strictEqual(dbBenchAbove.status, 'subir');
+assert.strictEqual(dbBenchAbove.carga, 20.0);
+
+/* Boundary Case: Below range.min single session (5 reps in 6-10 @ 2 RIR) -> maintain & seek range.min */
+var dbBenchUnder1 = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 5, { rir: 2 }))]);
+assert.strictEqual(dbBenchUnder1.status, 'manter');
+assert.strictEqual(dbBenchUnder1.carga, 17.5);
+assert.strictEqual(dbBenchUnder1.repsMeta, 6);
+
+/* Boundary Case: Below range.min sustained 2 sessions in 8-12 @ 2 RIR (50kg x 6 reps) -> reduce to 45kg x 10 */
+var reducePlan812 = plan('Supino barra R1', '8-12', 3, 'barra', 5);
+var reduceMeta812 = meta(reducePlan812, [
+  session(1, '2026-08-01', reducePlan812.n, sets(3, 50, 6, { rir: 2 })),
+  session(2, '2026-08-03', reducePlan812.n, sets(3, 50, 6, { rir: 2 }))
+]);
+assert.strictEqual(reduceMeta812.status, 'reduzir');
+assert.strictEqual(reduceMeta812.carga, 45);
+assert.strictEqual(reduceMeta812.repsMeta, 10);
+
+/* Boundary Case: Below range.min sustained 2 sessions in 6-10 @ 2 RIR (17.5kg x 4 reps) -> reduce to 15kg x 10 */
+var dbBenchUnder2 = meta(dbBench, [
+  session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 4, { rir: 2 })),
+  session(2, '2026-08-03', dbBench.n, sets(3, 17.5, 4, { rir: 2 }))
+]);
+assert.strictEqual(dbBenchUnder2.status, 'reduzir');
+assert.strictEqual(dbBenchUnder2.carga, 15.0);
+assert.strictEqual(dbBenchUnder2.repsMeta, 10);
+
+/* Boundary Case: Fractional increment (e.g. 1.25kg) */
+var microPlan = plan('Desenvolvimento halteres', '8-12', 3, 'halter', 1.25);
+var microMeta1 = meta(microPlan, [session(1, '2026-08-01', microPlan.n, sets(3, 12.5, 8, { rir: 2 }))]);
+assert.strictEqual(microMeta1.status, 'manter');
+assert.strictEqual(microMeta1.carga, 12.5);
+assert.strictEqual(microMeta1.repsMeta, 9);
+var microMetaMax = meta(microPlan, [session(1, '2026-08-01', microPlan.n, sets(3, 12.5, 12, { rir: 2 }))]);
+assert.strictEqual(microMetaMax.status, 'subir');
+assert.strictEqual(microMetaMax.carga, 13.75);
+
+/* Boundary Case: Bodyweight / Zero increment (inc = 0) */
+var bodyweightPlan = plan('Barra fixa', '6-10', 3, 'corporal', 0);
+var bwMeta1 = meta(bodyweightPlan, [session(1, '2026-08-01', bodyweightPlan.n, sets(3, 0, 6, { rir: 2 }))]);
+assert.strictEqual(bwMeta1.status, 'manter');
+assert.strictEqual(bwMeta1.carga, 0);
+assert.strictEqual(bwMeta1.repsMeta, 7);
+
+/* 20-Combination Matrix across rep ranges (4-6, 6-10, 8-12, 10-15, 12-15) and RIR targets (0, 1, 2, 3) */
+var matrixRanges = ['4-6', '6-10', '8-12', '10-15', '12-15'];
+var matrixRIRs = [0, 1, 2, 3];
+var matrixLoads = { '4-6': 80, '6-10': 30, '8-12': 45, '10-15': 50, '12-15': 50 };
+var matrixIncs = { '4-6': 5, '6-10': 2.5, '8-12': 5, '10-15': 2.5, '12-15': 2.5 };
+
+matrixRanges.forEach(function (rStr) {
+  var parsed = P.parseRange(rStr);
+  matrixRIRs.forEach(function (targetRir) {
+    var p = plan('Matrix ' + rStr, rStr, 3, 'maquina', matrixIncs[rStr]);
+    p.progressao = { targetRir: targetRir };
+    var weight = matrixLoads[rStr];
+
+    // Intermediate reps (at min): maintains load and advances rep target
+    var mMin = meta(p, [session(1, '2026-08-01', p.n, sets(3, weight, parsed.min, { rir: targetRir }))]);
+    assert.strictEqual(mMin.status, 'manter', 'Matrix ' + rStr + ' @ RIR ' + targetRir + ' should maintain at min reps');
+    assert.strictEqual(mMin.carga, weight);
+    assert.strictEqual(mMin.repsMeta, parsed.min + 1, 'Matrix ' + rStr + ' @ RIR ' + targetRir + ' should prescribe minReps + 1');
+
+    // Max reps: advances load by 1 increment
+    var mMax = meta(p, [session(1, '2026-08-01', p.n, sets(3, weight, parsed.max, { rir: targetRir }))]);
+    assert.strictEqual(mMax.status, 'subir', 'Matrix ' + rStr + ' @ RIR ' + targetRir + ' should advance load at max reps');
+    assert.strictEqual(mMax.carga, weight + matrixIncs[rStr], 'Matrix ' + rStr + ' @ RIR ' + targetRir + ' load should advance by increment');
+    assert(mMax.repsMeta >= parsed.min, 'Matrix ' + rStr + ' @ RIR ' + targetRir + ' repsMeta should be >= range.min');
+  });
+});
+
+/* Tier 4 Scenario: Multi-Session Double Progression Lifecycle */
+var cyclePlan = plan('Supino inclinado c/ halteres', '8-12', 3, 'halter', 2);
+var cycleHistory = [];
+
+// Session 1: Baseline 24kg x 8 @ 2 RIR
+cycleHistory.push(session(1, '2026-08-01', cyclePlan.n, sets(3, 24, 8, { rir: 2 })));
+var c1 = meta(cyclePlan, cycleHistory);
+assert.strictEqual(c1.status, 'manter');
+assert.strictEqual(c1.carga, 24);
+assert.strictEqual(c1.repsMeta, 9);
+
+// Session 2: 24kg x 9 @ 2 RIR
+cycleHistory.push(session(2, '2026-08-04', cyclePlan.n, sets(3, 24, 9, { rir: 2 })));
+var c2 = meta(cyclePlan, cycleHistory);
+assert.strictEqual(c2.status, 'manter');
+assert.strictEqual(c2.carga, 24);
+assert.strictEqual(c2.repsMeta, 10);
+
+// Session 3: 24kg x 10 @ 2 RIR
+cycleHistory.push(session(3, '2026-08-07', cyclePlan.n, sets(3, 24, 10, { rir: 2 })));
+var c3 = meta(cyclePlan, cycleHistory);
+assert.strictEqual(c3.status, 'manter');
+assert.strictEqual(c3.carga, 24);
+assert.strictEqual(c3.repsMeta, 11);
+
+// Session 4: 24kg x 12 @ 2 RIR -> Hits ceiling, triggers load progression to 26kg
+cycleHistory.push(session(4, '2026-08-10', cyclePlan.n, sets(3, 24, 12, { rir: 2 })));
+var c4 = meta(cyclePlan, cycleHistory);
+assert.strictEqual(c4.status, 'subir');
+assert.strictEqual(c4.carga, 26);
+assert.strictEqual(c4.repsMeta, 9);
+
 console.log('progressao.test.js: OK');

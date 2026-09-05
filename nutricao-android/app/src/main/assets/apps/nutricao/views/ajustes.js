@@ -458,6 +458,7 @@ function confirmWipeAll() {
   habits = {};
   water = {};
   profile = load(LS.p, { kcal: 2200, p: 120, c: 250, g: 70, peso: 75, altura: 175, idade: 30, sexo: 'm', atividade: 1.4, metaMetodo: 'manual', metaAgua: 3000 });
+  if (typeof syncNutritionNative === 'function') syncNutritionNative();
   if (typeof closeModal === 'function') closeModal();
   toast('Dados apagados');
   render();

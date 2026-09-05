@@ -1,7 +1,7 @@
 /* apps/nutricao/logic.js — cálculos do dia, toast e uid */
 /* ============ CALCULOS ============ */
-const dayMeals=(d=today())=>meals.filter(m=>m.date===d);
-const dayTotals=(d=today())=>{
+const dayMeals=(d = (typeof getActiveDate === 'function' ? getActiveDate() : today()))=>meals.filter(m=>m.date===d);
+const dayTotals=(d = (typeof getActiveDate === 'function' ? getActiveDate() : today()))=>{
   const t={kcal:0,p:0,c:0,g:0};
   dayMeals(d).forEach(m=>m.itens.forEach(i=>{
     t.kcal+=i.kcal||0;t.p+=i.proteina_g||0;t.c+=i.carbo_g||0;t.g+=i.gordura_g||0;
@@ -37,4 +37,3 @@ if (typeof globalThis !== 'undefined') {
   globalThis.dayTotals = dayTotals;
   globalThis.horaNow = horaNow;
 }
-

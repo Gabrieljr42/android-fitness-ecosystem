@@ -59,10 +59,13 @@ function renderMaratona(){
     (isCurrent ? ' · <b>semana atual</b>' : (futurePlanned ? ' · planejada' : ' · passada')) + '</div></div></div>';
 
   // Navegação de semanas
-  h += '<div class="mf-qrow" style="grid-template-columns:auto 1fr auto;margin-bottom:10px">' +
+  h += '<div class="mf-qrow" style="grid-template-columns:auto 1fr auto;margin-bottom:8px">' +
     '<button class="mf-tool" id="marPrev" ' + (wk.week <= 1 ? 'disabled' : '') + '>‹ Anterior</button>' +
     '<button class="mf-tool" id="marToday"' + (isCurrent ? ' disabled' : '') + '>Ir para hoje</button>' +
     '<button class="mf-tool" id="marNext" ' + (wk.week >= MARATONA_PLAN.length ? 'disabled' : '') + '>Próxima ›</button></div>';
+
+  h += '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
+    '<button class="rtag" id="marStravaSync" style="cursor:pointer;padding:4px 10px;background:rgba(252,76,2,0.15);color:#fc4c02;border:1px solid rgba(252,76,2,0.3)">🟠 Sincronizar Strava</button></div>';
 
   /* Histórico/aderência do plano vive na seção Progresso da aba Corrida;
      este render fica exclusivo da visão "Semana". */
@@ -249,6 +252,40 @@ function bindMaratona(){
   if (next) next.onclick = function(){ if (marWeekNum == null) { var c = maratonaWeekForDate(todayISO()); marWeekNum = c ? c.week : 1; } if (marWeekNum < MARATONA_PLAN.length) { marWeekNum++; render(); } };
   var todayBtn = document.getElementById('marToday');
   if (todayBtn) todayBtn.onclick = function(){ marWeekNum = null; render(); };
+
+  var marStrava = document.getElementById('marStravaSync');
+  if (marStrava) {
+    marStrava.onclick = function(){
+      dlg({
+        title: 'Sincronizar Strava',
+        sub: 'Cole o JSON de atividades do Strava para atualizar o plano da maratona:',
+        input: true,
+        value: '',
+        ph: '[{"id": 12345, "name": "Longão", "distance": 15000, "moving_time": 5400}]',
+        ok: 'Importar',
+        onOk: function(val){
+          if (!val || !String(val).trim()) {
+            toast('Nenhuma atividade informada.');
+            return;
+          }
+          try {
+            var acts = JSON.parse(String(val).trim());
+            if (!Array.isArray(acts)) acts = [acts];
+            var res = typeof syncStravaActivities === 'function' ? syncStravaActivities(acts) : { ok: false, error: 'NO_MODULE' };
+            if (res.ok) {
+              if (typeof celebrate === 'function') celebrate();
+              toast('Maratona sincronizada: ' + res.importedCount + ' importada(s), ' + res.duplicatesCount + ' duplicada(s). 🏃');
+              render();
+            } else {
+              toast('Erro ao sincronizar: ' + (res.error || 'falha'));
+            }
+          } catch(e) {
+            toast('JSON inválido de atividades Strava.');
+          }
+        }
+      });
+    };
+  }
 
   var d = state.draft;
   document.querySelectorAll('[data-marassoc]').forEach(function(sel){

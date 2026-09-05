@@ -41,14 +41,58 @@ function weekCount(){
   mon.setDate(now.getDate()-dow); mon.setHours(0,0,0,0);
   return state.sessions.filter(function(s){ return new Date(s.date+'T00:00:00')>=mon; }).length;
 }
+var INACTIVITY_TIMEOUT_MS = 3 * 3600 * 1000; // 3 horas (10.800.000 ms)
+
+function saveDraft(){
+  if(typeof save === 'function') return save();
+  return false;
+}
+
+function resetDraftDueToInactivity(){
+  if(typeof state === 'undefined' || !state) return;
+  state.draft = {
+    day: typeof nextDay === 'function' ? nextDay() : 'A',
+    date: typeof todayISO === 'function' ? todayISO() : null,
+    dateExplicit: false,
+    entries: {},
+    warmupMode: {},
+    startedAt: null,
+    lastActiveAt: null,
+    sessionMode: 'normal',
+    unilateralPending: null
+  };
+  if(typeof mfNotes !== 'undefined') mfNotes = {};
+  if(typeof kbdReset === 'function') kbdReset();
+  if(typeof hideRest === 'function') hideRest();
+  saveDraft();
+}
+
+function checkDraftInactivity(now){
+  if(typeof state === 'undefined' || !state || !state.draft) return false;
+  var d = state.draft;
+  var anchorTime = d.lastActiveAt || d.startedAt;
+  var hasEntries = d.entries && Object.keys(d.entries).length > 0;
+  if(!anchorTime && !hasEntries) return false;
+  var currentTime = (typeof now === 'number' && isFinite(now)) ? now : Date.now();
+  if(anchorTime && (currentTime - anchorTime > INACTIVITY_TIMEOUT_MS)){
+    resetDraftDueToInactivity();
+    return true;
+  }
+  return false;
+}
+
 function ensureDraft(){
-  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), dateExplicit:false, entries:{}, warmupMode:{}, startedAt:null, sessionMode:'normal', unilateralPending:null};
+  if(typeof checkDraftInactivity === 'function') checkDraftInactivity();
+  if(!state.draft || !state.draft.day) state.draft={day:nextDay(), date:todayISO(), dateExplicit:false, entries:{}, warmupMode:{}, startedAt:null, lastActiveAt:null, sessionMode:'normal', unilateralPending:null};
   if(!state.draft.date) state.draft.date=todayISO();
   if(state.draft.dateExplicit===undefined) state.draft.dateExplicit=false;
   if(!state.draft.warmupMode) state.draft.warmupMode={};
+  if(state.draft.startedAt===undefined) state.draft.startedAt=null;
+  if(state.draft.lastActiveAt===undefined) state.draft.lastActiveAt=null;
   if(state.draft.sessionMode!=='curto') state.draft.sessionMode='normal';
   if(state.draft.unilateralPending===undefined) state.draft.unilateralPending=null;
   if(state.draft.date < todayISO() && !Object.keys(state.draft.entries||{}).length){
     state.draft.date = todayISO(); // não deixa a data travada num dia velho quando não há nada lançado ainda
   }
 }
+

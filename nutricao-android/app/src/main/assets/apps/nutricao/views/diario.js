@@ -1,6 +1,9 @@
 /* apps/nutricao/views/diario.js — Histórico de 7 dias e Médias de Consumo */
 
 function renderDiario(main) {
+  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const activeIsToday = activeDate === today();
+  const activeDateName = activeIsToday ? 'hoje' : 'dia selecionado';
   const ds = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
@@ -25,7 +28,7 @@ function renderDiario(main) {
       </div>`;
   }).join('');
 
-  const totHoje = dayTotals();
+  const totAtivo = dayTotals(activeDate);
   const media7 = Math.round(ds.reduce((a, d) => a + dayTotals(d).kcal, 0) / 7);
 
   main.innerHTML = `
@@ -46,16 +49,16 @@ function renderDiario(main) {
       <div class="l">Média 7d</div>
     </div>
     <div class="macro p">
-      <div class="v">${fmt(totHoje.p)}g</div>
-      <div class="l">Proteína hoje</div>
+      <div class="v">${fmt(totAtivo.p)}g</div>
+      <div class="l">Proteína ${activeDateName}</div>
     </div>
     <div class="macro c">
-      <div class="v">${fmt(totHoje.c)}g</div>
-      <div class="l">Carbo hoje</div>
+      <div class="v">${fmt(totAtivo.c)}g</div>
+      <div class="l">Carbo ${activeDateName}</div>
     </div>
     <div class="macro g">
-      <div class="v">${fmt(totHoje.g)}g</div>
-      <div class="l">Gordura hoje</div>
+      <div class="v">${fmt(totAtivo.g)}g</div>
+      <div class="l">Gordura ${activeDateName}</div>
     </div>
   </div>
 
@@ -71,7 +74,7 @@ function renderDiario(main) {
       const count = dayMeals(d).length;
 
       return `
-        <div class="meal">
+        <div class="meal" role="button" tabindex="0" title="Abrir ${formattedDate}" onclick="abrirDiaHistorico('${d}')">
           <div class="dot" style="background:${over ? 'var(--status-danger)' : '#ffffff'}"></div>
           <div class="info">
             <div class="nome" style="display:flex;align-items:center;gap:6px">
@@ -86,4 +89,11 @@ function renderDiario(main) {
   </div>`;
 }
 
+function abrirDiaHistorico(date) {
+  if (typeof setActiveDate === 'function' && !setActiveDate(date, false)) return;
+  state.tab = 'hoje';
+  render();
+}
+
 window.renderDiario = renderDiario;
+window.abrirDiaHistorico = abrirDiaHistorico;
