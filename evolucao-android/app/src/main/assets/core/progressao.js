@@ -399,7 +399,21 @@
     });
     candidates.sort(function (a, b) { return (a.error - b.error) || (a.distance - b.distance); });
     var chosen = candidates[0] || candidateFor(targetScore, currentWeight, range, profile.targetRir, inc, profile, currentWeight, 0);
-    if (delta > progressThreshold && inc > 0) {
+    /* Salto de carga pelo modelo só em dois casos:
+       a) o atleta já encostou no topo da faixa com a carga atual (reps
+          previstas @ RIR-alvo >= range.max) — dupla progressão clássica;
+       b) sobra grande de RIR (média executada >= alvo + 3): capacidade bem
+          acima do prescrito autoriza progredir mesmo abaixo do teto.
+       Sem isto, 11 reps em 8-12 @ 2 RIR (capacidade ~2% acima do esperado,
+       sobra 0) subia a carga em vez de pedir as 12 reps. */
+    var stayCandidate = candidateFor(targetScore, currentWeight, range, profile.targetRir, inc, profile, currentWeight, 0);
+    var atTopAtSameWeight = !!stayCandidate && stayCandidate.predicted >= range.max;
+    var rirSurplus = 0;
+    if (latestEvidence.rirSamples.length) {
+      rirSurplus = average(latestEvidence.rirSamples.map(function (set) { return rirFor(set); })) - profile.targetRir;
+    }
+    var strongReserve = rirSurplus >= 3;
+    if (delta > progressThreshold && inc > 0 && (atTopAtSameWeight || strongReserve)) {
       var upward = candidates.filter(function (candidate) {
         return candidate.step > 0 && candidate.reps >= range.min && candidate.reps <= (profile.expandRepRange ? range.max + 4 : range.max);
       }).sort(function (a, b) { return (a.distance - b.distance) || (a.error - b.error); });
