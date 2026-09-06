@@ -19,7 +19,7 @@ console.log('================================================================\n'
 const projectRoot = path.resolve(__dirname, '../../../../..');
 const evolucaoDir = path.resolve(projectRoot, 'evolucao-android');
 const nutricaoDir = path.resolve(projectRoot, 'nutricao-android');
-const kernelDir = path.resolve(projectRoot, 'kernel');
+const kernelDir = path.resolve(projectRoot, 'evolucao-android/app/src/main/assets/kernel');
 
 // Helper to extract CSS variable declarations
 function extractCssTokens(cssContent) {
@@ -45,7 +45,7 @@ const kernelThemePath = path.resolve(kernelDir, 'theme.css');
 const evolucaoThemePath = path.resolve(evolucaoDir, 'app/src/main/assets/kernel/theme.css');
 const nutricaoThemePath = path.resolve(nutricaoDir, 'app/src/main/assets/apps/nutricao/theme.css');
 
-assert(fs.existsSync(kernelThemePath), 'kernel/theme.css must exist');
+assert(fs.existsSync(kernelThemePath), 'evolucao kernel/theme.css must exist');
 assert(fs.existsSync(evolucaoThemePath), 'evolucao theme.css must exist');
 assert(fs.existsSync(nutricaoThemePath), 'nutricao theme.css must exist');
 
