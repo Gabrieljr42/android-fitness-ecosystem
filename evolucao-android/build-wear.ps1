@@ -63,7 +63,10 @@ try {
 
     if ($WithTests -and -not $WearOnly) {
         Write-Host "Executando regressão JavaScript completa..."
-        & node .\app\src\test\js\run_all.js
+        # Node não precisa da unidade temporária (só o Gradle/JDK têm problema
+        # com o acento no caminho): roda pelo caminho real, pois vários testes
+        # sobem até a raiz do repo via __dirname e quebrariam sob R:\.
+        & node (Join-Path $projectRoot 'app\src\test\js\run_all.js')
         if ($LASTEXITCODE -ne 0) { throw "A regressão JavaScript falhou com código $LASTEXITCODE." }
     }
 } finally {
