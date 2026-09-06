@@ -1,6 +1,6 @@
 # Deployment, operations, and troubleshooting
 
-There is no store release pipeline, server, or CI in the repo. "Deployment" is sideloading locally-signed debug APKs.
+There is no store release pipeline or server in the repo. "Deployment" is sideloading locally-signed debug APKs. CI (`.github/workflows/ci.yml`) runs the Node suites + Gradle unit tests on push/PR.
 
 ## Environments and outputs
 
@@ -45,4 +45,4 @@ Wear-specific issues (pairing, Data Layer drain, conflicts) have their own guide
 ## What is procedure vs. recommendation
 
 - **Existing procedure:** portable `_toolchain`, Gradle flags, install order, `test.ps1` gates, inexact 05:40 briefing, read-only providers — all from scripts/manifests/docs above.
-- **Recommendations (not in repo):** keep versioned APK copies + SHA-256 log; add CI running `test.ps1` + Gradle unit tests; add a JS linter; use separate release signing before any store listing; back up `debug.keystore` offline.
+- **Recommendations (not in repo):** keep versioned APK copies + SHA-256 log; add a JS linter; use separate release signing before any store listing; back up `debug.keystore` offline.

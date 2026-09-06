@@ -1,7 +1,8 @@
 'use strict';
-/* Gera apps/evolucao/maratonaplano.js a partir do JSON extraído do xlsx.
+/* Gera evolucao-android/app/src/main/assets/apps/evolucao/maratonaplano.js
+   a partir do JSON extraído do xlsx.
    Fonte autoritativa: Plano_Maratona_BH_2027.xlsx (aba Plano Semanal +
-   Visão Geral + Guia). Executar: node _plan/gen_maratona.js */
+   Visão Geral + Guia). Executar a partir da raiz: node tools/marathon-plan/gen_maratona.js */
 const fs = require('fs');
 const path = require('path');
 
@@ -64,7 +65,7 @@ for (const r of guia) {
 
 const js = `/* apps/evolucao/maratonaplano.js — PLANO AUTORITATIVO da Maratona BH 2027.
    GERADO a partir de Plano_Maratona_BH_2027.xlsx (não editar à mão; regenere
-   com _plan/gen_maratona.js). Datas em ISO local (segunda→domingo). */
+   com tools/marathon-plan/gen_maratona.js). Datas em ISO local (segunda→domingo). */
 
 var MARATONA_META = ${JSON.stringify(meta, null, 1)};
 
@@ -152,6 +153,17 @@ function maratonaCumulative(corridas) {
   return rows;
 }
 
+var api = {
+  MARATONA_META: MARATONA_META,
+  MARATONA_PLAN: MARATONA_PLAN,
+  maratonaWeekForDate: maratonaWeekForDate,
+  maratonaWeekByNumber: maratonaWeekByNumber,
+  maratonaActualKm: maratonaActualKm,
+  maratonaLongRunInfo: maratonaLongRunInfo,
+  maratonaAdherence: maratonaAdherence,
+  maratonaCumulative: maratonaCumulative
+};
+
 if (typeof window !== 'undefined') {
   window.MARATONA_META = MARATONA_META;
   window.MARATONA_PLAN = MARATONA_PLAN;
@@ -162,9 +174,16 @@ if (typeof window !== 'undefined') {
   window.maratonaAdherence = maratonaAdherence;
   window.maratonaCumulative = maratonaCumulative;
 }
-`;
 
-const out = path.resolve(__dirname, '..', 'evolucao-android', 'app', 'src', 'main', 'assets', 'apps', 'evolucao', 'maratonaplano.js');
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = api;
+}
+`;
+// Nota: a cauda acima (objeto api + guard window + export Node) reproduz o
+// arquivo canônico byte a byte — o export Node é dependência viva de
+// strava.test.js via require(). Não remover.
+
+const out = path.resolve(__dirname, '..', '..', 'evolucao-android', 'app', 'src', 'main', 'assets', 'apps', 'evolucao', 'maratonaplano.js');
 fs.writeFileSync(out, js, 'utf8');
 console.log('Gerado:', out, '(' + weeks.length + ' semanas)');
 console.log('Início:', meta.startDate, '· Prova:', meta.raceDate, '· Checkpoints:', meta.checkpoints.map(c => 'S' + c.week).join(','));

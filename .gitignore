@@ -11,6 +11,15 @@ build/
 *.dex
 *.class
 
+# Caches do Gradle, SDK local e artefatos de build reproduzíveis
+**/.gradle/
+**/local.properties
+*.bin
+
+# SDKs vendorizados — usar o SDK do sistema ou o _toolchain/ portátil
+# (ver docs/development.md). Não commitar binários adb/fastboot no repo.
+platform-tools/
+
 # Pastas temporárias e backups monolíticos
 _temp_kernel/
 _temp_views/
