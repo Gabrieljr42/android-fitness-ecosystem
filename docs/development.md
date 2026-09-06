@@ -44,7 +44,7 @@ No JS formatter, linter, or type-checker is configured in the repo — match the
 
 **Add a Coach bridge op:** add to `BridgeProtocol.allowedOperations` + parser in `bridge/PayloadParsers.kt` + handler in `MainActivity.kt` + `main.js` caller + JUnit boundary test + `engine`/`ui-smoke` if UI-visible.
 
-**Add a progression rule:** edit `core/progressao.js` + cases in `progressao.test.js` (cover RIR path, legacy path, short session, warm-up exclusion) — the build blocks on failure.
+**Add a progression rule:** edit `evolucao-android/app/src/main/assets/core/progressao.js` + cases in `evolucao-android/app/src/test/js/progressao.test.js` (cover RIR path, legacy path, short session, warm-up exclusion) — the build blocks on failure.
 
 ## Testing strategy and gaps
 

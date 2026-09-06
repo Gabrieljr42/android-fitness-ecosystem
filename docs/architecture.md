@@ -22,7 +22,7 @@ flowchart TD
     A[MainActivity] --> Wv[WebView - local assets only]
     Wv --> SH[index.html shell]
     SH --> K[kernel - db, fmt, ui, charts, icons, notif]
-    SH --> CO[core - progressao.js / gemini.js / engine.js]
+    SH --> CO[core por app: progressao.js na Evolução / gemini.js na NutriTrack / engine.js no Coach]
     SH --> V[views - treino, corrida, hoje, diario, briefing]
     K <--> LS[(localStorage / SQLite)]
     V <--> B[Native bridge - JavascriptInterface / CoachNative]
@@ -41,7 +41,7 @@ flowchart TD
 | `evolucao-android/app/src/test/js/` | 41 Node test files, runner `run_all.js`. `app/src/test/java/` has Room/Robolectric tests (run via Gradle). |
 | `nutricao-android/` | NutriTrack app. No Gradle — manual `build.ps1` (`aapt2` → `javac` → `d8` → `zipalign` → `apksigner`). |
 | `nutricao-android/app/src/main/java/com/nutricao/app/` | `MainActivity.java` (WebView + `AndroidBridge`, camera/audio/alarms), `NutritionProvider.java`, `NotificationReceiver.java`. |
-| `nutricao-android/app/src/main/assets/` | `core/gemini.js` (all Gemini flows), `apps/nutricao/` (`estado.js`, `referencia.js`, `logic.js`, `nav.js`, `views/hoje|diario|alimentos|metas|ajustes.js`). |
+| `nutricao-android/app/src/main/assets/` | `apps/nutricao/index.html` shell, `apps/nutricao/` (`estado.js`, `referencia.js`, `logic.js`, `nav.js`, `views/hoje\|diario\|alimentos\|metas\|ajustes.js`), `core/gemini.js` (all Gemini flows). `kernel/{fmt,notif,ui}.js` exist only as test harness for 3 suites — the app itself uses `estado.js`/`logic.js`/`nav.js` (`escapeHtml`, `toast`, `openModal`). |
 | `nutricao-android/app/src/test/js/` | 31 Node test files, runner `run_all.js`. |
 | `coach-android/` | Coach app. Single-module Gradle (`app`). Kotlin + local `assets/www/` UI. |
 | `coach-android/app/src/main/java/com/coach/app/` | `MainActivity.kt` (bridge host), `domain/` (contracts, snapshot, logical day), `data/` (`CoachDatabase.kt`, `Schema.kt`, `SnapshotStore.kt`), `health/`, `bridge/`, `ai/` (gateway, validator, request builder), `security/` (Keystore), `notify/` (05:40 briefing). |

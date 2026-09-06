@@ -60,18 +60,27 @@ evolucao-android/
                 │   ├── icons.js           # Ícones SVG e renderizador anatômico
                 │   ├── charts.js          # Gráficos SVG leves
                 │   ├── ui.js              # Modais, diálogos e toasts
-                │   └── notif.js           # Gerenciamento de permissões de notificação
+                │   ├── notif.js           # Gerenciamento de permissões de notificação
+                │   └── theme.css          # Tokens de design e tema global
                 └── apps/evolucao/
                     ├── dados.js           # Mapeamento de descansos e metas padrão
                     ├── logic.js           # Lógica de sessões, draft e histórico
+                    ├── strava.js          # Importação e deduplicação de atividades Strava
+                    ├── peso.js            # Agregação de peso corporal (diária/semanal)
+                    ├── maratonaplano.js   # Plano Maratona BH 2027 (GERADO — ver tools/marathon-plan/)
+                    ├── wear-sync.js       # Adaptador JS do sync telefone↔Wear
+                    ├── body-visualizer.js # Visualizador anatômico vetorial
                     ├── exercicios/
                     │   ├── nomes.js       # Normalização de nomes, aliases e IDs canônicos
                     │   └── fotos.js       # Ilustrações base64 dos exercícios
                     └── views/
                         ├── treino.js      # Interface de treino, teclado e resumo
+                        ├── corrida.js     # Registro e histórico de corridas
+                        ├── maratona.js    # Dashboard do plano de maratona
                         ├── progresso.js   # Dashboard de gráficos e peso
                         ├── historico.js   # Lista detalhada de treinos anteriores
-                        └── ficha.js       # Editor da rotina A/B/C e configurações
+                        ├── ficha.js       # Editor da rotina A/B/C e configurações
+                        └── ble-diag.js    # Diagnóstico da balança BLE
 ```
 
 ---
