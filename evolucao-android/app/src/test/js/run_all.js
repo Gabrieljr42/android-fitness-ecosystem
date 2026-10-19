@@ -44,6 +44,7 @@ const tests = [
   'm1_challenger2_simulation.test.js',
   'wear_sync.test.js',
   'timer_inactivity.test.js',
+  'active_workout_service.test.js',
   'strava.test.js'
 ];
 

@@ -22,6 +22,10 @@ Aplicativo Android nativo (baseado em WebView de alto desempenho) para controle 
   - Início automático ao concluir uma série.
   - Notificação contínua (*ongoing ticker*) em segundo plano mostrando a contagem regressiva.
   - Alerta sonoro e vibração nativa disparados via Java Bridge (`AndroidBridge`) ao zerar o tempo.
+- **Treino em segundo plano:**
+  - Ao iniciar o treino, um serviço em foreground mantém a sessão com a notificação silenciosa “Treino em andamento”; tocar nela retorna ao app.
+  - O botão Voltar coloca o treino ativo em segundo plano. Concluir, descartar ou atingir a regra existente de mais de 3 horas sem atividade encerra o serviço.
+  - Os registros continuam salvos localmente, e o serviço restaura o horário original se o Android recriar o processo. Encerramento forçado e restrições do fabricante ainda podem interromper a execução.
 - **Dashboard & Histórico:**
   - Anéis de meta semanal e volume total levantado.
   - Gráficos vetoriais (SVG) de carga máxima, 1RM estimado e volume por exercício.
