@@ -211,6 +211,7 @@ console.log('\n--- SUITE 3: alimentos - aspas/tags em nomes nao viram handlers -
   assert(out.includes('data-add-alim='), 'usa delegacao por indice');
   assert(out.includes('X&quot; onclick=&quot;alert(1)'), 'nome hostil aparece escapado');
 
+  h.byId.busca.value = 'Whey'; // Salvos aparecem no catálogo quando pesquisados.
   h.ctx.filtrarRef();
   const refOut = h.byId.refList.innerHTML;
   if (process.env.R5_DEBUG) console.log('[ref list]\n' + refOut.slice(0, 1500));

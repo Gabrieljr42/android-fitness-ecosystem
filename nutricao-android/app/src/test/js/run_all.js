@@ -4,6 +4,8 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 
 const tests = [
+  'launch.test.js',
+  'redesign_ui.test.js',
   'gemini_merge.test.js',
   'tdee_macros.test.js',
   'gemini_text.test.js',
@@ -11,6 +13,7 @@ const tests = [
   'habits_water.test.js',
   'meal_plan_custom_food.test.js',
   'notifications.test.js',
+  'notif_permission_status.test.js',
   'activity_tdee.test.js',
   'gemini_activity.test.js',
   'evolucao_workout_bridge.test.js',

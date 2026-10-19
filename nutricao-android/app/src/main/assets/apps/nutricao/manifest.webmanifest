@@ -1,16 +1,16 @@
 {
-  "name": "Evolução — Treino",
-  "short_name": "Evolução",
-  "description": "Acompanhe sua evolução na academia: cargas, séries, descanso e progresso.",
+  "name": "NutriTrack — Nutrição",
+  "short_name": "NutriTrack",
+  "description": "Registre refeições e acompanhe calorias, macronutrientes e hábitos.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0d13",
-  "theme_color": "#0a0d13",
+  "background_color": "#101510",
+  "theme_color": "#101510",
   "lang": "pt-BR",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "../../icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

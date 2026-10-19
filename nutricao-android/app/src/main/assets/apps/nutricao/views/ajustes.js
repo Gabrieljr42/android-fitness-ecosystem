@@ -9,41 +9,41 @@ const DEFAULT_LEMBRETES = [
 ];
 
 const MENSAGENS_POSITIVAS = [
-  'Hora de nutrir o seu corpo e manter a sua melhor versão em alta! ✨',
-  'Foco na meta! Cada refeição equilibrada é mais um passo rumo à sua evolução. 🚀',
-  'Você está no comando! Que tal uma refeição deliciosa para recarregar as energias? 💪',
-  'Consistência é a chave da vitória. Bora registrar com foco total! 🎯',
-  'Seu corpo agradece todo o cuidado e dedicação de hoje. Bom apetite! 🥗',
-  'Mais um momento para fazer escolhas incríveis e bater suas metas diárias! ⚡',
-  'A disciplina de hoje constrói o resultado de amanhã. Vamos com tudo! 🏆',
-  'Pausa para a sua saúde: nutra o seu corpo com o que ele precisa para brilhar! 🌟',
-  'Energia lá em cima! Registre sua refeição e continue firme na sua jornada. 🔥',
-  'Excelente momento para alimentar seu potencial. Mantenha o ritmo! 💥',
-  'Lembrete positivo: você está indo muito bem. Bora registrar e seguir focado! 👏',
-  'Cuidar de você é a sua melhor prioridade. Aproveite sua refeição! 💚',
-  'Alimente seus sonhos com escolhas saudáveis e consistência! 🥑',
-  'Hora de abastecer a máquina com comida de verdade! Vamos pra cima! 🔋',
-  'Pequenos hábitos diários geram grandes transformações. Foco no objetivo! 📈'
+  'Chegou o horário do seu lembrete de refeição.',
+  'Se quiser, registre sua refeição no NutriTrack.',
+  'Uma pausa para a refeição, no seu tempo.',
+  'Seu lembrete de refeição está aqui.',
+  'Abra o NutriTrack para adicionar uma refeição ao diário.',
+  'Já fez sua refeição? Você pode registrá-la no app.',
+  'Um lembrete para acompanhar suas refeições.',
+  'Quando for conveniente, atualize seu diário alimentar.',
+  'O NutriTrack está disponível para registrar sua refeição.',
+  'Este é o horário que você escolheu para o lembrete.',
+  'Você pode consultar os registros de hoje no app.',
+  'Registre sua refeição quando puder.',
+  'Seu diário alimentar está a um toque.',
+  'Uma pausa para conferir seus registros, se desejar.',
+  'Lembrete programado: acompanhe sua alimentação no app.'
 ];
 
 function obterMensagemPositiva(nomeRefeicao) {
   const n = (nomeRefeicao || '').toLowerCase().trim();
   if (n.includes('água') || n.includes('agua') || n.includes('hidrata')) {
     const msgsAgua = [
-      'Hidratação é poder! Beba um bom copo d’água e sinta sua energia renovada. 💧',
-      'Lembrete de hidratação: seu corpo funcionando em 100%! Beba água agora. 🌊',
-      'Pausa rápida para hidratar o corpo e manter a mente focada! 💦'
+      'Lembrete para beber água ao longo do dia.',
+      'Que tal uma pausa para beber água?',
+      'Você pode registrar sua água no NutriTrack.'
     ];
     return msgsAgua[Math.floor(Math.random() * msgsAgua.length)];
   }
   if (n.includes('creatina')) {
-    return 'Hora da creatina! Força e foco consistentes para os seus treinos diários. ⚡';
+    return 'Lembrete de creatina no horário que você configurou.';
   }
   if (n.includes('pré-treino') || n.includes('pre-treino') || n.includes('pre treino')) {
-    return 'Hora de abastecer o tanque pro treino! Energia máxima e foco total. 🔥';
+    return 'Lembrete de pré-treino no horário que você configurou.';
   }
   if (n.includes('pós-treino') || n.includes('pos-treino') || n.includes('pos treino')) {
-    return 'Recuperação muscular em ação! Nutrientes certos pro seu crescimento. 🥩';
+    return 'Lembrete de pós-treino no horário que você configurou.';
   }
   return MENSAGENS_POSITIVAS[Math.floor(Math.random() * MENSAGENS_POSITIVAS.length)];
 }
@@ -90,8 +90,12 @@ function renderLembretesHtml(list) {
 
 function renderAjustes(main) {
   const lembretes = loadLembretes();
+  const permCard = renderNotifPermCard();
 
   main.innerHTML = `
+  <h1 class="page-title">Ajustes</h1>
+  ${typeof renderAppearanceSettings === 'function' ? renderAppearanceSettings() : ''}
+  ${permCard}
   <!-- API Gemini -->
   <div class="card">
     <h2>API do Gemini (análise de foto &amp; texto)</h2>
@@ -111,7 +115,7 @@ function renderAjustes(main) {
       <h2 style="margin:0">Lembretes &amp; Horários</h2>
       <span class="badge" style="font-size:11px;padding:2px 8px">${lembretes.filter(l => l.ativo).length} ativos</span>
     </div>
-    <p class="small mb8">Configure alertas positivos personalizados para seus horários de refeição e hidratação.</p>
+    <p class="small mb8">Configure lembretes para seus horários de refeição e hidratação.</p>
     
     <div id="lembretesList" class="lembretes-box">
       ${renderLembretesHtml(lembretes)}
@@ -308,6 +312,12 @@ function testarNotificacao() {
   const msg = obterMensagemPositiva(lembreteExemplo.nome);
 
   if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.sendNotification === 'function') {
+    if (typeof AndroidBridge.areNotificationsEnabled === 'function'
+        && !AndroidBridge.areNotificationsEnabled()) {
+      toast('Notificações bloqueadas no sistema — abra as configurações abaixo');
+      render();
+      return;
+    }
     AndroidBridge.sendNotification(titulo, msg);
     if (typeof AndroidBridge.vibrate === 'function') AndroidBridge.vibrate(150);
     toast(`Notificação: "${escapeHtml(msg)}"`);
@@ -317,6 +327,96 @@ function testarNotificacao() {
   } else {
     toast(`Preview: ${escapeHtml(titulo)} — "${escapeHtml(msg)}"`);
   }
+}
+
+/* Card de status de permissão: aparece só quando algo bloqueia os lembretes
+   (notificação negada no sistema ou alarme exato sem permissão no Android 14+).
+   Todos os acessos à ponte são guardados para não quebrar no navegador/testes. */
+function getNotifPermStatus() {
+  const st = { hasBridge: false, notifOk: true, exactOk: true };
+  try {
+    if (typeof AndroidBridge === 'undefined') return st;
+    st.hasBridge = true;
+    if (typeof AndroidBridge.areNotificationsEnabled === 'function') {
+      st.notifOk = !!AndroidBridge.areNotificationsEnabled();
+    } else if (typeof AndroidBridge.hasNotificationPermission === 'function') {
+      st.notifOk = !!AndroidBridge.hasNotificationPermission();
+    }
+    if (typeof AndroidBridge.canScheduleExactAlarms === 'function') {
+      st.exactOk = !!AndroidBridge.canScheduleExactAlarms();
+    }
+  } catch (e) {}
+  return st;
+}
+
+function renderNotifPermCard() {
+  const st = getNotifPermStatus();
+  if (!st.hasBridge || (st.notifOk && st.exactOk)) return '';
+  const rows = [];
+  if (!st.notifOk) {
+    rows.push(`
+      <p class="small mb8">🔕 <b>Notificações bloqueadas</b> no sistema — os lembretes não vão aparecer.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="bigbtn secondary" style="flex:1;min-width:140px" onclick="pedirPermissaoNotificacao()">Pedir permissão</button>
+        <button class="bigbtn secondary" style="flex:1;min-width:140px" onclick="abrirConfigNotificacoes()">Abrir configurações</button>
+      </div>`);
+  }
+  if (!st.exactOk) {
+    rows.push(`
+      <p class="small mb8">⏰ <b>Alarmes exatos desativados</b> (Android 14+) — os lembretes podem atrasar ou não tocar.</p>
+      <button class="bigbtn secondary" style="width:100%" onclick="solicitarAlarmeExato()">Permitir alarmes exatos</button>`);
+  }
+  return `<div class="card" id="notifPermCard" style="border-color:rgba(251,191,36,0.4)">
+    <h2>⚠️ Permissões de lembrete</h2>
+    ${rows.join('<div style="height:8px"></div>')}
+  </div>`;
+}
+
+function pedirPermissaoNotificacao() {
+  try {
+    if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.requestNotificationPermission === 'function') {
+      AndroidBridge.requestNotificationPermission();
+      return;
+    }
+  } catch (e) {}
+  if (typeof enableNotify === 'function') { enableNotify(); return; }
+  if (typeof askNotify === 'function') askNotify();
+}
+
+function abrirConfigNotificacoes() {
+  try {
+    if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.openNotificationSettings === 'function') {
+      AndroidBridge.openNotificationSettings();
+      return;
+    }
+  } catch (e) {}
+  toast('Abra Ajustes do Android → Apps → NutriTrack → Notificações');
+}
+
+function solicitarAlarmeExato() {
+  try {
+    if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.openExactAlarmSettings === 'function') {
+      AndroidBridge.openExactAlarmSettings();
+      return;
+    }
+  } catch (e) {}
+  toast('Abra Ajustes do Android → Apps → NutriTrack → Alarmes e lembretes');
+}
+
+/* Callback invocado pelo MainActivity após o diálogo de permissão do sistema.
+   Se negado permanentemente (sistema nem exibe mais o diálogo), re-renderiza
+   para exibir o card com o botão de configurações. */
+function __nutriNotifPermissionResult(granted, permanentlyDenied) {
+  try {
+    if (!granted && permanentlyDenied) {
+      toast('Permissão negada — ative nas configurações abaixo');
+    } else if (!granted) {
+      toast('Permita as notificações para receber os lembretes');
+    } else {
+      toast('Notificações ativadas ✓');
+    }
+    if (typeof render === 'function') render();
+  } catch (e) {}
 }
 
 /* Monta o objeto de backup. A chave da API NUNCA é exportada: o arquivo vai
@@ -476,6 +576,12 @@ window.abrirModalNovoLembrete = abrirModalNovoLembrete;
 window.salvarNovoLembrete = salvarNovoLembrete;
 window.removerLembrete = removerLembrete;
 window.testarNotificacao = testarNotificacao;
+window.getNotifPermStatus = getNotifPermStatus;
+window.renderNotifPermCard = renderNotifPermCard;
+window.pedirPermissaoNotificacao = pedirPermissaoNotificacao;
+window.abrirConfigNotificacoes = abrirConfigNotificacoes;
+window.solicitarAlarmeExato = solicitarAlarmeExato;
+window.__nutriNotifPermissionResult = __nutriNotifPermissionResult;
 window.doBackup = doBackup;
 window.collectBackupData = collectBackupData;
 window.applyBackupData = applyBackupData;

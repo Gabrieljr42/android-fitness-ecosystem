@@ -1,0 +1,12 @@
+.launch-screen { position: fixed; inset: 0; z-index: 1000; background: #101510; color: #f4f6ef; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: inherit; transition: opacity 180ms ease; }
+.launch-screen.leaving { opacity: 0; pointer-events: none; }
+.launch-screen:focus { outline: none; }
+.launch-mark { width: 120px; height: 120px; color: #c6e59d; margin-bottom: 22px; }
+.launch-mark path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: launch-ring 700ms cubic-bezier(.2,.7,.3,1) forwards; }
+.launch-mark path:nth-child(2) { animation-delay: 60ms; }
+.launch-mark path:nth-child(3) { animation-delay: 120ms; }
+.launch-name { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.6px; }
+.launch-caption { margin-top: 10px; font-size: 13px; color: #b3bea9; }
+.launch-skip { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); background: transparent; color: #b3bea9; min-height: 48px; padding: 12px 24px; font-size: 12px; }
+@keyframes launch-ring { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .launch-screen { transition: none; } .launch-mark path { animation: none; stroke-dashoffset: 0; } }

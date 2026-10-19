@@ -1,8 +1,28 @@
 /* apps/nutricao/views/metas.js — Calculadora Biometria TDEE e Definição de Metas */
 
+let metasEditorOpen = false;
 function renderMetas(main) {
   const tdee = typeof calcTDEE === 'function' ? calcTDEE() : 2380;
   main.innerHTML = `
+  <h1 class="page-title">Metas</h1>
+  <p class="screen-subtitle">Seus valores de referência, reunidos em um só lugar.</p>
+  <section class="card goals-summary">
+    <h2>Meta diária</h2>
+    <div class="goal-stat">${fmt(profile.kcal)} <small>kcal</small></div>
+    <p class="goal-caption">${profile.metaMetodo === 'manual' ? 'Definida manualmente' : 'Calculada pelo gasto diário estimado'}</p>
+    <div class="reference-row"><span>Proteínas</span><b>${fmt(profile.p)} g</b></div>
+    <div class="reference-row"><span>Carboidratos</span><b>${fmt(profile.c)} g</b></div>
+    <div class="reference-row"><span>Gorduras</span><b>${fmt(profile.g)} g</b></div>
+    <button class="reference-row reference-action" onclick="modalMetaAgua()" aria-label="Alterar meta de água"><span>Água</span><b>${((Number(profile.metaAgua) || 3000) / 1000).toLocaleString('pt-BR', {maximumFractionDigits: 2})} L</b></button>
+  </section>
+  <section class="card goals-summary">
+    <h2>Detalhes do balanço</h2>
+    <p class="goal-caption">O saldo líquido desconta o exercício registrado das calorias consumidas.</p>
+    <div class="reference-row"><span>Metabolismo basal estimado</span><b>${fmt(typeof calcBMR === 'function' ? calcBMR() : 0)} kcal</b></div>
+    <div class="reference-row"><span>Gasto diário estimado</span><b>${fmt(tdee)} kcal</b></div>
+  </section>
+  <details class="goal-editor" id="goalEditor" ${metasEditorOpen ? 'open' : ''} ontoggle="metasEditorOpen=this.open">
+  <summary>Editar metas</summary>
   <div class="card">
     <h2>Metas diárias de calorias e macros</h2>
     <div class="seg" id="metSeg">
@@ -70,9 +90,9 @@ function renderMetas(main) {
     </div>`}
 
     <button class="bigbtn primary mt12" onclick="salvarMetas()">Salvar metas</button>
-  </div>`;
+  </div></details>`;
 
-  window.setMetodo = m => { profile.metaMetodo = m; save(LS.p, profile); render(); };
+  window.setMetodo = m => { metasEditorOpen = true; profile.metaMetodo = m; save(LS.p, profile); render(); };
   window.salvarMetas = () => {
     if (profile.metaMetodo === 'manual') {
       profile.kcal = parseFloat($('#mKcal').value) || 2000;
@@ -93,6 +113,7 @@ function renderMetas(main) {
     }
     save(LS.p, profile);
     toast('Metas salvas!');
+    metasEditorOpen = false;
     render();
   };
 }

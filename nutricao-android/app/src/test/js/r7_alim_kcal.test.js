@@ -82,6 +82,24 @@ function makeCtx(seedAlims) {
 
 let passed = 0;
 
+// O primeiro resultado filtrado deve abrir o alimento exibido, mesmo com salvos antes do catálogo.
+{
+  const h = makeCtx([{nome:'Meu café',porcao_g:100,kcal:80,custom:true}]);
+  const row = createMockElement();
+  row.setAttribute('data-pick-alim','0');
+  const add = createMockElement('button');
+  add.setAttribute('data-add-alim','0');
+  h.byId.refList.querySelectorAll = selector => selector === '[data-pick-alim]' ? [row] : selector === '[data-add-alim]' ? [add] : [];
+  h.byId.busca.value = 'Frango grelhado';
+  h.ctx.filtrarRef();
+  row.click();
+  assert(h.byId.modal.innerHTML.includes('<h2>Frango grelhado (peito)</h2>'));
+  h.byId.modal.innerHTML = '';
+  add.onclick({stopPropagation(){}});
+  assert(h.byId.modal.innerHTML.includes('<h2>Frango grelhado (peito)</h2>'));
+  passed += 2;
+}
+
 // -----------------------------------------------------------------------------
 console.log('\n--- SUITE 1: alimento salvo por IA (sem custom) — sem inflação ---');
 {

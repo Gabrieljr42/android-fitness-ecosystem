@@ -89,11 +89,26 @@ if(-not (Test-Path $sdkmanager)){
 $env:ANDROID_HOME = $sdk
 $env:ANDROID_SDK_ROOT = $sdk
 
-Say "Instalando pacotes do SDK (aceitando licencas)... (~180 MB)"
-$acc = ("y`r`n" * 60)
-$acc | & $sdkmanager --sdk_root="$sdk" --licenses | Out-Null
-& $sdkmanager --sdk_root="$sdk" "platform-tools" "platforms;$PLATFORM" "build-tools;$BUILDTOOLS"
-if($LASTEXITCODE -ne 0){ throw "sdkmanager falhou ao instalar pacotes." }
+$requiredSdkFiles = @(
+  "platform-tools\adb.exe",
+  "platforms\$PLATFORM\android.jar",
+  "build-tools\$BUILDTOOLS\aapt2.exe",
+  "build-tools\$BUILDTOOLS\zipalign.exe",
+  "build-tools\$BUILDTOOLS\apksigner.bat",
+  "build-tools\$BUILDTOOLS\d8.bat",
+  "build-tools\$BUILDTOOLS\lib\d8.jar",
+  "build-tools\$BUILDTOOLS\lib\apksigner.jar"
+)
+$missingSdkFiles = @($requiredSdkFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $sdk $_) -PathType Leaf) })
+if ($missingSdkFiles.Count -eq 0) {
+  Say "Usando pacotes do SDK ja instalados (build offline)."
+} else {
+  Say "Instalando pacotes do SDK (aceitando licencas)... (~180 MB)"
+  $acc = ("y`r`n" * 60)
+  $acc | & $sdkmanager --sdk_root="$sdk" --licenses | Out-Null
+  & $sdkmanager --sdk_root="$sdk" "platform-tools" "platforms;$PLATFORM" "build-tools;$BUILDTOOLS"
+  if($LASTEXITCODE -ne 0){ throw "sdkmanager falhou ao instalar pacotes." }
+}
 
 $bt         = Join-Path $sdk "build-tools\$BUILDTOOLS"
 $androidJar = Join-Path $sdk "platforms\$PLATFORM\android.jar"
