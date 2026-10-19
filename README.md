@@ -1,5 +1,12 @@
 # Android Fitness Ecosystem: Evolução, NutriTrack, Coach
 
+[![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white)](https://developer.android.com/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Java](https://img.shields.io/badge/Java-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://www.java.com/)
+[![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75C4?style=flat&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Health Connect](https://img.shields.io/badge/Health%20Connect-4285F4?style=flat&logo=google&logoColor=white)](https://developer.android.com/health-and-fitness/guides/health-connect)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Three local-first Android WebView apps for strength training, nutrition, and daily coaching. No backend. Data stays on device except for direct Google Gemini calls made with the user's own API key.
 
 | App | Package | Folder | What it does |

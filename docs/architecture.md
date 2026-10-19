@@ -47,10 +47,6 @@ flowchart TD
 | `coach-android/app/src/main/java/com/coach/app/` | `MainActivity.kt` (bridge host), `domain/` (contracts, snapshot, logical day), `data/` (`CoachDatabase.kt`, `Schema.kt`, `SnapshotStore.kt`), `health/`, `bridge/`, `ai/` (gateway, validator, request builder), `security/` (Keystore), `notify/` (05:40 briefing). |
 | `coach-android/app/src/main/assets/www/` | `index.html`, `js/engine.js` (deterministic engine), `js/main.js`, `css/app.css`. |
 | `coach-android/app/src/test/` | `js/engine.test.js`, `js/system-insets.test.js`, `js/ui-smoke.js` + JUnit/Robolectric under `test/java`. |
-| `kernel/` (root) | Stale mirror of the JS kernel (`db.js`, `fmt.js`, `ui.js`, …) — DO NOT EDIT. Canonical code is under `evolucao-android/app/src/main/assets/kernel/`; see `kernel/README.md` (drift: root `db.js` 193 lines vs canonical 283). |
-| `apps/evolucao/` (root) | Partial, drifted mirror of Evolução JS (`core/`, `kernel/`, `views/`, `strava.js`) — DO NOT EDIT. Canonical code is under `evolucao-android/app/src/main/assets/`; see `apps/evolucao/README.md` (e.g. root `views/` 1 file vs canonical 7). |
-| `platform-tools/` | Local platform-tools copy (see [deployment](deployment-troubleshooting.md)). |
-| `backup/` | Local backup notes only. |
 | `docs/coach/` | Design prompts carried over from Coach development (`COACH_DESIGN.md`, `OX_ALPHA_*`). Background reading, not contracts. |
 | `test.ps1` | Root runner: Evolução suite → NutriTrack suite → Coach `engine` + `insets` suites. |
 
