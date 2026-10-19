@@ -176,7 +176,7 @@ test('1.4: obterMensagemPositiva fornece mensagens contextuais para Pré e Pós-
   assert(msgPre.toLowerCase().includes('treino') || msgPre.toLowerCase().includes('tanque') || msgPre.toLowerCase().includes('energia'), 'Mensagem de pré-treino deve incentivar energia');
 
   const msgPos = getMsg('Pós-Treino');
-  assert(msgPos.toLowerCase().includes('recuperação') || msgPos.toLowerCase().includes('nutrientes') || msgPos.toLowerCase().includes('muscular'), 'Mensagem de pós-treino deve incentivar recuperação');
+  assert(msgPos.toLowerCase().includes('pós-treino'), 'Mensagem deve identificar o lembrete sem prometer resultados');
 });
 
 console.log('\n--- SUITE 2: Adição, Edição e Exclusão Flexível de Horários ---');

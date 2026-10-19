@@ -403,7 +403,8 @@ function createNutriContext(customState = {}) {
     // Step 3: User taps "Tentar novamente" (now network is good)
     await ctx.tentarNovamenteFoto();
     modal = ctx.getModalContent();
-    assert.ok(modal.includes('Prato identificado'), 'Success confirmation modal must appear upon successful retry');
+    assert.ok(modal.includes('Revisar refeição'), 'Review modal must appear upon successful retry');
+    assert.ok(modal.includes('confirmFoto()'), 'Review must retain the explicit registration action');
     assert.ok(modal.includes('Prato Feito Brasileiro'), 'Identified meal name must be rendered');
     assert.ok(modal.includes('520'), 'Identified calories must be displayed');
   });

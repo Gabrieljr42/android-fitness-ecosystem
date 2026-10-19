@@ -440,7 +440,7 @@ function abrirModalRefPlano(dia, refIndex) {
               ${item.porcao_g}g · <span>P ${item.proteina_g}g</span> · <span>C ${item.carbo_g}g</span> · <span>G ${item.gordura_g}g</span>
             </div>
           </div>
-          <div class="d-kcal" style="font-weight:800;color:#ffffff;font-size:14px;white-space:nowrap">${fmt(item.kcal)} kcal</div>
+          <div class="d-kcal" style="font-weight:800;color:var(--txt);font-size:14px;white-space:nowrap">${fmt(item.kcal)} kcal</div>
         </div>
       `).join('')}
     </div>
@@ -513,17 +513,26 @@ window.carregarDia = carregarDia;
 function renderAlimentos(main) {
   const dataAtiva = typeof getActiveDate === 'function' ? getActiveDate() : today();
   main.innerHTML = `
-  <div class="card">
-    <h2>Registrar alimento <span class="small">${formatRegistroDate(dataAtiva)}</span></h2>
-    <label>Data do lançamento</label>
+  <h1 class="page-title">Alimentos</h1>
+  <p class="screen-subtitle">Encontre um alimento ou reutilize uma refeição.</p>
+  <input class="food-search" id="busca" type="search" aria-label="Buscar alimento" placeholder="Buscar alimento…" oninput="filtrarRef()"/>
+  ${dataAtiva !== today() ? `<p class="small mb8">Registrando em ${formatRegistroDate(dataAtiva)}</p>` : ''}
+  <section class="saved-foods" id="myAlimsCard">
+    <h2 class="section-title">Seus salvos</h2>
+    <div id="myAlimsList"></div>
+  </section>
+  <section class="food-catalog">
+    <div class="catalog-heading"><h2 class="section-title">Catálogo</h2><span>Porção de referência</span></div>
+    <div id="refList"></div>
+    <button class="catalog-more" id="catalogMore" onclick="catalogExpanded=!catalogExpanded;filtrarRef()">Ver mais alimentos</button>
+  </section>
+  <details class="food-plan"><summary>Ver plano semanal</summary><div id="planoBox" class="mt12"></div></details>
+  <details class="food-date"><summary>Data do registro · ${formatRegistroDate(dataAtiva)}</summary>
+    <label for="alimentosDate">Data do lançamento</label>
     <input id="alimentosDate" type="date" value="${dataAtiva}" max="${today()}" onchange="setActiveDate(this.value)"/>
-    <p class="small mt8">Escolha hoje ou um dia anterior antes de adicionar o alimento.</p>
-    <input id="busca" placeholder="Buscar alimento..." oninput="filtrarRef()"/>
-    <div id="refList" class="mt8"></div>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Cadastro rápido (meu alimento)</h2>
+  <details class="card"><summary>Cadastrar meu alimento</summary>
     <div class="formrow">
       <div style="grid-column:1/-1"><label>Nome</label><input id="nNome" placeholder="Ex: miojo c/ ovo"/></div>
     </div>
@@ -537,14 +546,9 @@ function renderAlimentos(main) {
       <div><label>Gordura (g)</label><input id="nG" type="number" step="0.1" placeholder="g"/></div>
     </div>
     <button class="bigbtn secondary mt8" id="btnAddRef">Adicionar à minha lista</button>
-  </div>
+  </details>
 
-  <div class="card" id="myAlimsCard">
-    <h2>Meus Alimentos cadastrados</h2>
-    <div id="myAlimsList"></div>
-  </div>
-
-  <div id="planoBox" class="mt12"></div>`;
+  `;
 
   $('#btnAddRef').onclick = () => {
     const nome = ($('#nNome').value || '').trim();
@@ -606,7 +610,7 @@ function renderCustomAlimsList() {
         <div class="nm">
           <b style="display:flex;align-items:center;gap:6px">
             ${escapeHtml(a.nome)}
-            <span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
+            <span style="font-size:10px;background:rgba(255,255,255,0.08);color:var(--txt);border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>
           </b>
           <small>${fmt(a.kcal)} kcal · P ${p}g · C ${c}g · G ${g}g — porção de ${porc} g</small>
         </div>
@@ -756,14 +760,17 @@ function excluirAlimento(index) {
 }
 window.excluirAlimento = excluirAlimento;
 
+let catalogExpanded = false;
 function filtrarRef() {
   if (!$('#refList')) return;
   const q = ($('#busca').value || '').toLowerCase().trim();
   const customList = userAlims().map((a, idx) => ({ ...a, custom: true, customIndex: idx }));
   const all = [...customList, ...refMap];
-  const list = q ? all.filter(a => a.nome.toLowerCase().includes(q)).slice(0, 40) : all.slice(0, 25);
+  const list = q ? all.filter(a => a.nome.toLowerCase().includes(q)).slice(0, 40) : refMap.slice(0, catalogExpanded ? refMap.length : 4);
+  const more = $('#catalogMore');
+  if (more) { more.hidden = !!q || refMap.length <= 4; more.textContent = catalogExpanded ? 'Mostrar menos' : 'Ver mais alimentos'; }
 
-  // Cada linha guarda o índice no array `all`; cliques resolvem o objeto
+  // Cada linha guarda o índice na lista visível; cliques resolvem o objeto
   // real (nunca o nome) — imune a aspas/tags em nomes.
   $('#refList').innerHTML = list.map((a, i) => {
     const isCust = !!a.custom;
@@ -777,10 +784,11 @@ function filtrarRef() {
         <div class="nm">
           <b style="display:flex;align-items:center;gap:6px">
             ${escapeHtml(a.nome)}
-            ${isCust ? '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>' : ''}
+            ${isCust ? '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:var(--txt);border:1px solid var(--border-subtle);padding:1px 6px;border-radius:6px;font-weight:700">MEU</span>' : ''}
           </b>
-          <small>${fmt(a.kcal)} kcal · P ${p} · C ${c} · G ${g}${porcDesc}</small>
+          <small>${isCust ? fmt(a.porcao_g || 100) : '100'} g</small>
         </div>
+        <span class="catalog-kcal">${fmt(a.kcal)}<small>kcal</small></span>
         <div style="display:flex;align-items:center;gap:6px">
           ${isCust ? `<button class="plus" style="width:34px;height:34px;font-size:13px;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--txt-secondary)" title="Editar" data-edit-alim="${a.customIndex}">✏️</button>` : ''}
           <button class="plus" title="Adicionar ao diário" data-add-alim="${i}">+</button>
@@ -788,9 +796,9 @@ function filtrarRef() {
       </div>`;
   }).join('') || '<div class="empty"><p>Nenhum alimento encontrado.</p></div>';
 
-  window.__alimPickList = all;
+  window.__alimPickList = list;
   $('#refList').querySelectorAll('[data-pick-alim]').forEach(el => {
-    el.onclick = () => { const item = all[+el.getAttribute('data-pick-alim')]; if (item) addRef(item.nome); };
+    el.onclick = () => { const item = list[+el.getAttribute('data-pick-alim')]; if (item) addRef(item.nome); };
   });
   $('#refList').querySelectorAll('[data-edit-alim]').forEach(el => {
     el.onclick = (ev) => { ev.stopPropagation(); modalEditarAlimento(+el.getAttribute('data-edit-alim')); };
@@ -798,7 +806,7 @@ function filtrarRef() {
   $('#refList').querySelectorAll('[data-add-alim]').forEach(el => {
     el.onclick = (ev) => {
       ev.stopPropagation();
-      const item = all[+el.getAttribute('data-add-alim')];
+      const item = list[+el.getAttribute('data-add-alim')];
       if (!item) return;
       if (item.custom) addRef(item.nome);
       else addRef(item.nome);

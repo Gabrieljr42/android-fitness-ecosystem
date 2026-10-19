@@ -31,21 +31,21 @@ public class NotificationReceiver extends BroadcastReceiver {
     public static final String KEY_REMINDERS = "reminders_json";
 
     private static final String[] POSITIVE_MESSAGES = {
-        "Hora de nutrir o seu corpo e manter a sua melhor versão em alta! ✨",
-        "Foco na meta! Cada refeição equilibrada é mais um passo rumo à sua evolução. 🚀",
-        "Você está no comando! Que tal uma refeição deliciosa para recarregar as energias? 💪",
-        "Consistência é a chave da vitória. Bora registrar com foco total! 🎯",
-        "Seu corpo agradece todo o cuidado e dedicação de hoje. Bom apetite! 🥗",
-        "Mais um momento para fazer escolhas incríveis e bater suas metas diárias! ⚡",
-        "A disciplina de hoje constrói o resultado de amanhã. Vamos com tudo! 🏆",
-        "Pausa para a sua saúde: nutra o seu corpo com o que ele precisa para brilhar! 🌟",
-        "Energia lá em cima! Registre sua refeição e continue firme na sua jornada. 🔥",
-        "Excelente momento para alimentar seu potencial. Mantenha o ritmo! 💥",
-        "Lembrete positivo: você está indo muito bem. Bora registrar e seguir focado! 👏",
-        "Cuidar de você é a sua melhor prioridade. Aproveite sua refeição! 💚",
-        "Alimente seus sonhos com escolhas saudáveis e consistência! 🥑",
-        "Hora de abastecer a máquina com comida de verdade! Vamos pra cima! 🔋",
-        "Pequenos hábitos diários geram grandes transformações. Foco no objetivo! 📈"
+        "Chegou o horário do seu lembrete de refeição.",
+        "Se quiser, registre sua refeição no NutriTrack.",
+        "Uma pausa para a refeição, no seu tempo.",
+        "Seu lembrete de refeição está aqui.",
+        "Abra o NutriTrack para adicionar uma refeição ao diário.",
+        "Já fez sua refeição? Você pode registrá-la no app.",
+        "Um lembrete para acompanhar suas refeições.",
+        "Quando for conveniente, atualize seu diário alimentar.",
+        "O NutriTrack está disponível para registrar sua refeição.",
+        "Este é o horário que você escolheu para o lembrete.",
+        "Você pode consultar os registros de hoje no app.",
+        "Registre sua refeição quando puder.",
+        "Seu diário alimentar está a um toque.",
+        "Uma pausa para conferir seus registros, se desejar.",
+        "Lembrete programado: acompanhe sua alimentação no app."
     };
 
     public static String getPositiveMessageFor(String name) {
@@ -53,16 +53,16 @@ public class NotificationReceiver extends BroadcastReceiver {
         String cleanName = name.replace("NutriTrack ⏰", "").trim();
         String lower = cleanName.toLowerCase();
         if (lower.contains("água") || lower.contains("agua") || lower.contains("hidrata")) {
-            return "Hidratação é poder! Beba um bom copo d'água e sinta sua energia renovada. 💧";
+            return "Lembrete para beber água ao longo do dia.";
         }
         if (lower.contains("creatina")) {
-            return "Hora da creatina! Força e foco consistentes para os seus treinos diários. ⚡";
+            return "Lembrete de creatina no horário que você configurou.";
         }
         if (lower.contains("pré-treino") || lower.contains("pre-treino") || lower.contains("pre treino")) {
-            return "Hora de abastecer o tanque pro treino! Energia máxima e foco total. 🔥";
+            return "Lembrete de pré-treino no horário que você configurou.";
         }
         if (lower.contains("pós-treino") || lower.contains("pos-treino") || lower.contains("pos treino")) {
-            return "Recuperação muscular em ação! Nutrientes certos pro seu crescimento. 🥩";
+            return "Lembrete de pós-treino no horário que você configurou.";
         }
         int idx = (int) (Math.random() * POSITIVE_MESSAGES.length);
         return POSITIVE_MESSAGES[idx];
@@ -92,14 +92,13 @@ public class NotificationReceiver extends BroadcastReceiver {
             if (title == null || title.trim().isEmpty()) {
                 title = "NutriTrack ⏰ Lembrete";
             }
-            if (message == null || message.trim().isEmpty() || message.startsWith("Hora da sua refeição") || message.startsWith("Hora do seu")) {
-                message = getPositiveMessageFor(title);
-            }
+            // Resolve o texto atual também para alarmes criados antes da atualização.
+            message = getPositiveMessageFor(title);
 
             Log.d(TAG, "Disparando notificacao de lembrete: " + id + " - " + title);
             showNotification(context, id, title, message);
 
-            // Rearma o alarme automaticamente para o dia seguinte com nova mensagem positiva e animadora
+            // Rearma o alarme para o dia seguinte com um lembrete neutro.
             if (id != null && timeStr != null && !timeStr.trim().isEmpty()) {
                 String nextMessage = getPositiveMessageFor(title);
                 rearmAlarm(context, id, title, nextMessage, timeStr);
@@ -151,6 +150,8 @@ public class NotificationReceiver extends BroadcastReceiver {
 
     /**
      * Agenda um alarme exato que acorda o dispositivo mesmo em Doze Mode (RTC_WAKEUP).
+     * Sem permissão de alarme exato (Android 14+/targetSdk 34 negam por padrão),
+     * usa alarme inexato como fallback para o lembrete ao menos disparar.
      */
     public static void scheduleAlarm(Context context, String id, String title, String message, String timeStr) {
         if (timeStr == null || !timeStr.contains(":")) return;
@@ -190,17 +191,51 @@ public class NotificationReceiver extends BroadcastReceiver {
 
             PendingIntent pi = PendingIntent.getBroadcast(context, requestCode, alarmIntent, flags);
 
+            scheduleAlarmWithFallback(am, triggerAtMillis, pi, canScheduleExactAlarms(context));
+
+            Log.d(TAG, "Alarme agendado para [" + id + "] em " + target.getTime().toString()
+                    + (canScheduleExactAlarms(context) ? " (exato)" : " (inexato: sem permissão de alarme exato)"));
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao agendar alarme para " + id, e);
+        }
+    }
+
+    public static boolean canScheduleExactAlarms(Context context) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            try {
+                AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                return am != null && am.canScheduleExactAlarms();
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void scheduleAlarmWithFallback(AlarmManager am, long triggerAtMillis,
+                                                  PendingIntent pi, boolean exactAllowed) {
+        if (exactAllowed) {
+            try {
+                if (Build.VERSION.SDK_INT >= 23) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                } else if (Build.VERSION.SDK_INT >= 19) {
+                    am.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                } else {
+                    am.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                }
+                return;
+            } catch (SecurityException se) {
+                Log.w(TAG, "Sem permissão de alarme exato; usando fallback inexato.", se);
+            }
+        }
+        try {
             if (Build.VERSION.SDK_INT >= 23) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
-            } else if (Build.VERSION.SDK_INT >= 19) {
-                am.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
             } else {
                 am.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi);
             }
-
-            Log.d(TAG, "Alarme agendado para [" + id + "] em " + target.getTime().toString());
         } catch (Exception e) {
-            Log.e(TAG, "Erro ao agendar alarme para " + id, e);
+            Log.e(TAG, "Erro ao agendar alarme inexato", e);
         }
     }
 
@@ -259,7 +294,7 @@ public class NotificationReceiver extends BroadcastReceiver {
 
                 if (ativo && !hora.isEmpty()) {
                     String title = "NutriTrack ⏰ " + nome;
-                    String msg = item.optString("mensagem", item.optString("message", getPositiveMessageFor(nome)));
+                    String msg = getPositiveMessageFor(nome);
                     scheduleAlarm(context, id, title, msg, hora);
                 } else {
                     cancelAlarm(context, id);

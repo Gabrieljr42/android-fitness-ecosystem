@@ -9,6 +9,7 @@ function render() {
     const mName = MESES[d.getMonth()];
     $('#dataHoje').innerHTML = `<b>${dName.toUpperCase()}</b> · ${d.getDate()} ${mName}`;
   }
+  if (typeof syncNutriNavigation === 'function') syncNutriNavigation();
   const main = $('#main');
   if (!main) return;
   if (state.tab === 'hoje') renderHoje(main);
@@ -26,29 +27,21 @@ function activeDateLabel(date = (typeof getActiveDate === 'function' ? getActive
 }
 
 function renderActiveDatePicker() {
-  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
-  const hoje = today();
-  const isToday = activeDate === hoje;
-  return `
-    <div class="day-selector-card">
-      <div class="day-selector-head">
-        <div>
-          <div class="day-selector-kicker">Diário alimentar</div>
-          <div class="day-selector-title">${activeDateLabel(activeDate)}</div>
-        </div>
-        ${isToday ? '' : '<button class="datebtn day-today-btn" onclick="resetActiveDate()">Hoje</button>'}
-      </div>
-      <div class="day-selector-controls">
-        <button class="datebtn day-arrow" onclick="shiftActiveDate(-1)" aria-label="Ver dia anterior">‹</button>
-        <input id="activeDateInput" class="day-date-input" type="date" value="${activeDate}" max="${hoje}" onchange="setActiveDate(this.value)" aria-label="Data do diário"/>
-        <button class="datebtn day-arrow" onclick="shiftActiveDate(1)" aria-label="Ver próximo dia" ${isToday ? 'disabled' : ''}>›</button>
-      </div>
-      <div class="day-selector-hint">${isToday ? 'Registre as refeições de hoje' : 'Você está visualizando um dia anterior. Novos alimentos serão salvos nesta data.'}</div>
-    </div>`;
+  const activeDate = getActiveDate();
+  const isToday = activeDate === today();
+  return `<section class="day-selector-card">
+    <div class="day-selector-head"><h1>${isToday ? 'Hoje' : 'Diário'}</h1>${isToday ? '' : '<button class="datebtn day-today-btn" onclick="resetActiveDate()">Voltar a hoje</button>'}</div>
+    <div class="day-selector-controls">
+      <button class="datebtn day-arrow" onclick="shiftActiveDate(-1)" aria-label="Ver dia anterior">‹</button>
+      <input id="activeDateInput" class="day-date-input" type="date" value="${activeDate}" max="${today()}" onchange="setActiveDate(this.value)" aria-label="Data do diário"/>
+      <button class="datebtn day-arrow" onclick="shiftActiveDate(1)" aria-label="Ver próximo dia" ${isToday ? 'disabled' : ''}>›</button>
+    </div>
+    ${isToday ? '' : '<p class="day-selector-hint">Você está em um dia anterior. Novos registros serão salvos nesta data.</p>'}
+  </section>`;
 }
 
 function renderHoje(main) {
-  const activeDate = typeof getActiveDate === 'function' ? getActiveDate() : today();
+  const activeDate = getActiveDate();
   const isToday = activeDate === today();
   const dayLabel = isToday ? 'hoje' : 'este dia';
   const t = dayTotals(activeDate);
@@ -56,228 +49,61 @@ function renderHoje(main) {
   const G = typeof dayBurned === 'function' ? dayBurned(activeDate) : 0;
   const L = I - G;
   const targetKcal = Number(profile?.kcal) || 2200;
-  const bmr = typeof calcBMR === 'function' ? calcBMR() : 1700;
-  const tdee = typeof calcTDEE === 'function' ? calcTDEE() : 2380;
   const pct = (v, m) => Math.min(100, Math.max(0, Math.round(v / (m || 1) * 100)));
-  const netPct = Math.min(100, Math.max(0, Math.round(Math.max(0, L) / (targetKcal || 1) * 100)));
-
-  // Habitos e Agua
   const creatinaOk = getCreatinaStatus(activeDate);
   const waterVol = getWaterIntake(activeDate);
   const waterGoal = getWaterGoal();
-  const waterPct = Math.min(100, Math.round((waterVol / (waterGoal || 1)) * 100));
-
   const hojeMeals = dayMeals(activeDate);
   const hojeActivities = typeof dayActivities === 'function' ? dayActivities(activeDate) : [];
+  const hasEntries = hojeMeals.length > 0 || hojeActivities.length > 0;
 
   main.innerHTML = `
   ${renderActiveDatePicker()}
-
-  <!-- Card de Balanço Energético Diário (R3) -->
-  <div class="card energy-balance-card">
-    <div class="energy-head">
-      <h2>Balanço Energético</h2>
-      <span class="energy-badge ${L > targetKcal ? 'bad' : 'ok'}">
-        ${L > targetKcal ? 'Superávit' : 'Dentro da Meta'}
-      </span>
-    </div>
-
-    <div class="energy-grid">
-      <div class="energy-col">
-        <span class="energy-lbl">Ingeridas</span>
-        <span class="energy-val in">+${fmt(I)}</span>
-        <span class="energy-unit">kcal</span>
-      </div>
-      <div class="energy-op">−</div>
-      <div class="energy-col">
-        <span class="energy-lbl">Exercício</span>
-        <span class="energy-val out">−${fmt(G)}</span>
-        <span class="energy-unit">kcal</span>
-      </div>
-      <div class="energy-op">=</div>
-      <div class="energy-col highlight">
-        <span class="energy-lbl">Saldo Líquido</span>
-        <span class="energy-val net">${fmt(L)}</span>
-        <span class="energy-unit">kcal</span>
-      </div>
-    </div>
-
-    <!-- Barra de Meta vs Líquido -->
-    <div class="energy-bar-wrap mt8">
-      <div class="energy-bar-labels">
-        <small>Meta: <b>${fmt(targetKcal)} kcal</b></small>
-        <small>TDEE: <b>${fmt(tdee)} kcal</b> (TMB: ${fmt(bmr)})</small>
-      </div>
-      <div class="prog energy-prog mt8">
-        <div style="width:${netPct}%; background:${L > targetKcal ? 'var(--status-danger)' : 'var(--bar-fill)'}"></div>
-      </div>
-      <div class="energy-sub-text mt8">
-        ${L <= targetKcal 
-          ? `<span>Restam <b>${fmt(targetKcal - L)} kcal</b> líquidas para atingir a meta diária</span>` 
-          : `<span style="color:var(--status-danger)">Superávit de <b>+${fmt(L - targetKcal)} kcal</b> acima da meta</span>`}
-      </div>
-    </div>
-  </div>
-
-  <!-- Macros Ingeridos (Grayscale / Silver High-End) -->
-  <div class="macro-grid">
-    <div class="macro kcal">
-      <div class="v">${fmt(t.kcal)}</div>
-      <div class="l">kcal Ingeridas</div>
-      <div class="prog"><div style="width:${pct(t.kcal, profile.kcal)}%"></div></div>
-    </div>
-    <div class="macro p">
-      <div class="v">${fmt(t.p)}g</div>
-      <div class="l">Proteína</div>
-      <div class="prog"><div style="width:${pct(t.p, profile.p)}%"></div></div>
-    </div>
-    <div class="macro c">
-      <div class="v">${fmt(t.c)}g</div>
-      <div class="l">Carbo</div>
-      <div class="prog"><div style="width:${pct(t.c, profile.c)}%"></div></div>
-    </div>
-    <div class="macro g">
-      <div class="v">${fmt(t.g)}g</div>
-      <div class="l">Gordura</div>
-      <div class="prog"><div style="width:${pct(t.g, profile.g)}%"></div></div>
-    </div>
-  </div>
-
-  <!-- Widget de Hábitos e Hidratação -->
-  <div class="card habits-card">
-    <div class="habits-head">
-      <h2>Hábitos &amp; Hidratação</h2>
-      <span class="small" id="waterStatusSummary">${fmt(waterVol)} / ${fmt(waterGoal)} mL (${waterPct}%)</span>
-    </div>
-    
-    <!-- Creatina 1-tap toggle -->
-    <div class="habit-row">
-      <div class="habit-label">
-        <div class="habit-icon creatina-icon">💊</div>
-        <div class="habit-info">
-          <b>Creatina diária</b>
-           <small>${creatinaOk ? (isToday ? 'Tomada hoje' : 'Tomada neste dia') : (isToday ? 'Pendente para hoje' : 'Pendente neste dia')}</small>
-        </div>
-      </div>
-      <button class="habit-btn ${creatinaOk ? 'done' : ''}" id="btnCreatina" onclick="handleToggleCreatina()">
-        ${creatinaOk ? '✓ Tomada' : 'Pendente'}
-      </button>
-    </div>
-
-    <!-- Hidratação -->
-    <div class="water-section">
-      <div class="water-head">
-        <div class="habit-label">
-          <div class="habit-icon water-icon">💧</div>
-          <div class="habit-info">
-            <b>Água</b>
-            <small>Meta: ${fmt(waterGoal)} mL</small>
-          </div>
-        </div>
-        <button class="water-goal-btn" onclick="modalMetaAgua()" title="Alterar meta de água">⚙ Meta</button>
-      </div>
-      <div class="prog water-prog mt8">
-        <div style="width: ${waterPct}%"></div>
-      </div>
-      <div class="water-actions mt8">
-        <button class="water-btn" onclick="handleQuickWater(250)">+250 mL</button>
-        <button class="water-btn" onclick="handleQuickWater(500)">+500 mL</button>
-        <button class="water-btn" onclick="modalCustomWater()">+ Outro</button>
-        ${waterVol > 0 ? `<button class="water-btn reset-water" onclick="handleResetWater()" title="Zerar registro de água de ${dayLabel}">✕</button>` : ''}
-      </div>
-    </div>
-  </div>
-
-  <!-- Botões de Ação Principais -->
-  <button class="bigbtn primary" id="btnFoto">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M3 8.5V7a2 2 0 012-2h2.5l1.6-2h5.8l1.6 2H19a2 2 0 012 2v1.5M21 9.5v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h14a2 2 0 012 2z" stroke="#09090b" stroke-width="2"/>
-      <circle cx="12" cy="13" r="3.6" stroke="#09090b" stroke-width="2"/>
-    </svg>
-    Fotografar prato
-  </button>
-  <button class="bigbtn secondary daily-summary-action" id="btnResumoDiaIA">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M6 3h9l3 3v15H6a2 2 0 01-2-2V5a2 2 0 012-2zM14 3v4h4M8 11h8M8 15h8M8 19h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    🧾 Resumir meu dia com IA
-    <span class="daily-summary-action-hint">Cole o WhatsApp + anexe várias fotos</span>
-  </button>
-  <button class="bigbtn secondary" id="btnTextoIA">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    ✍️ Descrever refeição c/ IA
-  </button>
-  <button class="bigbtn secondary" id="btnAtivIA">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    ⚡ Estimar gasto c/ IA
-  </button>
-  <div class="row" style="margin-bottom:10px">
-    <button class="bigbtn secondary" id="btnMan" style="margin-bottom:0;font-size:14px;min-height:48px">
-      <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px">
-        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-      </svg>
-      + Refeição
-    </button>
-    <button class="bigbtn secondary" id="btnManExercicio" style="margin-bottom:0;font-size:14px;min-height:48px">
-      <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      + Exercício
-    </button>
-  </div>
-
-  <!-- Lista de Refeições -->
-  <div class="card" style="margin-top:4px">
-    <h2>Refeições de ${dayLabel} <span class="small">${hojeMeals.length} registro(s) · ${fmt(I)} kcal</span></h2>
-    ${renderListaMeals(hojeMeals)}
-  </div>
-
-  <!-- Lista de Exercícios e Atividades -->
-  <div class="card" style="margin-top:4px">
-    <h2>Exercícios &amp; Gasto de ${dayLabel} <span class="small">${hojeActivities.length} registro(s) · -${fmt(G)} kcal</span></h2>
+  <section class="card daily-balance" aria-label="Balanço energético do dia">
+    <div class="balance-heading"><h2>Balanço do dia</h2><span class="energy-badge">${!hasEntries ? 'Sem registros' : L > targetKcal ? 'Acima da meta' : isToday ? 'Em andamento' : 'Registrado'}</span></div>
+    <div class="balance-value">${fmt(L)} <span>kcal líquidas</span></div>
+    <p class="balance-caption">Consumo menos exercício registrado</p>
+    <div class="prog" role="progressbar" aria-label="Saldo líquido em relação à meta" aria-valuemin="0" aria-valuemax="${targetKcal}" aria-valuenow="${Math.min(targetKcal, Math.max(0, L))}" aria-valuetext="${fmt(L)} de ${fmt(targetKcal)} kcal líquidas"><div style="width:${pct(L, targetKcal)}%"></div></div>
+    <div class="balance-remaining"><span>${L <= targetKcal ? `<b>${fmt(targetKcal - L)} kcal</b> até a meta` : `<b>${fmt(L - targetKcal)} kcal</b> acima da meta`}</span><span>Meta ${fmt(targetKcal)}</span></div>
+    <div class="balance-breakdown"><div><span>Consumidas</span><b>${fmt(I)} <small>kcal</small></b></div><div><span>Exercício registrado</span><b>${fmt(G)} <small>kcal</small></b></div></div>
+  </section>
+  <section class="daily-macros" aria-label="Macronutrientes consumidos e metas">
+    ${[['Proteínas',t.p,profile.p],['Carboidratos',t.c,profile.c],['Gorduras',t.g,profile.g]].map(([name,value,goal]) => `<div><span>${name}</span><div class="daily-macro-value">${fmt(value)} <small>/ ${fmt(goal)} g</small></div><div class="prog"><div style="width:${pct(value,goal)}%"></div></div></div>`).join('')}
+  </section>
+  <section class="card meals-card"><h2>Suas refeições <span class="small">${hojeMeals.length} registro(s)</span></h2>
+    ${hojeMeals.length ? renderListaMeals(hojeMeals) : `<div class="empty"><p>Nenhuma refeição registrada ${isToday ? 'hoje' : 'neste dia'}.<br>Use “Registrar ${isToday ? 'refeição' : 'neste dia'}” para começar.</p></div>`}
+  </section>
+  <section class="card habits-card">
+    <h2>Água e hábitos</h2>
+    <div class="water-head"><div><b>Água</b><small id="waterStatusSummary">${fmt(waterVol)} / ${fmt(waterGoal)} mL</small></div><button class="water-goal-btn" onclick="modalMetaAgua()" aria-label="Alterar meta de água">Meta</button></div>
+    <div class="prog water-prog mt8"><div style="width:${pct(waterVol, waterGoal)}%"></div></div>
+    <div class="water-actions mt8"><button class="water-btn" onclick="handleQuickWater(250)">+250 mL</button><button class="water-btn" onclick="handleQuickWater(500)">+500 mL</button><button class="water-btn" onclick="modalCustomWater()">Outra quantidade</button></div>
+    <div class="habit-row"><div class="habit-info"><b>Creatina</b><small>${creatinaOk ? 'Registrada neste dia' : 'Ainda não registrada'}</small></div><button class="habit-btn ${creatinaOk ? 'done' : ''}" id="btnCreatina" aria-pressed="${creatinaOk}" onclick="handleToggleCreatina()">${creatinaOk ? '✓ Registrada' : 'Registrar'}</button></div>
+    ${waterVol > 0 ? `<details class="water-edit"><summary>Corrigir registro de água</summary><button class="ghost" onclick="handleResetWater()">Zerar água de ${dayLabel}</button></details>` : ''}
+  </section>
+  <details class="card activity-details" ${hojeActivities.length ? 'open' : ''}>
+    <summary>Exercícios <span class="small">${fmt(G)} kcal registradas</span></summary>
+    <div class="row mt12"><button class="bigbtn secondary" id="btnManExercicio">+ Registrar exercício</button><button class="bigbtn secondary" id="btnAtivIA">Estimar com IA</button></div>
     ${renderListaActivities(hojeActivities)}
-  </div>
-
-  ${(meals.length === 0 && (!activities || activities.length === 0)) ? `<div class="card"><div class="empty">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 4a6 6 0 016 6c0 3-2 5-4 6.5-.9.7-1.4 1.2-1.7 1.8h-.6c-.3-.6-.8-1.1-1.7-1.8C8.2 17 6.2 15 6.2 12a6 6 0 016-6z" stroke="#71717a" stroke-width="1.6"/>
-      <circle cx="9.5" cy="10.5" r="1.2" fill="#71717a"/>
-      <circle cx="14.5" cy="10.5" r="1.2" fill="#71717a"/>
-      <path d="M9 14.5c1 .8 2 1 3 1s2-.2 3-1" stroke="#71717a" stroke-width="1.4" stroke-linecap="round"/>
-    </svg>
-    <p>Nenhum registro neste dia.<br/>Tire uma foto, descreva com IA ou adicione manualmente.</p>
-    <button onclick="$('#btnFoto').click()">Começar agora</button>
-  </div></div>` : ''}`;
-
-  if ($('#btnFoto')) $('#btnFoto').onclick = abrirFoto;
-  if ($('#btnResumoDiaIA')) $('#btnResumoDiaIA').onclick = (typeof abrirResumoDiaIA === 'function' ? abrirResumoDiaIA : null);
-  if ($('#btnTextoIA')) $('#btnTextoIA').onclick = abrirTextoIA;
-  if ($('#btnAtivIA')) $('#btnAtivIA').onclick = (typeof abrirAtividadeIA === 'function' ? abrirAtividadeIA : null);
-  if ($('#btnMan')) $('#btnMan').onclick = abrirManual;
-  if ($('#btnManExercicio')) $('#btnManExercicio').onclick = (typeof abrirManualExercicio === 'function' ? abrirManualExercicio : null);
-
-  // Delegação para botões de exclusão (sem inline handlers — ids podem vir
-  // de backup importado e nunca devem virar código)
-  main.querySelectorAll('[data-del-meal]').forEach(btn => {
-    btn.onclick = () => delMeal(btn.getAttribute('data-del-meal'));
+  </details>`;
+  if ($('#btnAtivIA')) $('#btnAtivIA').onclick = typeof abrirAtividadeIA === 'function' ? abrirAtividadeIA : null;
+  if ($('#btnManExercicio')) $('#btnManExercicio').onclick = typeof abrirManualExercicio === 'function' ? abrirManualExercicio : null;
+  main.querySelectorAll('[data-del-meal]').forEach(button => {
+    button.onclick = () => delMeal(button.getAttribute('data-del-meal'));
   });
-  // Editar refeição salva: toque no corpo do card OU no botão ✎
   if (typeof openMealEditor === 'function') {
-    main.querySelectorAll('[data-edit-meal]').forEach(el => {
-      el.onclick = () => {
-        const m = meals.find(x => x.id === el.getAttribute('data-edit-meal'));
-        if (m) openMealEditor(m);
+    main.querySelectorAll('[data-edit-meal]').forEach(button => {
+      button.onclick = () => {
+        const meal = meals.find(item => item.id === button.getAttribute('data-edit-meal'));
+        if (meal) openMealEditor(meal);
       };
     });
   }
-  main.querySelectorAll('[data-del-activity]').forEach(btn => {
-    btn.onclick = () => handleDelActivity(btn.getAttribute('data-del-activity'));
+  main.querySelectorAll('[data-del-activity]').forEach(button => {
+    button.onclick = () => handleDelActivity(button.getAttribute('data-del-activity'));
   });
 }
+
 
 function renderListaMeals(lista) {
   if (!lista.length) return '<div class="empty"><p>Nenhuma refeição registrada neste dia.</p></div>';
@@ -288,15 +114,15 @@ function renderListaMeals(lista) {
     const gTotal = +((m.itens || []).reduce((a, i) => a + (i.gordura_g || 0), 0)).toFixed(1);
 
     let badge = '';
-    if (m.origem === 'ia_resumo_dia') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.12);color:#ffffff;border:1px solid var(--border-focus);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">RESUMO IA</span>';
-    else if (m.origem === 'ia_texto') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA TEXTO</span>';
+    if (m.origem === 'ia_resumo_dia') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.12);color:var(--txt);border:1px solid var(--border-focus);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">RESUMO IA</span>';
+    else if (m.origem === 'ia_texto') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:var(--txt);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA TEXTO</span>';
     else if (m.origem === 'foto') badge = '<span style="font-size:10px;background:var(--status-ok-dim);color:var(--status-ok);border:1px solid rgba(74,222,128,0.25);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">FOTO</span>';
     else if (m.origem === 'plano') badge = '<span style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--txt-secondary);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">PLANO</span>';
 
     return `
     <div class="meal">
       <div class="dot"></div>
-      <div class="info" data-edit-meal="${escapeHtml(m.id)}" role="button" aria-label="Editar ${escapeHtml(m.nome)}" style="cursor:pointer">
+      <button type="button" class="info" data-edit-meal="${escapeHtml(m.id)}" aria-label="Editar ${escapeHtml(m.nome)}" style="cursor:pointer">
         <div class="nome" style="display:flex;align-items:center">${escapeHtml(m.nome)}${badge}</div>
     <div class="det">${(m.itens || []).map(i => escapeHtml(i && i.nome)).join(' · ')} · ${escapeHtml(m.horario || m.hour || '')}</div>
         <div class="small" style="margin-top:2px;font-size:11px;color:var(--txt-secondary)">
@@ -304,10 +130,10 @@ function renderListaMeals(lista) {
           <span>C ${cTotal}g</span> ·
           <span>G ${gTotal}g</span>
         </div>
-      </div>
+      </button>
       <div class="k">${fmt(kTotal)} kcal</div>
       <button class="meal-edit" data-edit-meal="${escapeHtml(m.id)}" title="Editar refeição" aria-label="Editar refeição">✎</button>
-      <button class="del" data-del-meal="${escapeHtml(m.id)}" title="Excluir refeição">
+      <button class="del" data-del-meal="${escapeHtml(m.id)}" title="Excluir refeição" aria-label="Excluir refeição">
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
@@ -326,7 +152,7 @@ function renderListaActivities(lista) {
     const intensidade = a.intensidade || 'moderada';
     
     let badgeOrigem = '';
-    if (a.origem === 'ia_texto') badgeOrigem = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA</span>';
+    if (a.origem === 'ia_texto') badgeOrigem = '<span style="font-size:10px;background:rgba(255,255,255,0.08);color:var(--txt);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">IA</span>';
     else if (a.origem === 'manual') badgeOrigem = '<span style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--txt-secondary);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">MANUAL</span>';
 
     let intBadge = `<span style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--txt-secondary);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700;text-transform:uppercase">${intensidade.replace('_', ' ')}</span>`;
@@ -343,7 +169,7 @@ function renderListaActivities(lista) {
         <div class="det">${durMin} min · MET ${met}${hora ? ` · ${hora}` : ''}</div>
         ${segs}
       </div>
-      <div class="k" style="color:#ffffff">-${fmt(kGasto)} kcal</div>
+      <div class="k" style="color:var(--txt)">-${fmt(kGasto)} kcal</div>
       <button class="del" data-del-activity="${escapeHtml(a.id)}" title="Remover atividade">
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>

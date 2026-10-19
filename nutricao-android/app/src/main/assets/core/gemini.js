@@ -1040,18 +1040,18 @@ function aiItemRowHtml(i, it, updFn, rmFn, addFn, boxId, totaisFn, prefixId) {
   return `
     <div class="det-item" style="display:block;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
       <div style="display:flex;align-items:center;gap:6px">
-        <input value="${escapeHtml(it.nome || 'Item')}" style="flex:1;font-weight:700;font-size:14px" placeholder="Alimento" oninput="${updFn}(${i},'nome',this.value)"/>
+        <input value="${escapeHtml(it.nome || 'Item')}" style="flex:1;font-weight:700;font-size:14px" placeholder="Alimento" aria-label="Nome do alimento" oninput="${updFn}(${i},'nome',this.value)"/>
         <button class="det-del" onclick="${rmFn}(${i})"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
         <span style="display:inline-flex;align-items:center;gap:4px">
           <label class="small" style="color:var(--txt-secondary)">Qtd</label>
-          <input type="number" class="d-qty" value="${Number(it.porcao_g) || 0}" style="width:74px" oninput="${updFn}(${i},'porcao_g',this.value)"/>
+          <input type="number" class="d-qty" aria-label="Porção em gramas" value="${Number(it.porcao_g) || 0}" style="width:74px" oninput="${updFn}(${i},'porcao_g',this.value)"/>
           <span class="small" style="color:var(--txt3)">g</span>
         </span>
         <span style="display:inline-flex;align-items:center;gap:4px">
           <label class="small" style="color:var(--txt-secondary)">kcal</label>
-          <input type="number" class="d-kcal" value="${Math.round(it.kcal || 0)}" style="width:80px;color:#ffffff;font-weight:700" oninput="${updFn}(${i},'kcal',this.value)"/>
+          <input type="number" class="d-kcal" aria-label="Calorias do alimento" value="${Math.round(it.kcal || 0)}" style="width:80px;color:var(--txt);font-weight:700" oninput="${updFn}(${i},'kcal',this.value)"/>
         </span>
         ${Number(it.proteina_g) ? `<span class="small" style="color:var(--txt3)">P ${it.proteina_g}g</span>` : ''}
         ${Number(it.carbo_g) ? `<span class="small" style="color:var(--txt3)">C ${it.carbo_g}g</span>` : ''}
@@ -1091,21 +1091,22 @@ function mostrarConfirmacaoFoto(final, n, responses, apiReturns = [], cancelled 
   const apiHtml = apiReturns.length ? `<details class="api-return ok mt8"><summary>Ver retorno da API (${responses.length} análises concluídas · ${okCalls} respostas OK · ${failedCalls} falhas)</summary>${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}</details>` : '';
 
   openModal(`
-    <h2>Prato identificado</h2>
+    <h2>Revisar refeição</h2><p class="small mb8">Estimativa por foto. Confira os alimentos e as porções antes de registrar.</p>
     <img id="foto-preview" src="data:image/jpeg;base64,${window.__fotoB64 || ''}" style="display:block"/>
-    ${legendaHtml}${accHtml}${apiHtml}
+    ${legendaHtml}${accHtml}
     <div id="itensBox"></div>
     <div class="det-total">Total: <span class="v" id="cTotal">${Math.round(final.kcal_total || 0)} kcal</span></div>
     <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
-    <input id="cNome" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
+    <input id="cNome" aria-label="Nome da refeição" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
     <label style="margin-top:10px">Data do lançamento</label>
-    <input id="cDataFoto" type="date" value="${window.__fotoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
+    <input id="cDataFoto" aria-label="Data do lançamento" type="date" value="${window.__fotoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
     <button id="saveFotoAlimento" class="bigbtn secondary mt8" onclick="salvarFotoAlimento()">Salvar refeição em Meus alimentos</button>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
-      <button class="bigbtn primary" onclick="confirmFoto()">Confirmar</button>
+      <button class="bigbtn primary" onclick="confirmFoto()">Registrar refeição</button>
     </div>
+    ${apiHtml}
   `);
 
   window.__fotoItens = Array.isArray(final.itens) ? final.itens.map(i => ({ ...i })) : [];
@@ -1730,7 +1731,7 @@ function renderResumoDiaMealItems(mealIndex) {
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
         <span style="display:inline-flex;align-items:center;gap:4px"><label class="small" style="color:var(--txt-secondary)">Qtd</label><input type="number" value="${Number(item.porcao_g) || 0}" style="width:74px" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'porcao_g',this.value)"/><span class="small" style="color:var(--txt3)">g</span></span>
-        <span style="display:inline-flex;align-items:center;gap:4px"><label class="small" style="color:var(--txt-secondary)">kcal</label><input type="number" value="${Math.round(item.kcal || 0)}" style="width:80px;color:#ffffff;font-weight:700" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'kcal',this.value)"/></span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><label class="small" style="color:var(--txt-secondary)">kcal</label><input type="number" value="${Math.round(item.kcal || 0)}" style="width:80px;color:var(--txt);font-weight:700" oninput="updResumoDiaItem(${mealIndex},${itemIndex},'kcal',this.value)"/></span>
         <span class="small" style="color:var(--txt3)">P ${item.proteina_g || 0}g · C ${item.carbo_g || 0}g · G ${item.gordura_g || 0}g</span>
       </div>
     </div>`).join('');
@@ -2058,20 +2059,21 @@ function mostrarConfirmacaoTexto(final, n, responses, apiReturns = [], cancelled
   const apiHtml = apiReturns.length ? `<details class="api-return ok mt8"><summary>Ver retorno da API (${responses.length} análises concluídas · ${okCalls} respostas OK · ${failedCalls} falhas)</summary>${apiReturns.slice().sort((a, b) => (a.analysisIndex - b.analysisIndex) || (a.attempt - b.attempt)).map(apiTraceHtml).join('')}</details>` : '';
 
   openModal(`
-    <h2>Refeição identificada</h2>
-    ${descHtml}${accHtml}${apiHtml}
+    <h2>Revisar refeição</h2><p class="small mb8">Confira os alimentos e as porções antes de registrar.</p>
+    ${descHtml}${accHtml}
     <div id="itensBoxTexto"></div>
     <div class="det-total">Total: <span class="v" id="cTotalTexto">${Math.round(final.kcal_total || 0)} kcal</span></div>
     <div class="small" style="margin-top:6px">P <b>${final.proteina_total || 0}g</b> · C <b>${final.carbo_total || 0}g</b> · G <b>${final.gordura_total || 0}g</b></div>
     <label style="margin-top:12px">Nome da refeição</label>
-    <input id="cNomeTexto" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
+    <input id="cNomeTexto" aria-label="Nome da refeição" value="${nomeSugerido}" maxlength="80" style="margin-bottom:4px"/>
     <label style="margin-top:10px">Data do lançamento</label>
-    <input id="cDataTexto" type="date" value="${window.__textoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
+    <input id="cDataTexto" aria-label="Data do lançamento" type="date" value="${window.__textoDate || currentEntryDate()}" max="${currentEntryDate()}"/>
     <button id="saveTextoAlimento" class="bigbtn secondary mt8" onclick="salvarTextoAlimento()">Salvar refeição em Meus alimentos</button>
     <div class="row mt12">
       <button class="bigbtn secondary" onclick="closeModal()">Cancelar</button>
-      <button class="bigbtn primary" onclick="confirmTexto()">Confirmar</button>
+      <button class="bigbtn primary" onclick="confirmTexto()">Registrar refeição</button>
     </div>
+    ${apiHtml}
   `);
 
   window.__textoItens = Array.isArray(final.itens) ? final.itens.map(i => ({ ...i })) : [];
@@ -2321,9 +2323,9 @@ function modalManual() {
   openModal(`
     <h2>Adicionar refeição</h2>
     <label>Data do lançamento</label>
-    <input id="fDate" type="date" value="${currentEntryDate()}" max="${currentEntryDate()}"/>
+    <input id="fDate" type="date" aria-label="Data do lançamento" value="${currentEntryDate()}" max="${currentEntryDate()}"/>
     <label>Nome da refeição</label>
-    <input id="fNome" placeholder="Ex: Almoço" value="Refeição"/>
+    <input id="fNome" aria-label="Nome da refeição" placeholder="Ex: Almoço" value="Refeição"/>
     <div id="fItens" class="mt8"></div>
     <button class="bigbtn secondary mt8" onclick="addLinha()">+ Adicionar alimento</button>
     <div class="det-total mt8">Total: <span class="v" id="fTotal">0 kcal</span></div>
@@ -2344,10 +2346,10 @@ function addLinha() {
   const d = document.createElement('div');
   d.className = 'det-item';
   d.innerHTML = `
-    <input placeholder="Alimento" style="flex:1.4" oninput="updFTotal()"/>
-    <input type="number" placeholder="g" class="d-qty" value="100" oninput="updFTotal()"/>
-    <input type="number" placeholder="kcal" class="d-kcal" style="color:#ffffff;width:60px" oninput="updFTotal()"/>
-    <button class="det-del" onclick="this.parentElement.remove();updFTotal()"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <label class="manual-name">Alimento<input placeholder="Nome do alimento" oninput="updFTotal()"/></label>
+    <label>Porção (g)<input type="number" placeholder="g" class="d-qty" value="100" oninput="updFTotal()"/></label>
+    <label>Calorias<input type="number" placeholder="kcal" class="d-kcal" oninput="updFTotal()"/></label>
+    <button class="det-del" aria-label="Remover alimento" onclick="this.parentElement.remove();updFTotal()"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M7 7l1 12a2 2 0 002 2h4a2 2 0 002-2l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   `;
   box.appendChild(d);
 }
@@ -2779,7 +2781,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
                 <b>${desc}</b>${vel}
                 <div class="small">${sDur} min · MET ${sMet}</div>
               </div>
-              <div style="font-weight:800;color:#ffffff">-${sKcal} kcal</div>
+              <div style="font-weight:800;color:var(--txt)">-${sKcal} kcal</div>
             </div>`;
         }).join('')}
       </div>`;
@@ -2835,7 +2837,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
       </div>
       <div>
         <label>Gasto (kcal)</label>
-        <input id="actKcal" type="number" min="1" max="10000" style="color:#ffffff;font-weight:800" value="${kcalTotal}"/>
+        <input id="actKcal" type="number" min="1" max="10000" style="color:var(--txt);font-weight:800" value="${kcalTotal}"/>
       </div>
     </div>
 
@@ -2844,7 +2846,7 @@ function mostrarConfirmacaoAtividade(final, n, responses, apiReturns = [], cance
 
     <div class="det-total mt8">
       <span>Gasto calórico estimado:</span>
-      <span class="v" style="color:#ffffff">-${fmt(kcalTotal)} kcal</span>
+      <span class="v" style="color:var(--txt)">-${fmt(kcalTotal)} kcal</span>
     </div>
 
     <div class="row mt12">
@@ -2929,7 +2931,7 @@ function modalManualExercicio() {
       </div>
       <div>
         <label>Gasto estimado (kcal)</label>
-        <input id="manExKcal" type="number" min="0" max="10000" value="${defaultKcal}" style="color:#ffffff;font-weight:800"/>
+        <input id="manExKcal" type="number" min="0" max="10000" value="${defaultKcal}" style="color:var(--txt);font-weight:800"/>
       </div>
     </div>
 
@@ -2937,7 +2939,7 @@ function modalManualExercicio() {
 
     <div class="det-total mt8">
       <span>Gasto calórico:</span>
-      <span class="v" id="manExKcalDisplay" style="color:#ffffff">-${fmt(defaultKcal)} kcal</span>
+      <span class="v" id="manExKcalDisplay" style="color:var(--txt)">-${fmt(defaultKcal)} kcal</span>
     </div>
 
     <div class="row mt12">

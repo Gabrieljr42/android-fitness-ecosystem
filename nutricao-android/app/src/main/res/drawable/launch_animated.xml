@@ -1,0 +1,5 @@
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/launch_mark">
+    <target android:name="outer" android:animation="@animator/launch_ring" />
+    <target android:name="middle" android:animation="@animator/launch_ring" />
+    <target android:name="inner" android:animation="@animator/launch_ring" />
+</animated-vector>

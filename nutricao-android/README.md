@@ -6,6 +6,10 @@ Aplicativo Android (baseado em WebView de alto desempenho) para controle nutrici
 
 ## 📱 Visão Geral e Recursos
 
+- **Interface e navegação:** resumo do dia, macros e refeições em destaque; botão de registro sempre acessível; abas Hoje, Histórico, Alimentos e Metas, com Ajustes no cabeçalho.
+- **Aparência:** temas escuro, claro e automático em Ajustes. A preferência é salva em `nt_theme`, separadamente dos registros nutricionais.
+- **Revisão e histórico:** foto, texto/voz, catálogo, entrada manual e resumo do dia reunidos no menu de registro; revisão antes de confirmar; média semanal calculada sobre os dias com refeições, incluindo hoje. Dias sem registro aparecem como “—”.
+
 - **Análise de Fotos de Refeições com IA (Google Gemini):**
   - Identificação visual dos alimentos e estimativa de porções em gramas.
   - Estimativa discriminada de calorias, proteínas, carboidratos e gorduras.
@@ -52,6 +56,8 @@ nutricao-android/
                 └── apps/nutricao/
                     ├── index.html         # Shell principal da interface
                     ├── theme.css          # Estilos globais e componentes do design
+                    ├── design.css         # Tema verde, layout responsivo e componentes atualizados
+                    ├── appearance.js      # Preferência de tema e acompanhamento do sistema
                     ├── estado.js          # Chaves de LocalStorage, estados e helpers
                     ├── referencia.js      # Banco de alimentos de referência (macros/100g)
                     ├── logic.js           # Cálculos diários, formatação e toasts

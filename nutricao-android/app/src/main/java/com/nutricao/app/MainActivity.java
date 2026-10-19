@@ -2,6 +2,7 @@ package com.nutricao.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -20,6 +21,7 @@ import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
@@ -44,9 +46,14 @@ import java.io.OutputStream;
  */
 public class MainActivity extends Activity {
     private WebView web;
+    private Runnable finishLaunch;
+    private boolean launchPageReady;
     private static final int FILE_CHOOSER_CODE = 51;
     private static final int NOTIF_PERM_CODE = 102;
     private static final int AUDIO_PERM_CODE = 103;
+    private static final int EXACT_ALARM_REQ_CODE = 104;
+    private static final String PREFS_UI = "nutritrack_ui";
+    private static final String KEY_EXACT_ASKED = "exact_alarm_asked";
     private static final long MAX_AUDIO_BYTES = 12L * 1024L * 1024L;
     public static final String CHANNEL_ID = "nutricao_lembretes";
     private ValueCallback<Uri[]> filePathCallback;
@@ -78,6 +85,17 @@ public class MainActivity extends Activity {
         web.post(new Runnable() {
             @Override public void run() {
                 String js = "if(window.__nutriAudioPermissionResult)window.__nutriAudioPermissionResult(" + granted + ");";
+                web.evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    private void notifyNotifPermissionResult(final boolean granted, final boolean permanentlyDenied) {
+        if (web == null) return;
+        web.post(new Runnable() {
+            @Override public void run() {
+                String js = "if(window.__nutriNotifPermissionResult)window.__nutriNotifPermissionResult("
+                        + granted + "," + permanentlyDenied + ");";
                 web.evaluateJavascript(js, null);
             }
         });
@@ -219,6 +237,26 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        final long launchStarted = android.os.SystemClock.uptimeMillis();
+        if (Build.VERSION.SDK_INT >= 31) {
+            getSplashScreen().setOnExitAnimationListener(splash -> {
+                final boolean[] removed = {false};
+                final Runnable remove = () -> {
+                    if (removed[0]) return;
+                    removed[0] = true;
+                    splash.animate().alpha(0f).setDuration(180).withEndAction(() -> splash.remove()).start();
+                    finishLaunch = null;
+                };
+                finishLaunch = () -> {
+                    boolean motion = android.animation.ValueAnimator.areAnimatorsEnabled();
+                    long remaining = motion ? Math.max(0, 700 - (android.os.SystemClock.uptimeMillis() - launchStarted)) : 0;
+                    splash.postDelayed(remove, remaining);
+                };
+                if (launchPageReady) finishLaunch.run();
+                // Uma falha no carregamento nunca deve prender a tela de abertura.
+                splash.postDelayed(remove, 2000);
+            });
+        }
         requestCameraPermission();
         createNotificationChannel();
         requestNotificationPermission();
@@ -227,6 +265,13 @@ public class MainActivity extends Activity {
         NotificationReceiver.rescheduleAllAlarms(this);
 
         web = new WebView(this);
+        web.setBackgroundColor(android.graphics.Color.rgb(16, 21, 16));
+        web.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public void onPageCommitVisible(WebView view, String url) {
+                launchPageReady = true;
+                if (finishLaunch != null) finishLaunch.run();
+            }
+        });
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -373,13 +418,106 @@ public class MainActivity extends Activity {
             boolean granted = grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             notifyAudioPermissionResult(granted);
+        } else if (requestCode == NOTIF_PERM_CODE) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            // A partir do Android 11, duas negativas fazem o sistema parar de
+            // exibir o diálogo ("nem pede mais"): detecta e orienta para Ajustes.
+            boolean permanentlyDenied = !granted && Build.VERSION.SDK_INT >= 23
+                    && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS);
+            notifyNotifPermissionResult(granted, permanentlyDenied);
+            if (!granted) {
+                Toast.makeText(this,
+                        permanentlyDenied
+                                ? "Notificações bloqueadas — ative em Ajustes do app"
+                                : "Permita as notificações para receber os lembretes",
+                        Toast.LENGTH_LONG).show();
+            }
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        promptExactAlarmPermissionIfNeeded();
     }
 
     @Override
     protected void onDestroy() {
         cancelAudioCapture();
         super.onDestroy();
+    }
+
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        return nm == null || nm.areNotificationsEnabled();
+    }
+
+    private boolean canScheduleExactAlarms() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            return am != null && am.canScheduleExactAlarms();
+        }
+        return true;
+    }
+
+    private boolean hasActiveReminders() {
+        try {
+            SharedPreferences prefs = getSharedPreferences(
+                    NotificationReceiver.PREFS_NAME, Context.MODE_PRIVATE);
+            String saved = prefs.getString(NotificationReceiver.KEY_REMINDERS, null);
+            if (saved == null || saved.trim().isEmpty()) return false;
+            JSONArray arr = new JSONArray(saved);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject item = arr.optJSONObject(i);
+                if (item == null) continue;
+                boolean ativo = item.optBoolean("ativo", item.optBoolean("enabled", true));
+                String hora = item.optString("hora", item.optString("time", ""));
+                if (ativo && hora != null && !hora.trim().isEmpty()) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    /** No Android 14+ (targetSdk 34) o alarme exato nasce negado e o sistema
+     *  nunca pergunta sozinho: abre a tela de permissão uma única vez quando
+     *  há lembretes ativos. Sem isto, setExactAndAllowWhileIdle lança
+     *  SecurityException e nenhum lembrete dispara (falha silenciosa). */
+    private void promptExactAlarmPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        if (canScheduleExactAlarms() || !hasActiveReminders()) return;
+        SharedPreferences ui = getSharedPreferences(PREFS_UI, MODE_PRIVATE);
+        if (ui.getBoolean(KEY_EXACT_ASKED, false)) return;
+        ui.edit().putBoolean(KEY_EXACT_ASKED, true).apply();
+        Toast.makeText(this,
+                "Permita alarmes exatos para os lembretes tocarem na hora certa",
+                Toast.LENGTH_LONG).show();
+        openExactAlarmSettings();
+    }
+
+    private void openExactAlarmSettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                Intent i = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(i);
+                return;
+            }
+        } catch (Exception ignored) {}
+        openAppDetailsSettings();
+    }
+
+    private void openAppDetailsSettings() {
+        try {
+            Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception ignored) {}
     }
 
     private void requestCameraPermission() {
@@ -426,12 +564,21 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (web != null && web.canGoBack()) web.goBack();
-        else super.onBackPressed();
+        if (web == null) {
+            super.onBackPressed();
+            return;
+        }
+        web.evaluateJavascript("typeof handleAppBack === 'function' && handleAppBack()", handled -> {
+            if ("true".equals(handled)) return;
+            if (web.canGoBack()) web.goBack();
+            else MainActivity.super.onBackPressed();
+        });
     }
 
     /** Bridge chamada do JS para notificacoes, vibracao, agendamento de alarmes e backup. */
     public class Bridge {
+        @JavascriptInterface
+        public boolean hasNativeLaunchAnimation() { return Build.VERSION.SDK_INT >= 31; }
         @JavascriptInterface
         public String startAudioRecording() {
             return startAudioCapture();
@@ -599,7 +746,7 @@ public class MainActivity extends Activity {
 
                     if (ativo && !hora.isEmpty()) {
                         String title = "NutriTrack ⏰ " + nome;
-                        String msg = item.optString("mensagem", item.optString("message", NotificationReceiver.getPositiveMessageFor(nome)));
+                        String msg = NotificationReceiver.getPositiveMessageFor(nome);
                         NotificationReceiver.scheduleAlarm(MainActivity.this, id, title, msg, hora);
                     } else {
                         NotificationReceiver.cancelAlarm(MainActivity.this, id);
@@ -647,6 +794,65 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void cancelAlarm(final String id) {
             NotificationReceiver.cancelAlarm(MainActivity.this, id);
+        }
+
+        /** Estado lido pela tela Ajustes para exibir o card de permissão. */
+        @JavascriptInterface
+        public boolean hasNotificationPermission() {
+            try {
+                return MainActivity.this.hasNotificationPermission();
+            } catch (Exception ignored) {
+                return true;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean areNotificationsEnabled() {
+            try {
+                NotificationManager nm = (NotificationManager)
+                        getSystemService(Context.NOTIFICATION_SERVICE);
+                return nm == null || nm.areNotificationsEnabled();
+            } catch (Exception ignored) {
+                return true;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean canScheduleExactAlarms() {
+            try {
+                return MainActivity.this.canScheduleExactAlarms();
+            } catch (Exception ignored) {
+                return true;
+            }
+        }
+
+        /** Re-dispara o diálogo de permissão (sem efeito se negado 2x: o
+         *  sistema responde direto no onRequestPermissionsResult). */
+        @JavascriptInterface
+        public void requestNotificationPermission() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    MainActivity.this.requestNotificationPermission();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openNotificationSettings() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    MainActivity.this.openAppDetailsSettings();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openExactAlarmSettings() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    MainActivity.this.openExactAlarmSettings();
+                }
+            });
         }
 
         @JavascriptInterface
