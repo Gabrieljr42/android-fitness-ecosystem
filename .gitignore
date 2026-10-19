@@ -1,28 +1,47 @@
 # Toolchain e SDKs portáteis baixados pelos scripts
 _toolchain/
 **/_toolchain/
+platform-tools/
+**/platform-tools/
 
-# Pastas e arquivos de build/compilação
+# Pastas e arquivos de build/compilação Android & Gradle
+.gradle/
+**/.gradle/
 build/
 **/build/
 *.apk
+*.aab
 *.idsig
 *.zip
 *.dex
 *.class
+*.bin
+local.properties
+**/local.properties
+*.keystore
+*.jks
+*.hprof
+.cxx/
+captures/
+
+# Executáveis e bibliotecas binárias
+*.exe
+*.dll
+*.so
+*.dylib
 
 # Pastas temporárias e backups monolíticos
 _temp_kernel/
 _temp_views/
 **/_backup_monolito/
 backup/
+.backup/
 .agents/
 ORIGINAL_REQUEST.md
 TEST_READY.md
 verify_all_acceptance.js
 
 # Nested historical specs stay ignored; root PROJECT.md/TEST_INFRA.md are tracked.
-# Bare PROJECT.md/TEST_INFRA.md would ignore at all levels, so scope explicitly:
 evolucao-android/PROJECT.md
 evolucao-android/TEST_INFRA.md
 
@@ -32,4 +51,4 @@ Thumbs.db
 .DS_Store
 .idea/
 .vscode/
-.backup/
+.opencode/
