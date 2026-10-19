@@ -82,12 +82,13 @@ public class MainActivity extends Activity {
     private MobileWearRepository wearRepository;
     private volatile boolean webReady;
 
-    private PendingIntent appPendingIntent() {
-        Intent intent = new Intent(this, MainActivity.class);
+    // O receiver também precisa abrir o treino, mesmo sem uma Activity em memória.
+    static PendingIntent appPendingIntent(Context context) {
+        Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
-        return PendingIntent.getActivity(this, 0, intent, flags);
+        return PendingIntent.getActivity(context, 0, intent, flags);
     }
 
     /** Notificação de contagem: chronometer regressivo do SISTEMA — atualiza
@@ -104,7 +105,7 @@ public class MainActivity extends Activity {
         nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
           .setContentTitle("Descanso")
           .setContentText(label == null || label.isEmpty() ? "Contando…" : label)
-          .setContentIntent(appPendingIntent())
+          .setContentIntent(appPendingIntent(this))
           .setOngoing(true)
           .setOnlyAlertOnce(true)
           .setAutoCancel(false)
@@ -131,6 +132,7 @@ public class MainActivity extends Activity {
         nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
           .setContentTitle("Descanso")
           .setContentText(body)
+          .setContentIntent(appPendingIntent(context))
           .setAutoCancel(true);
         if (Build.VERSION.SDK_INT >= 21) nb.setVisibility(Notification.VISIBILITY_PUBLIC);
         return nb.build();
@@ -356,6 +358,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         appForeground = true;
+        if (webReady) runOnJs("if(typeof syncActiveWorkout==='function')syncActiveWorkout();");
         if (webReady && wearRepository != null) wearRepository.requestDrain();
     }
 
@@ -470,12 +473,19 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (web != null && web.canGoBack()) web.goBack();
+        else if (WorkoutSessionService.hasActiveSession(this)) moveTaskToBack(true);
         else super.onBackPressed();
     }
 
     public class Bridge {
         private static final int MAX_MIRRORED_ITEMS = 500;
         private static final int MAX_MIRRORED_BYTES = 512 * 1024;
+
+        @JavascriptInterface
+        public void syncActiveWorkout(final long startedAt, final long lastActiveAt, final String day) {
+            runOnUiThread(() -> WorkoutSessionService.updateSession(
+                    getApplicationContext(), startedAt, lastActiveAt, day, appForeground));
+        }
 
         @JavascriptInterface
         public void publishWearPlan(String planJson) {
@@ -633,7 +643,7 @@ public class MainActivity extends Activity {
                 nb.setSmallIcon(android.R.drawable.ic_popup_reminder)
                   .setContentTitle(title)
                   .setContentText(body)
-                  .setContentIntent(appPendingIntent())
+                  .setContentIntent(appPendingIntent(MainActivity.this))
                   .setAutoCancel(true);
                 NotificationManager nm =
                         (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);

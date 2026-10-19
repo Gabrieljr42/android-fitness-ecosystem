@@ -172,6 +172,17 @@ function migrate(s){
 }
 function syncNative(){
   try{ if(typeof AndroidBridge!=='undefined' && AndroidBridge.syncWorkoutState) AndroidBridge.syncWorkoutState(JSON.stringify({sessions:state.sessions||[],corridas:state.corridas||[],peso:state.peso||[]})); }catch(e){}
+  syncActiveWorkout();
+}
+function syncActiveWorkout(){
+  try{
+    if(typeof AndroidBridge!=='undefined' && AndroidBridge.syncActiveWorkout){
+      var d=state.draft||{};
+      var started=Number(d.startedAt)||0;
+      var last=Number(d.lastActiveAt)||started;
+      AndroidBridge.syncActiveWorkout(isFinite(started)?started:0,isFinite(last)?last:0,String(d.day||''));
+    }
+  }catch(e){}
 }
 var _saveFailedShown = false; // avisa uma única vez por sessão
 function save(){
