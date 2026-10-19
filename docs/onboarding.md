@@ -24,7 +24,7 @@
 
 | Task | Start here |
 | --- | --- |
-| Change workout UI/keypad | `evolucao-android/app/src/main/assets/apps/evolucao/views/treino.js`, `kernel/db.js` draft logic |
+| Change workout UI/keypad | `evolucao-android/app/src/main/assets/apps/evolucao/views/treino.js`, `evolucao-android/app/src/main/assets/kernel/db.js` draft logic |
 | Change progression math | `…/core/progressao.js` + `app/src/test/js/progressao.test.js` |
 | Change rest timer behavior | `MainActivity.java` (`startRestNotification…`), `RestAlarmReceiver.java`, `views/treino.js` |
 | Change food analysis prompt/schema | `nutricao-android/…/core/gemini.js` (`FOOD_*_PROMPT`, `FOOD_SCHEMA`) |
@@ -46,7 +46,7 @@ Add a boundary assertion to the RIR engine without touching the app:
 
 ## Pitfalls and known limitations
 
-- **Two copies of the JS exist.** Edit `evolucao-android/app/src/main/assets/…`, not root `kernel/` or `apps/evolucao/` mirrors — each mirror has a `README.md` route file pointing at the canonical path (Phase 1: drift proven, e.g. root `kernel/db.js` 193 lines vs canonical 283).
+- **Single copy of the JS.** All WebView JS lives under each app's `app/src/main/assets/` — there are no root mirrors. (Stale `kernel/` + `apps/evolucao/` mirrors were removed in the 2026-09 repo hygiene pass.)
 - **Script order matters.** A missing `<script>` in `index.html` breaks views silently — check the order table in [architecture](architecture.md).
 - **Decimal comma.** The Evolução keypad accepts `12,5` and stores `12.5` — parse accordingly in any new numeric input.
 - **No network in engines.** `progressao.js`/`engine.js` must stay pure; do I/O in views/Kotlin.
@@ -58,6 +58,6 @@ Add a boundary assertion to the RIR engine without touching the app:
 
 1. Canonical Gemini model set: centralized in Phase 2 (`gemini-models.js` + `SupportedModels.kt`) — live-verify IDs/quota with a maintainer key before changing prompts.
 2. ~~NutriTrack `targetSdk 33` vs. Evolução/Coach `34/36`~~ Resolved Phase 3: NutriTrack + Evolução at 34, Coach at 36. Remaining: joint bump to 35/36 + AGP 8.4.2→8.13.x (see `docs/configuration.md`).
-3. Long-term plan for root `kernel/` + `apps/evolucao/` mirrors (archive, symlink, or codegen?).
+3. ~~Long-term plan for root `kernel/` + `apps/evolucao/` mirrors~~ Resolved 2026-09: stale mirrors deleted; single copy under each app's `assets/`.
 4. Release signing/Play strategy and whether `allowBackup=false` should extend beyond Coach.
 5. Owner for re-validating Coach providers + insets on physical devices with personal data.

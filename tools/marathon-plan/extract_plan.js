@@ -1,6 +1,8 @@
 'use strict';
 /* Extrai todas as planilhas do xlsx (sem dependências) para JSON de inspeção.
-   Uso: node extract_plan.js  (a partir da raiz do workspace) */
+   Uso: descartável/one-shot — extrai de um diretório temporário com o xlsx
+   descompactado (ver constante X abaixo) e grava maratona_plan_raw.json
+   ao lado deste script. Uso histórico: node tools/marathon-plan/extract_plan.js */
 const fs = require('fs');
 const path = require('path');
 

@@ -18,7 +18,7 @@ All paths are relative to the repo root unless noted. PowerShell on Windows is a
 | Coach lint | `.\gradlew.bat :app:lintDebug --no-daemon --no-watch-fs --console=plain` | Run before distributing. |
 | Install to phone | `& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r <apk>` | Evolução → NutriTrack → Coach order; open the first two once before Coach sync. |
 
-No formatter, linter (JS), type-checker, or CI workflow was found in the repo — match the surrounding file style by hand.
+No JS formatter, linter, or type-checker is configured in the repo — match the surrounding file style by hand. CI (`.github/workflows/ci.yml`) runs `test.ps1`-equivalent Node suites plus Evolução/Coach Gradle unit tests.
 
 ## Conventions and patterns
 
@@ -44,12 +44,12 @@ No formatter, linter (JS), type-checker, or CI workflow was found in the repo �
 
 **Add a Coach bridge op:** add to `BridgeProtocol.allowedOperations` + parser in `bridge/PayloadParsers.kt` + handler in `MainActivity.kt` + `main.js` caller + JUnit boundary test + `engine`/`ui-smoke` if UI-visible.
 
-**Add a progression rule:** edit `core/progressao.js` + cases in `progressao.test.js` (cover RIR path, legacy path, short session, warm-up exclusion) — the build blocks on failure.
+**Add a progression rule:** edit `evolucao-android/app/src/main/assets/core/progressao.js` + cases in `evolucao-android/app/src/test/js/progressao.test.js` (cover RIR path, legacy path, short session, warm-up exclusion) — the build blocks on failure.
 
 ## Testing strategy and gaps
 
 - **Strengths:** large Node suites (72 files total) with tiered coverage (unit → boundary → cross-feature → real-world scenarios in `TEST_INFRA.md`); adversarial/stress files (`challenger_*`, `adversarial_*`); Robolectric/JUnit for Coach (`:app:testDebugUnitTest`) and Evolução Room/protocol tests.
-- **Gaps:** no JS linter/formatter; no CI; Coach `ui-smoke.js` needs a local Chromium and is not in `test.ps1`; on-device provider/insets/Health paths are only manually verified (Coach README notes AVD-14 validation, physical-device recheck pending); Wear sync needs two devices/emulators (`diagnose-wear-sync.ps1`).
+- **Gaps:** no JS linter/formatter; Coach `ui-smoke.js` needs a local Chromium and is not in `test.ps1`; on-device provider/insets/Health paths are only manually verified (Coach README notes AVD-14 validation, physical-device recheck pending); Wear sync needs two devices/emulators (`diagnose-wear-sync.ps1`).
 - **Rule:** every behavior or boundary-abuse fix ships with a test; builds run the suites first (`build.ps1` aborts on JS failure, `build-wear.ps1 -WithTests`, Gradle `testDebugUnitTest` before `assembleDebug`).
 
 ## Contributions

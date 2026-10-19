@@ -57,11 +57,8 @@ The ecosystem consists of three interconnected Android hybrid applications:
 - `MainActivity.kt` scales WindowInsets by `density`: `--android-inset-bottom: (inset.bottom / density)px`.
 
 ## Code Layout
-- `evolucao-android/app/src/main/assets/`: Evolução core logic (`core/`), database (`kernel/`), views (`views/`), and `index.html`.
-- `apps/evolucao/`: Evolução mirror directory.
-- `nutricao-android/app/src/main/assets/`: NutriTrack core logic (`core/gemini.js`), views, and `index.html`.
-- `apps/nutricao/`: NutriTrack mirror directory.
+- `evolucao-android/app/src/main/assets/`: Evolução `index.html` shell + `kernel/` (db, fmt, ui, …) + `core/progressao.js` + `apps/evolucao/` (logic, strava, maratonaplano, views).
+- `nutricao-android/app/src/main/assets/`: NutriTrack `apps/nutricao/index.html` shell + `apps/nutricao/` (estado, logic, views) + `core/gemini.js`.
 - `coach-android/app/src/main/java/com/coach/app/`: Coach Kotlin native layer (`LocalAppSync.kt`, `MainActivity.kt`).
 - `coach-android/app/src/main/assets/www/`: Coach web assets (`js/engine.js`, `css/app.css`, `index.html`).
-- `apps/coach/`: Coach mirror directory.
 - Root test runner: `test.ps1` (runs all unit test suites).

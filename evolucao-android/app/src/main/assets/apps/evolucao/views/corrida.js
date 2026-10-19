@@ -811,6 +811,10 @@ function bindCorrida(){
   var goMar = document.getElementById('goMaratonaBtn');
   if (goMar) goMar.onclick = function(){ corridaSection = 'plano'; render(); };
 
+  /* Seção Plano 42K: sem esta chamada os botões ‹ Anterior / Ir para hoje /
+     Próxima › / Sincronizar Strava (renderMaratona) ficam sem handler. */
+  if (typeof bindMaratona === 'function') bindMaratona();
+
   // Alternância de Modo (Contínua vs Intervalada)
   document.querySelectorAll('[data-cmode]').forEach(function(btn){
     btn.onclick = function(){

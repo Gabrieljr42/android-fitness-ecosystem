@@ -1,6 +1,6 @@
 /* apps/evolucao/maratonaplano.js — PLANO AUTORITATIVO da Maratona BH 2027.
    GERADO a partir de Plano_Maratona_BH_2027.xlsx (não editar à mão; regenere
-   com _plan/gen_maratona.js). Datas em ISO local (segunda→domingo). */
+   com tools/marathon-plan/gen_maratona.js). Datas em ISO local (segunda→domingo). */
 
 var MARATONA_META = {
  "name": "PROJETO 42K — MARATONA BH 2027",

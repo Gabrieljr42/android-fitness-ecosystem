@@ -92,10 +92,10 @@ const sandbox = {
 vm.createContext(sandbox);
 
 const rootDir = path.resolve(__dirname, '../../../../..');
-const fmtCode = fs.readFileSync(path.join(rootDir, 'kernel/fmt.js'), 'utf8');
-const chartsCode = fs.readFileSync(path.join(rootDir, 'kernel/charts.js'), 'utf8');
-const uiCode = fs.readFileSync(path.join(rootDir, 'kernel/ui.js'), 'utf8');
-const iconsCode = fs.readFileSync(path.join(rootDir, 'kernel/icons.js'), 'utf8');
+const fmtCode = fs.readFileSync(path.join(rootDir, 'evolucao-android/app/src/main/assets/kernel/fmt.js'), 'utf8');
+const chartsCode = fs.readFileSync(path.join(rootDir, 'evolucao-android/app/src/main/assets/kernel/charts.js'), 'utf8');
+const uiCode = fs.readFileSync(path.join(rootDir, 'evolucao-android/app/src/main/assets/kernel/ui.js'), 'utf8');
+const iconsCode = fs.readFileSync(path.join(rootDir, 'evolucao-android/app/src/main/assets/kernel/icons.js'), 'utf8');
 
 vm.runInContext(fmtCode, sandbox);
 vm.runInContext(chartsCode, sandbox);

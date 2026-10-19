@@ -246,7 +246,7 @@ test('3.1: Ainsworth Compendium MET Equation Proportionality', () => {
 console.log('\n--- SUITE 4: Design System Tokens & Offline Forensic Audit ---');
 
 test('4.1: Kernel theme.css Monochromatic Tokens Verification', () => {
-  const kernelThemePath = path.join(PROJECT_ROOT, 'kernel/theme.css');
+  const kernelThemePath = path.join(PROJECT_ROOT, 'evolucao-android/app/src/main/assets/kernel/theme.css');
   const content = fs.readFileSync(kernelThemePath, 'utf8');
 
   // Verify core monochromatic tokens

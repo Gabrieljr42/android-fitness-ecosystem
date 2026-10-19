@@ -263,13 +263,18 @@ function kbdOpenFor(mode, si){
       kbdMode = mode;
       var d = state.draft, exo = state.ficha[d.day].ex[mfEx], rows = mfSetRows(exo.n), _row = kbdEdit != null ? rows[kbdEdit.si] : null;
       kbdFresh = !!(_row && (kbdMode === 'w' ? _row.w != null : _row.r != null));
+      /* Troca de campo com o teclado já aberto: atualiza só o destaque das
+         células e os valores — sem render() para não remontar o #mfKbd e
+         repetir a animação de entrada (mf-kbdin). */
+      document.querySelectorAll('.mf-cell.on').forEach(function(el){ el.classList.remove('on'); });
+      var wCell = document.querySelector('.mf-cell[data-row="' + si + '"][data-cell="w"]');
+      var rCell = document.querySelector('.mf-cell[data-row="' + si + '"][data-cell="r"]');
+      if(wCell) wCell.classList.add('on');
+      if(rCell) rCell.classList.add('on');
+      syncKbdUI();
     }
-    render();
-    syncKbdUI();
     var rowEl = document.querySelector('.mf-cell.on');
     if(rowEl) rowEl.scrollIntoView({block:'nearest'});
-    var kbd = document.getElementById('mfKbd');
-    if(kbd) kbd.classList.add('mf-kbdin');
     return;
   }
   kbdMode = mode;
@@ -678,14 +683,22 @@ function bindTreino(){
         var rows = mfSetRows(ex);
         var targetSi = kbdEdit != null ? kbdEdit.si : rows.findIndex(function(r){ return !r.done; });
         if(targetSi < 0) targetSi = 0;
-        kbdOpenFor(kbdMode || 'w', targetSi);
-        kbdW = String(meta.carga);
-        kbdR = String(meta.repsMeta);
-        kbdP = '0';
-        kbdFresh = false;
-        if(meta.targetRir != null) kbdRir = meta.targetRir;
         var row = rows[targetSi];
-        if(row && !row.phantom && row.__entryIndex >= 0 && d.entries[ex] && d.entries[ex][row.__entryIndex]){
+        var isRealRow = !!(row && !row.phantom && row.__entryIndex >= 0);
+        /* Só abre o teclado quando a meta precisa de confirmação (série
+           ainda não registrada). Em série existente aplica direto, sem
+           abrir o teclado. */
+        if(!isRealRow && !kbdOpen){
+          kbdOpenFor(kbdMode || 'w', targetSi);
+          rows = mfSetRows(ex);
+          row = rows[targetSi];
+          isRealRow = !!(row && !row.phantom && row.__entryIndex >= 0);
+        }
+        if(kbdOpen){ kbdW = String(meta.carga); kbdR = String(meta.repsMeta); kbdP = '0'; kbdFresh = false; }
+        /* kbdRir só no teclado aberto: com ele fechado o valor já foi
+           gravado na série, e buffer global vazaria para a próxima série. */
+        if(kbdOpen && meta.targetRir != null) kbdRir = meta.targetRir;
+        if(isRealRow && d.entries[ex] && d.entries[ex][row.__entryIndex]){
           var existing = d.entries[ex][row.__entryIndex];
           existing.w = meta.carga;
           existing.r = meta.repsMeta;
@@ -764,6 +777,28 @@ function bindTreino(){
 
     var existingEntry = d.entries[exoDone.n] ? d.entries[exoDone.n][current.__entryIndex] : null;
     if(!existingEntry) return;
+    if(existingEntry.done && isEditingCurrent){
+      /* Série concluída editada no teclado + toque no ✓ da linha: confirma
+         a edição sem desmarcar (antes desmarcava e obrigava a checar de
+         novo). Sem alterações no buffer, mantém o toggle desmarcar. */
+      var dirtyW = Number(buf.w) !== Number(current.w);
+      var dirtyR = Number(buf.r) !== Number(current.r);
+      var dirtyP = Number(buf.p || 0) !== Number(current.p || 0);
+      var dirtyRir = kbdRir != null && Number(kbdRir) !== Number(current.rir);
+      if(dirtyW || dirtyR || dirtyP || dirtyRir){
+        existingEntry.w = wVal;
+        existingEntry.r = rVal;
+        if(pVal > 0) existingEntry.p = pVal; else delete existingEntry.p;
+        if(!isWarmup(existingEntry) && kbdRir != null){ existingEntry.rir = rirVal; existingEntry.rirManual = true; }
+        d.lastActiveAt = Date.now();
+        save();
+        kbdReset();
+        vibrate(15);
+        render();
+        toast('Série atualizada: ' + nkg(wVal) + ' kg × ' + rVal + ' reps');
+        return;
+      }
+    }
 
     if(!existingEntry.done){
       existingEntry.w = wVal;

@@ -99,11 +99,24 @@ console.log('\n--- SUITE 5: registro de corrida e estado da maratona intactos --
   passed += 5;
 }
 
+// -----------------------------------------------------------------------------
+console.log('\n--- SUITE 6: Plano 42K tem bind ---');
+{
+  // regressao: renderMaratona() era chamado sem bindMaratona()
+  assert(/function bindMaratona\(/.test(maratonaJs), 'bindMaratona definido');
+  assert(/[^_]bindMaratona\(\)/.test(corridaJs), 'bindCorrida invoca bindMaratona');
+  ['marPrev', 'marToday', 'marNext', 'marStravaSync'].forEach(function (id) {
+    assert(maratonaJs.indexOf("getElementById('" + id + "')") >= 0, 'handler para #' + id);
+  });
+  console.log('OK. Semana + Strava do plano com handlers.');
+  passed += 4;
+}
+
 console.log('\n================================================================');
-if (passed >= 23) {
+if (passed >= 27) {
   console.log(`ALL ${passed} NAV-MERGE CONTRACT TESTS PASSED!`);
   process.exit(0);
 } else {
-  console.error(`Expected >= 23 markers, got ${passed}`);
+  console.error(`Expected >= 27 markers, got ${passed}`);
   process.exit(1);
 }

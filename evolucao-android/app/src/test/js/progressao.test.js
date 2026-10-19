@@ -164,6 +164,12 @@ assert.strictEqual(dpMeta4.status, 'subir', 'Status should be subir after achiev
 assert.strictEqual(dpMeta4.carga, 50, 'Carga should increase by increment (50kg)');
 assert.strictEqual(dpMeta4.repsMeta, 8, 'RepsMeta should reset to range.min (8 reps)');
 
+/* Penúltima rep da faixa não autoriza salto de carga (45kg x 11 em 8-12 @ 2 RIR -> 45kg x 12). */
+var dpMetaPenult = meta(doubleProgPlan, [session(1, '2026-08-01', doubleProgPlan.n, sets(3, 45, 11, { rir: 2 }))]);
+assert.strictEqual(dpMetaPenult.status, 'manter', 'One rep below range.max must keep load and seek the top');
+assert.strictEqual(dpMetaPenult.carga, 45);
+assert.strictEqual(dpMetaPenult.repsMeta, 12);
+
 /* Problem 2: Strict Range Candidate Selection (17.5kg x 7 in 6-10 @ 2 RIR -> 17.5kg seeking 8 reps, never 15kg x 14) */
 var dbBench = plan('Supino reto c/ halteres R1', '6-10', 3, 'halter', 2.5);
 var dbBenchMeta = meta(dbBench, [session(1, '2026-08-01', dbBench.n, sets(3, 17.5, 7, { rir: 2 }))]);

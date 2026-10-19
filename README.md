@@ -29,6 +29,8 @@ Prerequisites:
 
 - Windows 10/11 PowerShell, Node.js 18+ (`node --version`), internet on first build (~1 GB JDK + SDK download).
 - No preinstalled JDK, Android SDK, or Android Studio required for Evolução/NutriTrack (portable `_toolchain/`). Coach reuses Evolução's portable JDK and needs the SDK in `%LOCALAPPDATA%\Android\Sdk` for `adb install` only.
+- `adb`/`fastboot` come from the system SDK or `_toolchain/android-sdk` — they are not vendored in this repo.
+- Never commit: `_toolchain/`, `build/`, `.gradle/`, `*.apk`, `local.properties`, `coach-android/artifacts/`, `backup/` (see `.gitignore`).
 
 ```powershell
 # 1. Evolução first (provides the shared _toolchain/ JDK+SDK)
